@@ -1,1 +1,4 @@
 .superpowers/
+mcp/delegate_local/.venv/
+mcp/delegate_local/**/__pycache__/
+.pytest_cache/
