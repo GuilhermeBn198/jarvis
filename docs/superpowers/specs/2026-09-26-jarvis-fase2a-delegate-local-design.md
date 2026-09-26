@@ -71,7 +71,7 @@ Adicionar ao `opencode.json` (escopo de projeto):
 "mcp": {
   "delegate_local": {
     "type": "local",
-    "command": ["python3", "mcp_servers/delegate_local/server.py"],
+    "command": ["mcp_servers/delegate_local/.venv/bin/python", "mcp_servers/delegate_local/server.py"],
     "enabled": true,
     "environment": {
       "OLLAMA_HOST": "{env:OLLAMA_HOST}"

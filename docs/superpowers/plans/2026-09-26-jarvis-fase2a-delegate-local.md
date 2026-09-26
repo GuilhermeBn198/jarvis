@@ -550,7 +550,7 @@ No `opencode.json`, adicionar (preservando `provider` e `agent`):
   "mcp": {
     "delegate_local": {
       "type": "local",
-      "command": ["python3", "mcp_servers/delegate_local/server.py"],
+      "command": ["mcp_servers/delegate_local/.venv/bin/python", "mcp_servers/delegate_local/server.py"],
       "enabled": true,
       "environment": {
         "OLLAMA_HOST": "{env:OLLAMA_HOST}"
@@ -558,6 +558,8 @@ No `opencode.json`, adicionar (preservando `provider` e `agent`):
     }
   }
 ```
+
+Nota: o venv em `mcp_servers/delegate_local/.venv` precisa existir (é gitignored) ou o MCP falha ao subir. Crie-o com os passos da seção "Testes" do `mcp_servers/delegate_local/README.md`.
 
 - [ ] **Step 3: Verificar descoberta**
 
