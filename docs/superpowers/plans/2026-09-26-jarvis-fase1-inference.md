@@ -402,6 +402,121 @@ git commit -m "feat(jarvis): failover passivo do primario via litellm"
 
 ---
 
+### Task 6: Instruir o `orchestrator` a delegar (fix do achado da Task 4)
+
+> Origem: a Task 4 mostrou delegação automática 0/3. Decisão do usuário: opção A — dar ao orquestrador uma instrução explícita de delegação.
+>
+> **REVERTIDA (2026-09-26):** não funcionou (Task 6: 0/1; total 0/4+). A auto-delegação foi **descartada** e os artefatos desta task (prompt + `permission.task`) foram removidos. Mantidos `local-executor` (uso manual) e `orchestrator` (primário na nuvem).
+
+**Files:**
+- Create: `prompts/orchestrator.txt`
+- Modify: `opencode.json`
+- Test: verificação por comando
+
+**Interfaces:**
+- Consumes: `orchestrator` (Task 3), `local-executor` (Task 2).
+- Produces: `orchestrator` com `prompt` que induz delegação de sub-tarefas **volumosas** e evita delegar **triviais**.
+
+- [x] **Step 1: Criar `prompts/orchestrator.txt`**
+
+Create `prompts/orchestrator.txt`:
+```
+Voce e o orquestrador do jarvis. Voce roda na nuvem (modelo forte) e tem acesso a um
+subagente local chamado `local-executor`, que roda na GPU e NAO ve o historico da conversa.
+
+Regra de delegacao:
+- DELEGUE ao `local-executor` quando o trabalho for VOLUMOSO, REPETITIVO ou MECANICO:
+  extrair ou transformar blocos grandes, gerar tabelas/boilerplate, resumos longos,
+  formatacao em lote, producao de saidas longas. Nesses casos a saida e grande e
+  executar localmente e barato.
+- NAO delegue tarefas TRIVIAIS (uma linha, uma lista de poucos itens, uma resposta
+  curta): o custo de ida-e-volta local (dezenas de segundos) supera o ganho; resolva voce mesmo.
+- Antes de delegar, pergunte-se: "a saida do subagente sera grande a ponto de compensar
+  a ida-e-volta?". Se nao, faca inline.
+- Ao delegar, envie instrucoes AUTO-CONTIDAS e delimitadas: o subagente nao ve o contexto
+  da conversa, entao inclua no pedido tudo que ele precisa para executar.
+
+Regras de acao:
+- Planeje e decomponha tarefas complexas voce mesmo; use o local apenas como executor barato.
+- Mantenha respostas de texto para o usuario na voz do orquestrador.
+```
+
+- [x] **Step 2: Referenciar o prompt no agente**
+
+Substituir o conteúdo de `opencode.json` por:
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (Windows - local)",
+      "options": {
+        "baseURL": "http://{env:OLLAMA_HOST}/v1"
+      },
+      "models": {
+        "qwen3:8b": {
+          "name": "Qwen3 8B (local, GPU)"
+        }
+      }
+    }
+  },
+  "agent": {
+    "local-executor": {
+      "description": "Executa sub-tarefas baratas e bem delimitadas no modelo local (GPU): extracoes, formatacoes, resumos curtos, boilerplate e chamadas de ferramenta simples. Use quando a tarefa NAO exigir raciocinio profundo; para planejamento/arquitetura, use a nuvem.",
+      "mode": "subagent",
+      "model": "ollama/qwen3:8b",
+      "temperature": 0.1
+    },
+    "orchestrator": {
+      "description": "Orquestrador: planeja, decompoe e delega sub-tarefas baratas ao local-executor, mantendo o raciocinio pesado na nuvem.",
+      "mode": "primary",
+      "model": "opencode-go/deepseek-v4-flash",
+      "prompt": "{file:./prompts/orchestrator.txt}",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "local-executor": "allow"
+        }
+      }
+    }
+  }
+}
+```
+
+- [x] **Step 3: Verificar que o agente carrega**
+
+Run:
+```bash
+opencode agent list | grep 'orchestrator'
+```
+Expected: linha contendo `orchestrator`.
+
+- [x] **Step 4: Re-verificar delegação — tarefa VOLUMOSA (deve delegar, idealmente)**
+
+Run:
+```bash
+timeout 600 opencode run --pure --agent orchestrator "Gere uma tabela Markdown com 25 linhas, cada uma com um comando git e uma descricao curta."
+```
+Expected: resposta com a tabela; registrar se houve `task` tool → `local-executor`.
+
+- [x] **Step 5: Re-verificar que tarefa TRIVIAL NÃO é delegada**
+
+Run:
+```bash
+timeout 600 opencode run --pure --agent orchestrator "Formate esta lista em Markdown: banana maca uva"
+```
+Expected: resposta rápida; sem delegação (por design).
+
+- [x] **Step 6: Commit**
+
+```bash
+git add opencode.json prompts/orchestrator.txt
+git commit -m "feat(jarvis): instrui o orchestrator a delegar sub-tarefas volumosas"
+```
+
+---
+
 ## Self-Review
 
 **1. Cobertura do spec:**
@@ -411,6 +526,7 @@ git commit -m "feat(jarvis): failover passivo do primario via litellm"
 - §4.4 LiteLLM opcional → Task 5 (opcional).
 - §7 verificação → Task 4.
 - §8 não-objetivos → fora do plano, corretamente.
+- Task 6 (fix do achado da Task 4; delegação automática) → prompt do orquestrador; executada e re-verificada, mas a delegação automática permaneceu em 0/4+, encaminhada à costura `Classifier` da Fase 2.
 
 **2. Placeholders:** sem `TBD`/`TODO`. Os `____` em `fase1-verification.md` são campos de medição preenchidos na execução (intencional).
 

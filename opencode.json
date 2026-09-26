@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (Windows - local)",
+      "options": {
+        "baseURL": "http://{env:OLLAMA_HOST}/v1"
+      },
+      "models": {
+        "qwen3:8b": {
+          "name": "Qwen3 8B (local, GPU)"
+        }
+      }
+    }
+  },
+  "agent": {
+    "local-executor": {
+      "description": "Executa sub-tarefas baratas e bem delimitadas no modelo local (GPU): extracoes, formatacoes, resumos curtos, boilerplate e chamadas de ferramenta simples. Use quando a tarefa NAO exigir raciocinio profundo; para planejamento/arquitetura, use a nuvem.",
+      "mode": "subagent",
+      "model": "ollama/qwen3:8b",
+      "temperature": 0.1,
+      "hidden": false,
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    },
+    "orchestrator": {
+      "description": "Orquestrador: planeja e decompoe tarefas e mantem o raciocinio pesado na nuvem. A delegacao automatica ao modelo local foi DESCARTADA (ver docs/notes/fase1-verification.md); o modelo local segue disponivel via @local-executor.",
+      "mode": "primary",
+      "model": "opencode-go/deepseek-v4-flash"
+    }
+  }
+}
