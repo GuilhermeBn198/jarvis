@@ -19,7 +19,12 @@
       "description": "Executa sub-tarefas baratas e bem delimitadas no modelo local (GPU): extracoes, formatacoes, resumos curtos, boilerplate e chamadas de ferramenta simples. Use quando a tarefa NAO exigir raciocinio profundo; para planejamento/arquitetura, use a nuvem.",
       "mode": "subagent",
       "model": "ollama/qwen3:8b",
-      "temperature": 0.1
+      "temperature": 0.1,
+      "hidden": false,
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
     },
     "orchestrator": {
       "description": "Orquestrador: planeja, decompoe e delega sub-tarefas baratas ao local-executor, mantendo o raciocinio pesado na nuvem.",

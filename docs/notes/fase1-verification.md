@@ -14,11 +14,15 @@ Data: 2026-09-26
 - [x] subagente `local-executor` criado
 - [x] `orchestrator` (nuvem) criado com `permission.task` restrita
 - [x] delegação manual (`@local-executor`) funciona
-- [ ] delegação automática funciona — **não observada** (0/3 execuções; o `orchestrator` respondeu a tarefa simples sozinho, sem chamar a ferramenta `task`). Ver Observações.
+- [ ] delegação automática funciona — **NÃO RESOLVIDA**: após o fix da Task 6 (prompt explícito de delegação + `@local-executor`) a re-verificação continuou em **0/4+** (Task 4: 0/3; Task 6: 0/1 na tarefa volumosa). O roteamento determinístico foi encaminhado para a costura `Classifier` da Fase 2. Ver Observações e "Task 6".
 - [x] execução local confirmada em GPU (`ollama ps`)
 
+## Escopo dos critérios §7 (não cobertos nesta fase)
+- §7.4 (simular falha do Go) — **adiado** junto com o LiteLLM (Task 5, opcional não executada).
+- §7.5 (comparação A/B só-nuvem vs nuvem+delegação) — **não executada**; há apenas nota qualitativa de cota (seção Medição).
+
 ## Medição (preenchido)
-- Latência média de uma sub-tarefa delegada: **~48,5 s** (2 execuções com delegação efetiva: 66 s e 31 s; modelo quente). Cold start pode ultrapassar 300 s (uma tentativa não concluiu em 700 s e foi abortada).
+- Latência média de uma sub-tarefa delegada: **~48,5 s de tempo de parede incluindo startup do opencode** (2 execuções com delegação efetiva: 66 s e 31 s; modelo quente). As durações reportadas pela ferramenta `task` (sem o startup do opencode) foram 53,1 s, 19,5 s e 16,7 s. Cold start pode ultrapassar 300 s (uma tentativa não concluiu em 700 s e foi abortada).
 - tok/s no `qwen3:8b`: **51,69 tok/s** (141 tokens em 2,728 s, `eval_count`/`eval_duration` via `/api/generate`, `think:false`, temperature 0.1; GPU 94%).
 - Cota Go economizada: qualitativo — na delegação efetiva a geração da sub-tarefa (resposta `delegado-ok`) roda local e não consome tokens de saída da nuvem; porém o `orchestrator` ainda gasta tokens de nuvem para planejar e emitir a chamada de ferramenta (run1: 256 input + 155 output + 134.400 de cache read). Em tarefas triviais o ganho é pequeno; em sub-tarefas longas (extração/boilerplate) o ganho cresce com o tamanho da saída local.
 - Qualidade: sub-tarefa correta? (sim/nao) — **sim**: `local-executor` retornou exatamente `delegado-ok` (`<task_result>delegado-ok</task_result>`).
@@ -29,3 +33,16 @@ Data: 2026-09-26
 - Step 3 (delegação automática): 3/3 execuções responderam `- banana\n- maçã\n- uva` em 10–12 s, sempre sem delegar. Resultado considerado OK por não ser falha (controller), mas a delegação automática não se manifestou.
 - Runs são lentos e ruidosos no startup; `--pure` foi usado em todas as invocações. A primeira tentativa do Step 1 estourou o timeout do harness (700 s) por cold start do modelo + startup do opencode; a evidência de `qwen3:8b` em GPU foi capturada durante essa mesma execução.
 - Fonte: `/tmp/t4_s1_run1.json`, `/tmp/t4_s1_run2.json` (delegações manuais), `/tmp/t4_s3_run{1,2,3}.json` (automáticas), `/tmp/t4_s1b.json` (resposta direta).
+
+## Task 6 — re-verificação após instruir o orquestrador
+- Tarefa volumosa (tabela Markdown de 25 linhas de comandos git): respondida **inline pelo orquestrador, com 0 delegação** (nenhuma chamada à ferramenta `task`). O pedido era exatamente o caso que o prompt da Task 6 manda delegar; ainda assim o orquestrador resolveu sozinho.
+- Tarefa trivial (formatar `banana maca uva` em Markdown): permaneceu inline, **sem delegação — por design**.
+- Conclusão: o prompt explícito não tornou a delegação determinística. Combinado Task 4 + Task 6 = **0/4+**. O gatilho de roteamento precisa ser determinístico, o que é responsabilidade da costura `Classifier` (Fase 2), não de instrução em prompt.
+
+## Nota de configuração — `{env:OLLAMA_HOST}`
+- O `baseURL` do provider usa `http://{env:OLLAMA_HOST}/v1`. Se `OLLAMA_HOST` **não estiver definido**, a interpolação produz `http:///v1` (config silenciosamente errada, sem erro explícito). A Fase 1 **depende** de `OLLAMA_HOST` definido no WSL (esperado `172.19.32.1:11434`).
+
+## Pendências / Fase 2
+- **Classifier (Fase 2):** roteamento determinístico de quando delegar ao local — o que a instrução em prompt não conseguiu garantir.
+- **LiteLLM / failover (Task 5):** adiado (opcional, fora da rota quente).
+- **Voz / tela / ações:** Fases 2/3 (STT/TTS, captura de tela/visão, automação de ações no Windows).

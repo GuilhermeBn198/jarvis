@@ -1,7 +1,7 @@
 # Jarvis — Fase 1: Unificação de Inferência e Delegação em Dois Níveis
 
 - **Data:** 2026-09-26
-- **Status:** proposta (aguardando revisão)
+- **Status:** implementada (Fase 1; delegação automática em aberto)
 - **Escopo:** Fase 1 de um projeto maior ("jarvis" = camada de unificação de plataformas)
 
 ---

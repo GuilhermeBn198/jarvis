@@ -415,7 +415,7 @@ git commit -m "feat(jarvis): failover passivo do primario via litellm"
 - Consumes: `orchestrator` (Task 3), `local-executor` (Task 2).
 - Produces: `orchestrator` com `prompt` que induz delegação de sub-tarefas **volumosas** e evita delegar **triviais**.
 
-- [ ] **Step 1: Criar `prompts/orchestrator.txt`**
+- [x] **Step 1: Criar `prompts/orchestrator.txt`**
 
 Create `prompts/orchestrator.txt`:
 ```
@@ -439,7 +439,7 @@ Regras de acao:
 - Mantenha respostas de texto para o usuario na voz do orquestrador.
 ```
 
-- [ ] **Step 2: Referenciar o prompt no agente**
+- [x] **Step 2: Referenciar o prompt no agente**
 
 Substituir o conteúdo de `opencode.json` por:
 ```json
@@ -482,7 +482,7 @@ Substituir o conteúdo de `opencode.json` por:
 }
 ```
 
-- [ ] **Step 3: Verificar que o agente carrega**
+- [x] **Step 3: Verificar que o agente carrega**
 
 Run:
 ```bash
@@ -490,7 +490,7 @@ opencode agent list | grep 'orchestrator'
 ```
 Expected: linha contendo `orchestrator`.
 
-- [ ] **Step 4: Re-verificar delegação — tarefa VOLUMOSA (deve delegar, idealmente)**
+- [x] **Step 4: Re-verificar delegação — tarefa VOLUMOSA (deve delegar, idealmente)**
 
 Run:
 ```bash
@@ -498,7 +498,7 @@ timeout 600 opencode run --pure --agent orchestrator "Gere uma tabela Markdown c
 ```
 Expected: resposta com a tabela; registrar se houve `task` tool → `local-executor`.
 
-- [ ] **Step 5: Re-verificar que tarefa TRIVIAL NÃO é delegada**
+- [x] **Step 5: Re-verificar que tarefa TRIVIAL NÃO é delegada**
 
 Run:
 ```bash
@@ -506,7 +506,7 @@ timeout 600 opencode run --pure --agent orchestrator "Formate esta lista em Mark
 ```
 Expected: resposta rápida; sem delegação (por design).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add opencode.json prompts/orchestrator.txt
@@ -524,6 +524,7 @@ git commit -m "feat(jarvis): instrui o orchestrator a delegar sub-tarefas volumo
 - §4.4 LiteLLM opcional → Task 5 (opcional).
 - §7 verificação → Task 4.
 - §8 não-objetivos → fora do plano, corretamente.
+- Task 6 (fix do achado da Task 4; delegação automática) → prompt do orquestrador; executada e re-verificada, mas a delegação automática permaneceu em 0/4+, encaminhada à costura `Classifier` da Fase 2.
 
 **2. Placeholders:** sem `TBD`/`TODO`. Os `____` em `fase1-verification.md` são campos de medição preenchidos na execução (intencional).
 
