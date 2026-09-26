@@ -4,9 +4,9 @@
 
 **Goal:** Expor o modelo local (`qwen3:8b` na GPU via Ollama) como um tool MCP `delegate_local`, invocável pelo orquestrador na nuvem, com saída estruturada opcional.
 
-**Architecture:** Servidor MCP local (Python + FastMCP, stdio) que traduz uma tool call em uma requisição HTTP `/api/chat` ao Ollama no Windows. `config.py` centraliza env/defaults; `ollama_client.py` encapsula o HTTP; `server.py` expõe o tool. Registrado no `opencode.json` como MCP `type: local`.
+**Architecture:** Servidor MCP local (Python + MCP Python SDK v2 (`MCPServer`), stdio) que traduz uma tool call em uma requisição HTTP `/api/chat` ao Ollama no Windows. `config.py` centraliza env/defaults; `ollama_client.py` encapsula o HTTP; `server.py` expõe o tool. Registrado no `opencode.json` como MCP `type: local`.
 
-**Tech Stack:** Python 3.10 (WSL), `mcp` (FastMCP), `httpx`, `pytest`.
+**Tech Stack:** Python 3.10 (WSL), `mcp` (SDK v2, `MCPServer`), `httpx`, `pytest`.
 
 ## Global Constraints
 
@@ -20,10 +20,10 @@
 ## File Structure
 
 ```
-mcp/delegate_local/
+mcp_servers/delegate_local/
   config.py                 # env → Config (host, model, num_ctx, timeout)
   ollama_client.py          # HTTP POST /api/chat; erros tipados (OllamaError)
-  server.py                 # FastMCP: define e registra o tool
+  server.py                 # MCP Python SDK v2 (`MCPServer`): define e registra o tool
   requirements.txt          # mcp, httpx
   requirements-dev.txt      # -r requirements.txt + pytest
   README.md                 # como rodar/testar
@@ -38,21 +38,21 @@ mcp/delegate_local/
 ### Task 1: Scaffold + `config.py`
 
 **Files:**
-- Create: `mcp/delegate_local/config.py`
-- Create: `mcp/delegate_local/requirements.txt`, `mcp/delegate_local/requirements-dev.txt`
-- Test: `mcp/delegate_local/tests/test_config.py`
+- Create: `mcp_servers/delegate_local/config.py`
+- Create: `mcp_servers/delegate_local/requirements.txt`, `mcp_servers/delegate_local/requirements-dev.txt`
+- Test: `mcp_servers/delegate_local/tests/test_config.py`
 
 **Interfaces:**
 - Produces: `Config` (dataclass com `ollama_host`, `model`, `num_ctx`, `timeout_s`, propriedade `chat_url`) e `load_config(env: dict | None = None) -> Config`.
 
 - [ ] **Step 1: Criar os requirements**
 
-Create `mcp/delegate_local/requirements.txt`:
+Create `mcp_servers/delegate_local/requirements.txt`:
 ```
 mcp
 httpx
 ```
-Create `mcp/delegate_local/requirements-dev.txt`:
+Create `mcp_servers/delegate_local/requirements-dev.txt`:
 ```
 -r requirements.txt
 pytest
@@ -62,7 +62,7 @@ pytest
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -q -r requirements-dev.txt
@@ -72,7 +72,7 @@ Expected: `deps ok`
 
 - [ ] **Step 3: Escrever os testes que falham**
 
-Create `mcp/delegate_local/tests/test_config.py`:
+Create `mcp_servers/delegate_local/tests/test_config.py`:
 ```python
 import pytest
 from config import load_config, DEFAULT_MODEL, DEFAULT_NUM_CTX, DEFAULT_TIMEOUT_S
@@ -111,14 +111,14 @@ def test_env_overrides():
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_config.py -q
 ```
 Expected: FAIL (`ModuleNotFoundError: No module named 'config'`).
 
 - [ ] **Step 5: Implementar `config.py`**
 
-Create `mcp/delegate_local/config.py`:
+Create `mcp_servers/delegate_local/config.py`:
 ```python
 import os
 from dataclasses import dataclass
@@ -161,7 +161,7 @@ def load_config(env: dict | None = None) -> Config:
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_config.py -q
 ```
 Expected: `4 passed`
@@ -170,8 +170,8 @@ Expected: `4 passed`
 
 ```bash
 cd /home/guilherme/github/jarvis
-printf 'mcp/delegate_local/.venv/\nmcp/delegate_local/**/__pycache__/\n.pytest_cache/\n' >> .gitignore
-git add mcp/delegate_local/config.py mcp/delegate_local/requirements.txt mcp/delegate_local/requirements-dev.txt mcp/delegate_local/tests/test_config.py .gitignore
+printf 'mcp_servers/delegate_local/.venv/\nmcp_servers/delegate_local/**/__pycache__/\n.pytest_cache/\n' >> .gitignore
+git add mcp_servers/delegate_local/config.py mcp_servers/delegate_local/requirements.txt mcp_servers/delegate_local/requirements-dev.txt mcp_servers/delegate_local/tests/test_config.py .gitignore
 git commit -m "feat(jarvis): scaffold do MCP delegate_local + config"
 ```
 
@@ -180,8 +180,8 @@ git commit -m "feat(jarvis): scaffold do MCP delegate_local + config"
 ### Task 2: `ollama_client.py`
 
 **Files:**
-- Create: `mcp/delegate_local/ollama_client.py`
-- Test: `mcp/delegate_local/tests/test_ollama_client.py`
+- Create: `mcp_servers/delegate_local/ollama_client.py`
+- Test: `mcp_servers/delegate_local/tests/test_ollama_client.py`
 
 **Interfaces:**
 - Consumes: `Config` (Task 1).
@@ -189,7 +189,7 @@ git commit -m "feat(jarvis): scaffold do MCP delegate_local + config"
 
 - [ ] **Step 1: Escrever os testes que falham**
 
-Create `mcp/delegate_local/tests/test_ollama_client.py`:
+Create `mcp_servers/delegate_local/tests/test_ollama_client.py`:
 ```python
 import httpx
 import pytest
@@ -278,14 +278,14 @@ def test_missing_content_raises(monkeypatch):
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_ollama_client.py -q
 ```
 Expected: FAIL (`No module named 'ollama_client'`).
 
 - [ ] **Step 3: Implementar `ollama_client.py`**
 
-Create `mcp/delegate_local/ollama_client.py`:
+Create `mcp_servers/delegate_local/ollama_client.py`:
 ```python
 import json
 from typing import Any
@@ -353,7 +353,7 @@ class OllamaClient:
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_ollama_client.py -q
 ```
 Expected: `6 passed`
@@ -362,17 +362,17 @@ Expected: `6 passed`
 
 ```bash
 cd /home/guilherme/github/jarvis
-git add mcp/delegate_local/ollama_client.py mcp/delegate_local/tests/test_ollama_client.py
+git add mcp_servers/delegate_local/ollama_client.py mcp_servers/delegate_local/tests/test_ollama_client.py
 git commit -m "feat(jarvis): cliente HTTP do Ollama para o delegate_local"
 ```
 
 ---
 
-### Task 3: `server.py` (FastMCP)
+### Task 3: `server.py` (MCPServer)
 
 **Files:**
-- Create: `mcp/delegate_local/server.py`
-- Test: `mcp/delegate_local/tests/test_server.py`
+- Create: `mcp_servers/delegate_local/server.py`
+- Test: `mcp_servers/delegate_local/tests/test_server.py`
 
 **Interfaces:**
 - Consumes: `load_config` (Task 1), `OllamaClient`/`OllamaError` (Task 2).
@@ -380,7 +380,7 @@ git commit -m "feat(jarvis): cliente HTTP do Ollama para o delegate_local"
 
 - [ ] **Step 1: Escrever os testes que falham**
 
-Create `mcp/delegate_local/tests/test_server.py`:
+Create `mcp_servers/delegate_local/tests/test_server.py`:
 ```python
 import os
 import pytest
@@ -429,23 +429,23 @@ def test_passes_through_to_client(monkeypatch):
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_server.py -q
 ```
 Expected: FAIL (`No module named 'server'`).
 
 - [ ] **Step 3: Implementar `server.py`**
 
-Create `mcp/delegate_local/server.py`:
+Create `mcp_servers/delegate_local/server.py`:
 ```python
 import json
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from config import load_config
 from ollama_client import OllamaClient, OllamaError
 
-mcp = FastMCP("delegate_local")
+mcp = MCPServer("delegate_local")
 
 _client: OllamaClient | None = None
 
@@ -491,14 +491,14 @@ if __name__ == "__main__":
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest -q
 ```
-Expected: `13 passed` (config 4 + client 6 + server 3).
+Expected: `17 passed` (config 4 + client 7 + server 6; inclui os testes de validação de json-schema).
 
 - [ ] **Step 5: Escrever `README.md` do servidor**
 
-Create `mcp/delegate_local/README.md`:
+Create `mcp_servers/delegate_local/README.md`:
 ```markdown
 # delegate_local
 
@@ -507,7 +507,7 @@ Tool MCP que executa sub-tarefas no modelo local (Ollama GPU).
 ## Rodar
 Requer `OLLAMA_HOST` definido. O opencode sobe o processo via stdio.
 
-    OLLAMA_HOST=172.19.32.1:11434 python3 server.py
+    OLLAMA_HOST=172.19.32.1:11434 .venv/bin/python server.py
 
 ## Testes
     python3 -m venv .venv && . .venv/bin/activate
@@ -519,7 +519,7 @@ Requer `OLLAMA_HOST` definido. O opencode sobe o processo via stdio.
 
 ```bash
 cd /home/guilherme/github/jarvis
-git add mcp/delegate_local/server.py mcp/delegate_local/tests/test_server.py mcp/delegate_local/README.md
+git add mcp_servers/delegate_local/server.py mcp_servers/delegate_local/tests/test_server.py mcp_servers/delegate_local/README.md
 git commit -m "feat(jarvis): servidor FastMCP do delegate_local"
 ```
 
@@ -550,7 +550,7 @@ No `opencode.json`, adicionar (preservando `provider` e `agent`):
   "mcp": {
     "delegate_local": {
       "type": "local",
-      "command": ["python3", "mcp/delegate_local/server.py"],
+      "command": ["mcp_servers/delegate_local/.venv/bin/python", "mcp_servers/delegate_local/server.py"],
       "enabled": true,
       "environment": {
         "OLLAMA_HOST": "{env:OLLAMA_HOST}"
@@ -558,6 +558,8 @@ No `opencode.json`, adicionar (preservando `provider` e `agent`):
     }
   }
 ```
+
+Nota: o venv em `mcp_servers/delegate_local/.venv` precisa existir (é gitignored) ou o MCP falha ao subir. Crie-o com os passos da seção "Testes" do `mcp_servers/delegate_local/README.md`.
 
 - [ ] **Step 3: Verificar descoberta**
 
@@ -590,16 +592,16 @@ git commit -m "feat(jarvis): registra o MCP delegate_local no opencode"
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest -q
 ```
-Expected: `13 passed`
+Expected: `17 passed`
 
 - [ ] **Step 2: Integração real (Ollama/GPU)**
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp/delegate_local
+cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate
 python - <<'PY'
 from config import load_config
@@ -630,7 +632,7 @@ Create `docs/notes/fase2a-verification.md`:
 Data: 2026-09-26
 
 ## Unit
-- [ ] `pytest -q` = 13 passed
+- [ ] `pytest -q` = 17 passed
 
 ## Integração (real, GPU)
 - [ ] texto livre retornou `pong`

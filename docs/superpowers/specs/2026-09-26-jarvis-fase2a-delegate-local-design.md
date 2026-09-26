@@ -19,7 +19,7 @@ O modelo local roda no Windows (Ollama 0.34.4, `OLLAMA_VULKAN=true`, GPU AMD RX 
 modelo nuvem (orquestrador)
    │  tool call: delegate_local(prompt, json_schema?)
    ▼
-FastMCP server (Python, stdio)        ← processo local, subido pelo opencode
+MCP Python SDK v2 (`MCPServer`) (Python, stdio)  ← processo local, subido pelo opencode
    │  HTTP POST /api/chat
    ▼
 Ollama (Windows) → qwen3:8b (GPU)
@@ -28,11 +28,11 @@ Ollama (Windows) → qwen3:8b (GPU)
 ### Estrutura de arquivos (nova)
 
 ```
-mcp/delegate_local/
-  server.py                  # FastMCP: define o tool, valida entrada, formata erros
+mcp_servers/delegate_local/
+  server.py                  # MCP Python SDK v2 (`MCPServer`): define o tool, valida entrada, formata erros
   ollama_client.py           # cliente HTTP fino (POST /api/chat) — testável isolado
   config.py                  # leitura de OLLAMA_HOST, modelo, num_ctx, timeout (com defaults)
-  requirements.txt           # mcp, httpx
+  requirements.txt           # mcp (v2 pinned: mcp>=2,<3), httpx
   tests/
     test_ollama_client.py
     test_server.py
@@ -71,7 +71,7 @@ Adicionar ao `opencode.json` (escopo de projeto):
 "mcp": {
   "delegate_local": {
     "type": "local",
-    "command": ["python3", "mcp/delegate_local/server.py"],
+    "command": ["mcp_servers/delegate_local/.venv/bin/python", "mcp_servers/delegate_local/server.py"],
     "enabled": true,
     "environment": {
       "OLLAMA_HOST": "{env:OLLAMA_HOST}"
