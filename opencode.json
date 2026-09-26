@@ -27,16 +27,9 @@
       }
     },
     "orchestrator": {
-      "description": "Orquestrador: planeja, decompoe e delega sub-tarefas baratas ao local-executor, mantendo o raciocinio pesado na nuvem.",
+      "description": "Orquestrador: planeja e decompoe tarefas e mantem o raciocinio pesado na nuvem. A delegacao automatica ao modelo local foi DESCARTADA (ver docs/notes/fase1-verification.md); o modelo local segue disponivel via @local-executor.",
       "mode": "primary",
-      "model": "opencode-go/deepseek-v4-flash",
-      "prompt": "{file:./prompts/orchestrator.txt}",
-      "permission": {
-        "task": {
-          "*": "deny",
-          "local-executor": "allow"
-        }
-      }
+      "model": "opencode-go/deepseek-v4-flash"
     }
   }
 }

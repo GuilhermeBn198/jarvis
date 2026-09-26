@@ -12,9 +12,9 @@ Data: 2026-09-26
 ## Verificação da Fase 1
 - [x] `ollama/qwen3:8b` exposto no opencode
 - [x] subagente `local-executor` criado
-- [x] `orchestrator` (nuvem) criado com `permission.task` restrita
+- [x] `orchestrator` (nuvem) criado
 - [x] delegação manual (`@local-executor`) funciona
-- [ ] delegação automática funciona — **NÃO RESOLVIDA**: após o fix da Task 6 (prompt explícito de delegação + `@local-executor`) a re-verificação continuou em **0/4+** (Task 4: 0/3; Task 6: 0/1 na tarefa volumosa). O roteamento determinístico foi encaminhado para a costura `Classifier` da Fase 2. Ver Observações e "Task 6".
+- [x] delegação automática — **DESCARTADA**: comprovadamente não funciona (**0/4+**; Task 4: 0/3, Task 6: 0/1). A maquinaria de auto-delegação (prompt do orquestrador + `permission.task`) foi **removida** do `opencode.json` (`prompts/orchestrator.txt` apagado). A delegação **manual** (`@local-executor`) funciona e foi **mantida**. Roteamento determinístico → costura `Classifier` da Fase 2.
 - [x] execução local confirmada em GPU (`ollama ps`)
 
 ## Escopo dos critérios §7 (não cobertos nesta fase)
@@ -34,15 +34,16 @@ Data: 2026-09-26
 - Runs são lentos e ruidosos no startup; `--pure` foi usado em todas as invocações. A primeira tentativa do Step 1 estourou o timeout do harness (700 s) por cold start do modelo + startup do opencode; a evidência de `qwen3:8b` em GPU foi capturada durante essa mesma execução.
 - Fonte: `/tmp/t4_s1_run1.json`, `/tmp/t4_s1_run2.json` (delegações manuais), `/tmp/t4_s3_run{1,2,3}.json` (automáticas), `/tmp/t4_s1b.json` (resposta direta).
 
-## Task 6 — re-verificação após instruir o orquestrador
+## Task 6 — re-verificação após instruir o orquestrador (depois revertida)
 - Tarefa volumosa (tabela Markdown de 25 linhas de comandos git): respondida **inline pelo orquestrador, com 0 delegação** (nenhuma chamada à ferramenta `task`). O pedido era exatamente o caso que o prompt da Task 6 manda delegar; ainda assim o orquestrador resolveu sozinho.
 - Tarefa trivial (formatar `banana maca uva` em Markdown): permaneceu inline, **sem delegação — por design**.
 - Conclusão: o prompt explícito não tornou a delegação determinística. Combinado Task 4 + Task 6 = **0/4+**. O gatilho de roteamento precisa ser determinístico, o que é responsabilidade da costura `Classifier` (Fase 2), não de instrução em prompt.
+- **Decisão (2026-09-26):** auto-delegação **descartada**; `prompts/orchestrator.txt` e o `permission.task` foram removidos. Mantidos: provider local, `local-executor` (uso manual via `@`) e `orchestrator` (primário na nuvem).
 
 ## Nota de configuração — `{env:OLLAMA_HOST}`
 - O `baseURL` do provider usa `http://{env:OLLAMA_HOST}/v1`. Se `OLLAMA_HOST` **não estiver definido**, a interpolação produz `http:///v1` (config silenciosamente errada, sem erro explícito). A Fase 1 **depende** de `OLLAMA_HOST` definido no WSL (esperado `172.19.32.1:11434`).
 
 ## Pendências / Fase 2
-- **Classifier (Fase 2):** roteamento determinístico de quando delegar ao local — o que a instrução em prompt não conseguiu garantir.
+- **Classifier (Fase 2):** roteamento determinístico de quando usar o modelo local — a auto-delegação via prompt/subagente foi **descartada**.
 - **LiteLLM / failover (Task 5):** adiado (opcional, fora da rota quente).
 - **Voz / tela / ações:** Fases 2/3 (STT/TTS, captura de tela/visão, automação de ações no Windows).

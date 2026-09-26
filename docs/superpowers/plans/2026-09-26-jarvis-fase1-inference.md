@@ -405,6 +405,8 @@ git commit -m "feat(jarvis): failover passivo do primario via litellm"
 ### Task 6: Instruir o `orchestrator` a delegar (fix do achado da Task 4)
 
 > Origem: a Task 4 mostrou delegação automática 0/3. Decisão do usuário: opção A — dar ao orquestrador uma instrução explícita de delegação.
+>
+> **REVERTIDA (2026-09-26):** não funcionou (Task 6: 0/1; total 0/4+). A auto-delegação foi **descartada** e os artefatos desta task (prompt + `permission.task`) foram removidos. Mantidos `local-executor` (uso manual) e `orchestrator` (primário na nuvem).
 
 **Files:**
 - Create: `prompts/orchestrator.txt`
