@@ -28,7 +28,7 @@ Ollama (Windows) → qwen3:8b (GPU)
 ### Estrutura de arquivos (nova)
 
 ```
-mcp/delegate_local/
+mcp_servers/delegate_local/
   server.py                  # MCP Python SDK v2 (`MCPServer`): define o tool, valida entrada, formata erros
   ollama_client.py           # cliente HTTP fino (POST /api/chat) — testável isolado
   config.py                  # leitura de OLLAMA_HOST, modelo, num_ctx, timeout (com defaults)
@@ -71,7 +71,7 @@ Adicionar ao `opencode.json` (escopo de projeto):
 "mcp": {
   "delegate_local": {
     "type": "local",
-    "command": ["python3", "mcp/delegate_local/server.py"],
+    "command": ["python3", "mcp_servers/delegate_local/server.py"],
     "enabled": true,
     "environment": {
       "OLLAMA_HOST": "{env:OLLAMA_HOST}"
