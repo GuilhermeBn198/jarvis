@@ -26,6 +26,12 @@ def test_invalid_schema_raises():
         server.delegate_local("x", {"bad": object()})
 
 
+def test_invalid_json_schema_raises():
+    server = _import_server()
+    with pytest.raises(ValueError):
+        server.delegate_local("x", {"type": "banana"})
+
+
 def test_passes_through_to_client(monkeypatch):
     server = _import_server()
     seen = {}

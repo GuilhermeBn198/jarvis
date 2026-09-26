@@ -494,7 +494,7 @@ Run:
 cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest -q
 ```
-Expected: `13 passed` (config 4 + client 6 + server 3).
+Expected: `17 passed` (config 4 + client 7 + server 6; inclui os testes de validação de json-schema).
 
 - [ ] **Step 5: Escrever `README.md` do servidor**
 
@@ -507,7 +507,7 @@ Tool MCP que executa sub-tarefas no modelo local (Ollama GPU).
 ## Rodar
 Requer `OLLAMA_HOST` definido. O opencode sobe o processo via stdio.
 
-    OLLAMA_HOST=172.19.32.1:11434 python3 server.py
+    OLLAMA_HOST=172.19.32.1:11434 .venv/bin/python server.py
 
 ## Testes
     python3 -m venv .venv && . .venv/bin/activate
@@ -595,7 +595,7 @@ Run:
 cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest -q
 ```
-Expected: `13 passed`
+Expected: `17 passed`
 
 - [ ] **Step 2: Integração real (Ollama/GPU)**
 
@@ -632,7 +632,7 @@ Create `docs/notes/fase2a-verification.md`:
 Data: 2026-09-26
 
 ## Unit
-- [ ] `pytest -q` = 13 passed
+- [ ] `pytest -q` = 17 passed
 
 ## Integração (real, GPU)
 - [ ] texto livre retornou `pong`

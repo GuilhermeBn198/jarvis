@@ -60,6 +60,15 @@ def test_schema_but_non_json_raises(monkeypatch):
         _client().chat("x", {"type": "object"})
 
 
+def test_schema_violation_raises(monkeypatch):
+    monkeypatch.setattr(
+        httpx, "post", lambda *a, **k: _Resp(payload={"message": {"content": "{}"}})
+    )
+    schema = {"type": "object", "required": ["n"], "properties": {"n": {"type": "number"}}}
+    with pytest.raises(OllamaError):
+        _client().chat("x", schema)
+
+
 def test_timeout_raises(monkeypatch):
     def fake_post(*a, **k):
         raise httpx.TimeoutException("t")

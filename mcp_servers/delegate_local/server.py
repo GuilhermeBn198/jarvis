@@ -1,5 +1,6 @@
 import json
 
+import jsonschema
 from mcp.server.mcpserver import MCPServer
 
 from config import load_config
@@ -37,6 +38,10 @@ def delegate_local(prompt: str, json_schema: dict | None = None) -> str:
             json.dumps(json_schema)
         except (TypeError, ValueError) as exc:
             raise ValueError("json_schema nao e serializavel em JSON") from exc
+        try:
+            jsonschema.Draft7Validator.check_schema(json_schema)
+        except jsonschema.exceptions.SchemaError as exc:
+            raise ValueError(f"json_schema invalido: {exc.message}") from exc
     try:
         return _get_client().chat(prompt, json_schema)
     except OllamaError as exc:

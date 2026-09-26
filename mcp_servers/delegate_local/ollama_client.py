@@ -2,6 +2,7 @@ import json
 from typing import Any
 
 import httpx
+import jsonschema
 
 from config import Config
 
@@ -51,10 +52,16 @@ class OllamaClient:
 
         if json_schema is not None:
             try:
-                json.loads(content)
+                parsed = json.loads(content)
             except ValueError as exc:
                 raise OllamaError(
                     "Modelo nao devolveu JSON valido apesar do json_schema"
+                ) from exc
+            try:
+                jsonschema.validate(instance=parsed, schema=json_schema)
+            except jsonschema.exceptions.ValidationError as exc:
+                raise OllamaError(
+                    f"Resposta nao conforme ao json_schema: {exc.message}"
                 ) from exc
 
         return content
