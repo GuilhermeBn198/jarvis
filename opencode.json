@@ -20,6 +20,17 @@
       "mode": "subagent",
       "model": "ollama/qwen3:8b",
       "temperature": 0.1
+    },
+    "orchestrator": {
+      "description": "Orquestrador: planeja, decompoe e delega sub-tarefas baratas ao local-executor, mantendo o raciocinio pesado na nuvem.",
+      "mode": "primary",
+      "model": "opencode-go/deepseek-v4-flash",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "local-executor": "allow"
+        }
+      }
     }
   }
 }
