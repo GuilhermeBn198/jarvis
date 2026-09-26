@@ -25,6 +25,7 @@
       "description": "Orquestrador: planeja, decompoe e delega sub-tarefas baratas ao local-executor, mantendo o raciocinio pesado na nuvem.",
       "mode": "primary",
       "model": "opencode-go/deepseek-v4-flash",
+      "prompt": "{file:./prompts/orchestrator.txt}",
       "permission": {
         "task": {
           "*": "deny",
