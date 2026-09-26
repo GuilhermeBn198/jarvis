@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (Windows - local)",
+      "options": {
+        "baseURL": "http://{env:OLLAMA_HOST}/v1"
+      },
+      "models": {
+        "qwen3:8b": {
+          "name": "Qwen3 8B (local, GPU)"
+        }
+      }
+    }
+  }
+}
