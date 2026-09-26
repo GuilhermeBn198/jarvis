@@ -4,9 +4,9 @@
 
 **Goal:** Expor o modelo local (`qwen3:8b` na GPU via Ollama) como um tool MCP `delegate_local`, invocável pelo orquestrador na nuvem, com saída estruturada opcional.
 
-**Architecture:** Servidor MCP local (Python + FastMCP, stdio) que traduz uma tool call em uma requisição HTTP `/api/chat` ao Ollama no Windows. `config.py` centraliza env/defaults; `ollama_client.py` encapsula o HTTP; `server.py` expõe o tool. Registrado no `opencode.json` como MCP `type: local`.
+**Architecture:** Servidor MCP local (Python + MCP Python SDK v2 (`MCPServer`), stdio) que traduz uma tool call em uma requisição HTTP `/api/chat` ao Ollama no Windows. `config.py` centraliza env/defaults; `ollama_client.py` encapsula o HTTP; `server.py` expõe o tool. Registrado no `opencode.json` como MCP `type: local`.
 
-**Tech Stack:** Python 3.10 (WSL), `mcp` (FastMCP), `httpx`, `pytest`.
+**Tech Stack:** Python 3.10 (WSL), `mcp` (SDK v2, `MCPServer`), `httpx`, `pytest`.
 
 ## Global Constraints
 
@@ -23,7 +23,7 @@
 mcp/delegate_local/
   config.py                 # env → Config (host, model, num_ctx, timeout)
   ollama_client.py          # HTTP POST /api/chat; erros tipados (OllamaError)
-  server.py                 # FastMCP: define e registra o tool
+  server.py                 # MCP Python SDK v2 (`MCPServer`): define e registra o tool
   requirements.txt          # mcp, httpx
   requirements-dev.txt      # -r requirements.txt + pytest
   README.md                 # como rodar/testar
@@ -368,7 +368,7 @@ git commit -m "feat(jarvis): cliente HTTP do Ollama para o delegate_local"
 
 ---
 
-### Task 3: `server.py` (FastMCP)
+### Task 3: `server.py` (MCPServer)
 
 **Files:**
 - Create: `mcp/delegate_local/server.py`
@@ -440,12 +440,12 @@ Create `mcp/delegate_local/server.py`:
 ```python
 import json
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from config import load_config
 from ollama_client import OllamaClient, OllamaError
 
-mcp = FastMCP("delegate_local")
+mcp = MCPServer("delegate_local")
 
 _client: OllamaClient | None = None
 
