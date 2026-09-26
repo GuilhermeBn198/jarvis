@@ -13,5 +13,13 @@
         }
       }
     }
+  },
+  "agent": {
+    "local-executor": {
+      "description": "Executa sub-tarefas baratas e bem delimitadas no modelo local (GPU): extracoes, formatacoes, resumos curtos, boilerplate e chamadas de ferramenta simples. Use quando a tarefa NAO exigir raciocinio profundo; para planejamento/arquitetura, use a nuvem.",
+      "mode": "subagent",
+      "model": "ollama/qwen3:8b",
+      "temperature": 0.1
+    }
   }
 }
