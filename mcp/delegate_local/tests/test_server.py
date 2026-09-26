@@ -1,5 +1,6 @@
-import os
 import pytest
+
+from ollama_client import OllamaError
 
 
 @pytest.fixture(autouse=True)
@@ -39,3 +40,24 @@ def test_passes_through_to_client(monkeypatch):
     out = server.delegate_local("faca x", {"type": "object"})
     assert out == "ok"
     assert seen == {"prompt": "faca x", "schema": {"type": "object"}}
+
+
+def test_ollama_error_becomes_runtime_error(monkeypatch):
+    server = _import_server()
+
+    class FailingClient:
+        def chat(self, prompt, json_schema=None):
+            raise OllamaError("Ollama fora do ar")
+
+    monkeypatch.setattr(server, "_get_client", lambda: FailingClient())
+    with pytest.raises(RuntimeError):
+        server.delegate_local("x")
+
+
+def test_tool_description_guides_model_usage():
+    server = _import_server()
+    doc = server.delegate_local.__doc__
+    assert doc is not None
+    assert "LOCAL" in doc
+    assert "NAO use" in doc
+    assert "raciocinio" in doc
