@@ -83,6 +83,20 @@ Plugin de projeto em `.opencode/plugins/safety-gate.ts`, carregado automaticamen
 
 (Shape real de `Permission` conforme `@opencode-ai/sdk`: `type` e `pattern`.)
 
+### Nota de runtime (2026-09-27)
+
+No runtime opencode **1.17.18** o hook `permission.ask` **não é despachado** (existe nos
+tipos de `@opencode-ai/plugin`, mas não na lista de triggers do binário). O gate só
+passa a ter efeito real pelo hook **`tool.execute.before`**, que o runtime despacha:
+
+- `tool.execute.before` mapeia `{tool, args}` para o shape `ActionInput` (via
+  `actionFromToolCall`), chama `decide(...)` e **lança** em `deny` — o `throw` bloqueia a
+  tool.
+- `ask` **não** é bloqueado aqui: a camada de permissões do opencode segue responsável
+  pela confirmação.
+- `permission.ask` é mantido para **forward-compat** (quando o runtime passar a
+  despachá-lo, o gate já responde).
+
 ## 5. Tratamento de erro
 
 | Situação | Comportamento |

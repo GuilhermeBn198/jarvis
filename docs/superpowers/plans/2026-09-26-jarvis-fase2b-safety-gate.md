@@ -453,3 +453,21 @@ git commit -m "docs(jarvis): README e verificacao da Fase 2-B"
 **1. Cobertura do spec:** arquitetura (§2 → Tasks 1-2), contrato (§3 → Task 1), integração/permission.ask (§4 → Task 2), erro/fail-safe (§5 → Task 2 `try/catch`→ask), testes (§6 → Tasks 1-3), adiados (§7 → fora do plano), critério de sucesso (§9 → Task 3).
 **2. Placeholders:** os `[ ]`/nota de observações em `fase2b-verification.md` são campos de registro (intencional).
 **3. Consistência:** `decide`, `Decision`, `askHook` (em `safety/hook.ts`), `SafetyGate` e o shape `{type, pattern}` idênticos entre tasks; `plugins/safety-gate.ts` exporta só `SafetyGate`; contagem de testes coerente (32 + 4 = 36).
+
+---
+
+## Adendo (2026-09-27) — gate efetivo via `tool.execute.before`
+
+O hook `permission.ask` **não é despachado** no runtime opencode 1.17.18 (ver
+`docs/notes/fase2b-verification.md`, §F3). Para o gate ter efeito real adicionou-se um
+segundo handler na factory `SafetyGate`, ao lado de `permission.ask` (mantido para
+forward-compat):
+
+- `safety/hook.ts`: `actionFromToolCall(tool, args)` + `beforeToolCall(tool, args)`.
+- `plugins/safety-gate.ts`: `"tool.execute.before": (input, output) => beforeToolCall(input.tool, output.args)`
+  — lança em `deny` (bloqueia a tool); `ask` não bloqueia.
+- Testes: novo `safety/hook.test.ts` (mapeamento + bloqueio) e a factory agora exige
+  **ambos** os hooks. Total: **54 passed**.
+
+Verificação e2e real: comando `dd … of=/dev/null` → `SafetyGate bloqueou (escrita em
+device de bloco)` (não executou); `ls -la` → executou. Ver `fase2b-verification.md`.

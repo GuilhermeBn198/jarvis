@@ -1,11 +1,15 @@
 # .opencode — SafetyGate (jarvis Fase 2-B)
 
-Plugin de projeto que implementa um gate determinístico de permissões via o hook
-`permission.ask`. Regras (não LLM) decidem `allow` / `ask` / `deny`.
+Plugin de projeto que implementa um gate determinístico de permissões. Regras (não LLM)
+decidem `allow` / `ask` / `deny`.
+
+No runtime opencode 1.17.18 o hook `permission.ask` **não é despachado**; o gate efetivo
+é `tool.execute.before` (lança em `deny`, bloqueando a tool). `permission.ask` fica
+mantido para forward-compat.
 
 ## Testes
     cd /home/guilherme/github/jarvis
-    node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
+    node --test .opencode/safety/rules.test.ts .opencode/safety/hook.test.ts .opencode/plugins/safety-gate.test.ts
 
 ## Regras
 - `deny`: `rm -rf` de raiz/home, `mkfs`, `dd` para device, fork bomb, `shred`/`wipefs`.

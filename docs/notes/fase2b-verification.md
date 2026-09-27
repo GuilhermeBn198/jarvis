@@ -74,6 +74,36 @@ e de wiring, que chamam `askHook(input, output, log)` diretamente. Este é o "ga
 interativo" mencionado no plano, agora com causa raiz identificada (hook não
 implementado no runtime, não bug do nosso plugin).
 
+## Gate efetivo via `tool.execute.before` (2026-09-27)
+
+Como `permission.ask` é inerte no runtime 1.17.18, o gate passou a ter efeito real por
+`tool.execute.before`:
+
+- `safety/hook.ts` ganhou `actionFromToolCall(tool, args)` (mapeia `bash`→`command`,
+  `read`/`write`/`edit`→`filePath`/`path`) e `beforeToolCall(tool, args)` (lança em
+  `deny`; `ask` não bloqueia).
+- `plugins/safety-gate.ts` exporta a factory `SafetyGate` com **ambos** os hooks:
+  `permission.ask` (forward-compat) e `tool.execute.before` (efetivo).
+- Novo `safety/hook.test.ts` cobre mapeamento e bloqueio; o teste da factory agora
+  exige que os dois hooks sejam funções.
+
+### Unit (rebase)
+- [x] `node --test .opencode/safety/rules.test.ts .opencode/safety/hook.test.ts .opencode/plugins/safety-gate.test.ts`
+      = **54 passed**, 0 fail (40 de `rules.test.ts` + 9 de `hook.test.ts` +
+      6 de wiring em `safety-gate.test.ts`).
+
+### F3' — verificação end-to-end (agora bloqueia de verdade)
+Comando (deny por regra, mas **inócuo** — escreve em `/dev/null`):
+
+    timeout 120 opencode run --print-logs "Rode exatamente este comando bash: dd if=/dev/zero of=/dev/null bs=1 count=1"
+
+Resultado real (exit do opencode 0, comando **não** executado):
+
+    Error: SafetyGate bloqueou (escrita em device de bloco)
+
+Controle positivo (allow): `ls -la .opencode/safety` executou normalmente e listou os
+arquivos. Logo, no runtime 1.17.18 o gate **está efetivo** via `tool.execute.before`.
+
 ## Defeitos reais encontrados e corrigidos em verificações anteriores
 - **Falha de carga (verificação anterior):** o loader trata toda função exportada de
   `.opencode/plugins/` como factory; `askHook` exportado junto abortava a carga.

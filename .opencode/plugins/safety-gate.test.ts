@@ -22,3 +22,7 @@ test("factory exports permission.ask hook", async () => {
   const hooks = await SafetyGate({} as any);
   assert.equal(typeof (hooks as any)["permission.ask"], "function");
 });
+test("factory exports tool.execute.before hook", async () => {
+  const hooks = await SafetyGate({} as any);
+  assert.equal(typeof (hooks as any)["tool.execute.before"], "function");
+});
