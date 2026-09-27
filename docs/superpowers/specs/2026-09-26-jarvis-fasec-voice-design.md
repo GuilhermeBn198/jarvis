@@ -21,6 +21,10 @@ O WSL **não tem áudio** (`/dev/snd` só `timer`); o mic/alto-falantes vivem no
 
 **Decisão de arquitetura:** a ponte roda **no WSL** (onde vive o opencode) e alcança o áudio do Windows por **subprocess** (`powershell.exe`, `ffmpeg.exe`). Isso elimina Python-no-Windows, libs de áudio no Node, o problema de PATH e a ausência de binário Vulkan.
 
+## 1.1 Pivot do STT (validação em ambiente)
+
+O binário `whisper.cpp` (Linux) falhou por depender de `libgomp.so.1`, ausente no WSL (exigiria `apt`/sudo). **Pivotamos o STT para `faster-whisper` (pip, CPU)** — sem libs de sistema, validado: transcreveu um WAV gerado pelo SAPI em português. O `ffmpeg` permanece **apenas para a captura** (dshow/Windows).
+
 ## 2. Arquitetura
 
 ```
