@@ -4,7 +4,8 @@ import pytest
 from config import Config
 from tts import speak, speak_piper, VoiceError
 
-CFG = Config(opencode_bin="/x/opencode", timeout_s=10, powershell_exe="pwsh.exe")
+CFG = Config(opencode_bin="/x/opencode", timeout_s=10, powershell_exe="pwsh.exe",
+             tts_backend="sapi")
 PIPER_CFG = Config(
     opencode_bin="/x/opencode", timeout_s=10, tts_backend="piper",
     piper_exe="/x/piper", piper_model="/x/m.onnx", ffplay_exe="/x/ffplay",
@@ -136,7 +137,7 @@ def test_speak_dispatches_to_piper(monkeypatch):
     assert seen["text"] == "usa piper"
 
 
-def test_speak_dispatches_to_sapi_by_default(monkeypatch):
+def test_speak_dispatches_to_sapi_when_configured(monkeypatch):
     seen = {}
     def fake_run(cmd, **kw):
         seen["cmd"] = cmd
@@ -144,3 +145,11 @@ def test_speak_dispatches_to_sapi_by_default(monkeypatch):
     monkeypatch.setattr(subprocess, "run", fake_run)
     speak("usa sapi", config=CFG)
     assert seen["cmd"][0] == "pwsh.exe"
+
+
+def test_speak_dispatches_to_piper_by_default(monkeypatch):
+    seen = {}
+    monkeypatch.setattr("tts.speak_piper",
+                        lambda text, to_file=None, config=None: seen.update(text=text))
+    speak("usa piper", config=Config(opencode_bin="/x/opencode", timeout_s=10))
+    assert seen["text"] == "usa piper"

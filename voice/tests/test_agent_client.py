@@ -7,8 +7,9 @@ from agent_client import (
     RunClient, ServeClient, AgentError, make_client, SESSION_TIMEOUT_S,
 )
 
-CFG = Config(opencode_bin="/x/opencode", timeout_s=10)
+CFG = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="run")
 SERVE_CFG = Config(opencode_bin="/x/opencode", timeout_s=10,
+                   agent_backend="serve",
                    server_url="http://127.0.0.1:4096")
 
 def test_ask_returns_stdout(monkeypatch):
@@ -141,9 +142,10 @@ def test_serve_http_error_raises(monkeypatch):
 
 def test_make_client_picks_backend():
     assert isinstance(make_client(CFG), RunClient)
-    serve = make_client(Config(opencode_bin="/x/o", timeout_s=10,
-                               agent_backend="serve"))
-    assert isinstance(serve, ServeClient)
+    assert isinstance(make_client(SERVE_CFG), ServeClient)
+    assert isinstance(
+        make_client(Config(opencode_bin="/x/o", timeout_s=10)), ServeClient
+    )
 
 
 def _http_error(code):

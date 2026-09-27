@@ -164,6 +164,7 @@ def test_parse_once():
 
 def test_main_voice_parses_iterations_and_stops(monkeypatch):
     seen = {}
+    monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     monkeypatch.setattr(loop_mod, "voice_loop", lambda c, iterations=0: seen.update(n=iterations))
     assert main(["--voice", "--once", "1"]) == 0
@@ -172,6 +173,7 @@ def test_main_voice_parses_iterations_and_stops(monkeypatch):
 
 def test_main_rejects_once_zero(monkeypatch):
     called = []
+    monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     monkeypatch.setattr(loop_mod, "voice_loop", lambda c, iterations=0: called.append(iterations))
     assert main(["--voice", "--once", "0"]) == 2
@@ -179,9 +181,41 @@ def test_main_rejects_once_zero(monkeypatch):
 
 
 def test_main_voice_handles_keyboard_interrupt(monkeypatch):
+    monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     def boom(c, iterations=0):
         raise KeyboardInterrupt
     monkeypatch.setattr(loop_mod, "voice_loop", boom)
     assert main(["--voice"]) == 0
+
+
+def test_resolve_client_serve_healthy_uses_make_client(monkeypatch):
+    monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
+    sentinel = object()
+    monkeypatch.setattr(loop_mod, "make_client", lambda cfg: sentinel)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, agent_backend="serve")
+    assert loop_mod._resolve_client(cfg, io.StringIO()) is sentinel
+
+
+def test_resolve_client_serve_down_falls_back_to_run(monkeypatch):
+    monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: False)
+    called = []
+    monkeypatch.setattr(loop_mod, "make_client", lambda cfg: called.append(cfg))
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, agent_backend="serve")
+    err = io.StringIO()
+    client = loop_mod._resolve_client(cfg, err)
+    assert isinstance(client, loop_mod.RunClient)
+    assert called == []
+    assert "[aviso]" in err.getvalue()
+    assert "run" in err.getvalue()
+
+
+def test_resolve_client_run_backend_skips_ensure(monkeypatch):
+    def boom(cfg):
+        raise AssertionError("ensure_server nao deve ser chamado no backend run")
+    monkeypatch.setattr(loop_mod, "ensure_server", boom)
+    sentinel = object()
+    monkeypatch.setattr(loop_mod, "make_client", lambda cfg: sentinel)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, agent_backend="run")
+    assert loop_mod._resolve_client(cfg, io.StringIO()) is sentinel
 
