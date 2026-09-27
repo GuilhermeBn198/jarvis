@@ -64,8 +64,8 @@ test("deny: metachar antes de rm -rf / (multi-comando)", () => {
 test("deny: rm -rf / no inicio de texto multi-linha", () => {
   assert.equal(d("bash", "rm -rf /\necho fim").status, "deny");
 });
-test("ask: redirecionamento para authorized_keys nao e allow", () => {
-  assert.equal(d("bash", "echo x > ~/.ssh/authorized_keys").status, "ask");
+test("deny: redirecionamento para authorized_keys (credencial)", () => {
+  assert.equal(d("bash", "echo x > ~/.ssh/authorized_keys").status, "deny");
 });
 test("ask: redirecionamento simples nao e allow", () => {
   assert.equal(d("bash", "cat a > b").status, "ask");
@@ -102,4 +102,29 @@ test("deny: rm -rf /home/user", () => {
 });
 test("ask: glob ls *.txt nao e allow", () => {
   assert.equal(d("bash", "ls *.txt").status, "ask");
+});
+
+test("deny: cat ~/.ssh/id_rsa", () => {
+  assert.equal(d("bash", "cat ~/.ssh/id_rsa").status, "deny");
+});
+test("deny: cat .env", () => {
+  assert.equal(d("bash", "cat .env").status, "deny");
+});
+test("deny: cat .env.local", () => {
+  assert.equal(d("bash", "cat .env.local").status, "deny");
+});
+test("deny: cat ~/.aws/credentials", () => {
+  assert.equal(d("bash", "cat ~/.aws/credentials").status, "deny");
+});
+test("deny: cat /etc/shadow", () => {
+  assert.equal(d("bash", "cat /etc/shadow").status, "deny");
+});
+test("deny: read de ~/.ssh/id_rsa (path-aware)", () => {
+  assert.equal(d("read", "~/.ssh/id_rsa").status, "deny");
+});
+test("allow: cat README.md nao casa credencial", () => {
+  assert.equal(d("bash", "cat README.md").status, "allow");
+});
+test("allow: cat environment.md nao casa credencial", () => {
+  assert.equal(d("bash", "cat environment.md").status, "allow");
 });

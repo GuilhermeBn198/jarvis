@@ -8,11 +8,17 @@ export type ActionInput = {
 };
 
 const DENY: Array<[RegExp, string]> = [
-  [/\bmkfs(\.\w+)?\b/, "formatacao de filesystem"],
-  [/\bdd\b[^\n]*\bof\s*=\s*\/dev\//, "escrita em device de bloco"],
+  [/\bmkfs(\.\w+)?\b/i, "formatacao de filesystem"],
+  [/\bdd\b[^\n]*\bof\s*=\s*\/dev\//i, "escrita em device de bloco"],
   [/:\s*\(\s*\)\s*\{.*\|.*&.*\}\s*;\s*:/, "fork bomb"],
-  [/\b(shred|wipefs)\b/, "destruicao de dados"],
+  [/\b(shred|wipefs)\b/i, "destruicao de dados"],
 ];
+
+// Spec §3: ler/exfiltrar credenciais (~/.ssh, .env, ~/.aws, tokens) e DENY.
+// Aplicado ao texto inteiro ANTES da allowlist de leitura (read/glob/...), pois
+// o `pattern` de uma leitura traz o caminho.
+const CREDENTIAL =
+  /(^|[\/\s])(\.ssh|\.aws|\.gnupg|\.git-credentials|\.netrc|\.env(\.[\w-]+)?\b|id_rsa|id_ed25519|authorized_keys|known_hosts|credentials|\.npmrc|\.pypirc|shadow|sudoers)\b/i;
 
 const ASK: Array<[RegExp, string]> = [
   [/\bsudo\b/, "privilegio elevado"],
@@ -50,6 +56,7 @@ export function decide(input: ActionInput): Decision {
   const text = patterns.join("\n");
 
   if (isDangerousRm(text)) return { status: "deny", reason: "rm recursivo+forcado de raiz/home" };
+  if (CREDENTIAL.test(text)) return { status: "deny", reason: "acesso a credencial/segredo" };
   for (const [re, reason] of DENY) if (re.test(text)) return { status: "deny", reason };
   for (const [re, reason] of ASK) if (re.test(text)) return { status: "ask", reason };
 

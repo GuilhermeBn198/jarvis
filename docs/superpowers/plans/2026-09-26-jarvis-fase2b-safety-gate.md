@@ -41,7 +41,7 @@
 **Interfaces:**
 - Produces: `decide(input) -> Decision`; `Decision`; `ActionInput`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 Create `.opencode/safety/rules.test.ts`:
 ```ts
@@ -152,7 +152,7 @@ test("ask: glob ls *.txt nao e allow", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run:
 ```bash
@@ -161,7 +161,7 @@ node --test .opencode/safety/rules.test.ts
 ```
 Expected: FAIL (`Cannot find module './rules.ts'`).
 
-- [ ] **Step 3: Implementar `rules.ts`**
+- [x] **Step 3: Implementar `rules.ts`**
 
 Create `.opencode/safety/rules.ts`:
 ```ts
@@ -233,7 +233,7 @@ export function decide(input: ActionInput): Decision {
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run:
 ```bash
@@ -241,7 +241,7 @@ node --test .opencode/safety/rules.test.ts
 ```
 Expected: `# pass 32` (todos passam).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/guilherme/github/jarvis
@@ -271,7 +271,7 @@ git commit -m "feat(jarvis): motor de regras do SafetyGate (deterministico)"
 > loader não varre. Exportar `askHook` do módulo do plugin faz o loader chamá-lo como
 > `askHook(input, undefined)` no startup e aborta a carga ("failed to load plugin").
 
-- [ ] **Step 1: Escrever o teste de wiring que falha**
+- [x] **Step 1: Escrever o teste de wiring que falha**
 
 Create `.opencode/plugins/safety-gate.test.ts`:
 ```ts
@@ -301,7 +301,7 @@ test("factory exports permission.ask hook", async () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run:
 ```bash
@@ -309,7 +309,7 @@ node --test .opencode/plugins/safety-gate.test.ts
 ```
 Expected: FAIL (`Cannot find module '../safety/hook.ts'`).
 
-- [ ] **Step 3: Implementar o hook e o plugin**
+- [x] **Step 3: Implementar o hook e o plugin**
 
 Create `.opencode/safety/hook.ts`:
 ```ts
@@ -337,7 +337,7 @@ export const SafetyGate: Plugin = async () => ({
 });
 ```
 
-- [ ] **Step 4: Criar `.opencode/package.json` e ignorar node_modules**
+- [x] **Step 4: Criar `.opencode/package.json` e ignorar node_modules**
 
 Create `.opencode/package.json`:
 ```json
@@ -352,7 +352,7 @@ Append ao `.gitignore` do repo:
 .opencode/node_modules/
 ```
 
-- [ ] **Step 5: Rodar e ver passar (os dois testes)**
+- [x] **Step 5: Rodar e ver passar (os dois testes)**
 
 Run:
 ```bash
@@ -361,7 +361,7 @@ node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
 Expected: `# pass 36` (32 + 4), sem falhas.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add .opencode/safety/hook.ts .opencode/plugins/safety-gate.ts .opencode/plugins/safety-gate.test.ts .opencode/package.json .gitignore
@@ -379,7 +379,7 @@ git commit -m "feat(jarvis): plugin safety-gate liga o hook permission.ask ao mo
 **Interfaces:**
 - Consumes: tudo acima.
 
-- [ ] **Step 1: Criar `.opencode/README.md`**
+- [x] **Step 1: Criar `.opencode/README.md`**
 
 Create `.opencode/README.md`:
 ```markdown
@@ -402,7 +402,7 @@ Plugin de projeto que implementa um gate determinístico de permissões via o ho
 - O motor (`safety/rules.ts`) é puro e não depende do opencode; o plugin só faz o wiring.
 ```
 
-- [ ] **Step 2: Rodar a suíte completa**
+- [x] **Step 2: Rodar a suíte completa**
 
 Run:
 ```bash
@@ -411,7 +411,7 @@ node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
 Expected: `# pass 36`.
 
-- [ ] **Step 3: Confirmar que o opencode carrega o plugin sem erro**
+- [x] **Step 3: Confirmar que o opencode carrega o plugin sem erro**
 
 Run:
 ```bash
@@ -420,7 +420,7 @@ timeout 60 opencode run --print-logs "responda apenas: ok" 2>&1 | grep -iE 'safe
 ```
 Expected: sem erro de carregamento de plugin. (Se o log não citar o plugin, considere OK desde que não haja erro.)
 
-- [ ] **Step 4: Registrar a verificação**
+- [x] **Step 4: Registrar a verificação**
 
 Create `docs/notes/fase2b-verification.md`:
 ```markdown
@@ -429,17 +429,17 @@ Create `docs/notes/fase2b-verification.md`:
 Data: 2026-09-26
 
 ## Unit
-- [ ] `node --test ...` = 36 passed
+- [x] `node --test ...` = 36 passed
 
 ## Carregamento no opencode
-- [ ] plugin carregado sem erro (log)
+- [x] plugin carregado sem erro (log)
 
 ## Observações
 (registrar o que de fato aconteceu, inclusive limitações — ex.: o hook não foi
 exercitado end-to-end de forma interativa; a cobertura vem dos testes de wiring)
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .opencode/README.md docs/notes/fase2b-verification.md

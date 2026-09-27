@@ -1,10 +1,32 @@
 # Fase 2-B — Verificação (SafetyGate)
 
-Data: 2026-09-27
+Data: 2026-09-27 (revisão final: F1–F4)
 
 ## Unit
-- [x] `node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts` = **36 passed**
-      (32 testes de `rules.test.ts` + 4 testes de wiring de `safety-gate.test.ts`; 0 fail)
+- [x] `node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts` = **44 passed**
+      (40 testes de `rules.test.ts` + 4 testes de wiring de `safety-gate.test.ts`; 0 fail)
+
+## Cobertura de credenciais (F1, spec §3)
+`rules.ts` agora nega acesso a credenciais/segredos **antes** da allowlist de leitura
+(que assim fica path-aware: `read ~/.ssh/id_rsa` = deny). Regex aplicada ao texto
+unido (`CREDENTIAL`), cobrindo `.ssh`, `.aws`, `.gnupg`, `.git-credentials`, `.netrc`,
+`.env`/`.env.*`, `id_rsa`, `id_ed25519`, `authorized_keys`, `known_hosts`,
+`credentials`, `.npmrc`, `.pypirc`, `shadow`, `sudoers`.
+
+Testes reais que passam:
+- `cat ~/.ssh/id_rsa` → **deny**; `cat .env` → **deny**; `cat .env.local` → **deny**
+- `cat ~/.aws/credentials` → **deny**; `cat /etc/shadow` → **deny**; `read ~/.ssh/id_rsa` → **deny**
+- `cat README.md` → **allow**; `cat environment.md` → **allow** (não houve over-match)
+
+Efeito colateral esperado e correto: `echo x > ~/.ssh/authorized_keys` passou de `ask`
+para `deny` (o teste foi atualizado).
+
+## Log do fail-safe (F2, spec §5)
+`plugins/safety-gate.ts` captura o `client` do contexto do plugin e passa um logger a
+`askHook`. No `catch`, o hook loga via `client.app.log({ body: { service: "safety-gate",
+level: "error", message }})`, com fallback para `console.error` se o `client` estiver
+ausente. O fail-safe continua **`ask`**, agora com `if (output) output.status = "ask";`
+(guarda contra `output` indefinido).
 
 ## Carregamento no opencode
 - [x] plugin carregado sem erro (log) — **OK**
@@ -17,34 +39,48 @@ Data: 2026-09-27
 
       (nenhuma ocorrência de "failed to load plugin")
 
-## Defeito real encontrado e corrigido
-- **Falha de carga (encontrada na verificação anterior):** o log do opencode 1.17.18 emitiu
+## F3 — tentativa de verificação end-to-end (honesta, sem fake)
+Comandos tentados (runtime opencode 1.17.18):
 
-      level=ERROR message="failed to load plugin"
-      path=file:///home/guilherme/github/jarvis/.opencode/plugins/safety-gate.ts
-      error="undefined is not an object (evaluating 'output.status = \"ask\"')"
+1. `opencode run --print-logs "Rode o comando bash: echo ola-mundo"` — o log mostra
+   `message=evaluated permission=bash pattern="echo ola-mundo" action.action=allow`,
+   **mas o hook `permission.ask` não disparou**.
+2. `... "cat .env"` — o modelo recusou-se a rodar (nenhuma permissão pedida).
+3. `... "cat .env.example"` — avaliada (`action.action=allow`), hook não disparou.
+4. `... "Leia /etc/hostname"` — forçou um caminho `ask` real
+   (`evaluated permission=external_directory ... action.action=ask`, depois
+   `permission requested` + auto-reject), e **ainda assim o hook não disparou**.
 
-- **Causa raiz (provada):** o loader de plugins do opencode
-  (`packages/opencode/src/plugin/index.ts`, `getLegacyPlugins`) trata **toda** função
-  exportada de um arquivo sob `.opencode/plugins/` como factory de plugin e a invoca
-  como `factory(input, options)`. `safety-gate.ts` exportava tanto `SafetyGate` (a
-  factory correta) quanto `askHook` (uma função de hook). No startup, o loader chamava
-  `askHook(input, undefined)`; `output.status = ...` lançava (output indefinido), o
-  `catch` reatribuía `output.status = "ask"` (também lançando) e a exceção não capturada
-  abortava a carga do plugin.
+**Instrumentação temporária (removida):** o plugin foi instrumentado para escrever em
+`/tmp/safety-gate-hook.log` na factory, em `event`, em `tool.execute.before` e em
+`permission.ask`. Resultado observado:
+- factory: **carregou**;
+- `event`: **disparou** (dezenas de eventos);
+- `tool.execute.before`: **disparou** (`TOOL_BEFORE bash`);
+- `permission.ask`: **nunca disparou** — nem no caminho `allow` (bash), nem no caminho
+  `ask` (`external_directory`).
 
-- **Correção:** mover `askHook` para `.opencode/safety/hook.ts` (diretório que o loader
-  **não** varre) e deixar `.opencode/plugins/safety-gate.ts` exportando **apenas** a
-  factory `SafetyGate`, que importa e reusa o hook. O teste de wiring passou a importar
-  `askHook` de `../safety/hook.ts` e ganhou um 4º teste que prova que a factory produz o
-  hook `permission.ask`.
+**Causa provável (verificada no binário):** o binário `~/.opencode/bin/opencode`
+(1.17.18) não possui a string `"permission.ask"` como nome de hook. O único registro é
+o texto da documentação embutida; o dispatch de hooks usa `.trigger("...")` e a lista
+de triggers **não inclui** `permission.ask` (inclui `tool.execute.before`,
+`tool.execute.after`, `chat.*`, `command.execute.before`, `shell.env`, `file.open`,
+`experimental.*`, `tab.new`, `tool.definition`).
+
+**Conclusão:** no runtime 1.17.18 o hook `permission.ask` **não é despachado**, embora
+seja declarado nos tipos de `@opencode-ai/plugin`. O SafetyGate, portanto, **não é
+exercitado end-to-end** neste runtime; a cobertura funcional vem dos testes unitários
+e de wiring, que chamam `askHook(input, output, log)` diretamente. Este é o "gap
+interativo" mencionado no plano, agora com causa raiz identificada (hook não
+implementado no runtime, não bug do nosso plugin).
+
+## Defeitos reais encontrados e corrigidos em verificações anteriores
+- **Falha de carga (verificação anterior):** o loader trata toda função exportada de
+  `.opencode/plugins/` como factory; `askHook` exportado junto abortava a carga.
+  Corrigido movendo `askHook` para `.opencode/safety/hook.ts` e exportando só a
+  factory `SafetyGate`. Os testes de wiring passaram a importar de `../safety/hook.ts`.
 
 ## Observações
-- O hook `permission.ask` **não** foi exercitado end-to-end de forma interativa
-  (nenhuma ação de agente disparou a solicitação de permissão durante a verificação).
-  A cobertura funcional das regras vem dos **testes de wiring** de
-  `safety-gate.test.ts`, que chamam `askHook(input, output)` diretamente com um
-  `output` definido; os 36 verdes validam a lógica e o wiring da factory, não a
-  integração interativa real.
-- `@opencode-ai/plugin` foi fixado em `1.17.18` em `.opencode/package.json` (o opencode
-  auto-atualizava no startup); agora versionado explicitamente.
+- `.opencode/package.json` ganhou `"type": "module"` (silencia
+  `MODULE_TYPELESS_PACKAGE_JSON`) e mantém `@opencode-ai/plugin` fixado em `1.17.18`.
+- Denies destrutivos (`mkfs`, `dd`, `shred`/`wipefs`) agora usam flag `i`.
