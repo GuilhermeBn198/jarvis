@@ -53,8 +53,10 @@ motor de regras (rules.ts)  → allow | ask | deny
 
 ```
 type Decision = { status: "allow" | "ask" | "deny"; reason: string }
-decide(input: { tool: string; command?: string; path?: string; args?: unknown }): Decision
+decide(input: { type: string; pattern?: string | string[]; title?: string; metadata?: unknown }): Decision
 ```
+
+> Shape confirmado nos tipos `@opencode-ai/sdk`: `Permission` = `{ id, type, pattern?, sessionID, messageID, callID?, title, metadata, time }`. Para `bash`, o comando está em `pattern`.
 
 **Ordem de avaliação (a primeira que casar vence):**
 1. **deny** — padrões claramente destrutivos/irreversíveis:
@@ -74,12 +76,12 @@ Plugin de projeto em `.opencode/plugins/safety-gate.ts`, carregado automaticamen
 
 ```ts
 "permission.ask": async (input, output) => {
-  const d = decide({ tool: input.tool ?? "unknown", command: input.command, path: input.path, args: input.args })
+  const d = decide({ type: input.type, pattern: input.pattern, title: input.title, metadata: input.metadata })
   output.status = d.status
 }
 ```
 
-(Os campos exatos de `Permission` serão confirmados nos tipos `@opencode-ai/plugin` durante a implementação.)
+(Shape real de `Permission` conforme `@opencode-ai/sdk`: `type` e `pattern`.)
 
 ## 5. Tratamento de erro
 
