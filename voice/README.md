@@ -3,7 +3,7 @@
 Ponte de texto: stdin → agente (opencode) → stdout.
 
 ## Rodar
-    cd /home/guilherme/github/jarvis/voice
+    cd voice
     . .venv/bin/activate
     echo "responda apenas: ok" | python loop.py
 

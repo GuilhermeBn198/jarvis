@@ -12,8 +12,10 @@ def run_stream(inp, out, client, err=None) -> None:
             continue
         try:
             out.write(client.ask(task) + "\n")
+            out.flush()
         except AgentError as exc:
             err.write(f"[erro] {exc}\n")
+            err.flush()
 
 
 def main() -> int:

@@ -25,10 +25,18 @@ class RunClient:
                 timeout=timeout,
                 cwd=self._cwd,
             )
+        except FileNotFoundError as exc:
+            raise AgentError(
+                f"opencode nao encontrado em {self._cfg.opencode_bin} (defina OPENCODE_BIN)"
+            ) from exc
+        except PermissionError as exc:
+            raise AgentError(f"opencode em {self._cfg.opencode_bin} nao e executavel") from exc
         except OSError as exc:
-            raise AgentError(f"opencode nao encontrado em {self._cfg.opencode_bin}") from exc
+            raise AgentError(f"falha ao executar opencode ({exc})") from exc
         except subprocess.TimeoutExpired as exc:
             raise AgentError(f"timeout ({timeout}s) ao chamar o agente") from exc
         if proc.returncode != 0:
             raise AgentError(f"opencode falhou ({proc.returncode}): {proc.stderr.strip()[:200]}")
+        if not proc.stdout.strip():
+            raise AgentError("agente nao retornou resposta")
         return proc.stdout.strip()

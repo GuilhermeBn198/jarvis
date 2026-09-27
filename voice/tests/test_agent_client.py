@@ -23,12 +23,29 @@ def test_missing_binary_raises(monkeypatch):
     def fake_run(*a, **k):
         raise FileNotFoundError()
     monkeypatch.setattr(subprocess, "run", fake_run)
-    with pytest.raises(AgentError):
+    with pytest.raises(AgentError) as exc:
         RunClient(CFG).ask("x")
+    assert "nao encontrado" in str(exc.value)
 
 def test_not_executable_binary_raises(monkeypatch):
     def fake_run(*a, **k):
         raise PermissionError()
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(AgentError) as exc:
+        RunClient(CFG).ask("x")
+    assert "executavel" in str(exc.value)
+
+def test_generic_oserror_raises(monkeypatch):
+    def fake_run(*a, **k):
+        raise OSError("boom")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(AgentError) as exc:
+        RunClient(CFG).ask("x")
+    assert "falha ao executar" in str(exc.value)
+
+def test_empty_stdout_raises(monkeypatch):
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
     monkeypatch.setattr(subprocess, "run", fake_run)
     with pytest.raises(AgentError):
         RunClient(CFG).ask("x")
