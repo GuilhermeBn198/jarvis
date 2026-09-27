@@ -34,8 +34,8 @@ def test_invalid_tts_backend_raises():
 
 def test_backend_defaults():
     cfg = load_config({})
-    assert cfg.agent_backend == "run"
-    assert cfg.tts_backend == "sapi"
+    assert cfg.agent_backend == "serve"
+    assert cfg.tts_backend == "piper"
     assert cfg.server_url == "http://127.0.0.1:4096"
     assert cfg.piper_exe.endswith("piper.exe")
     assert cfg.piper_model.endswith("pt_BR-faber-medium.onnx")
@@ -45,18 +45,26 @@ def test_backend_defaults():
 
 def test_backend_env_overrides():
     cfg = load_config({
-        "AGENT_BACKEND": "serve",
-        "TTS_BACKEND": "piper",
+        "AGENT_BACKEND": "run",
+        "TTS_BACKEND": "sapi",
         "OPENCODE_SERVER_URL": "http://127.0.0.1:9999",
         "PIPER_EXE": "/x/piper",
         "PIPER_MODEL": "/x/model.onnx",
         "FFPLAY_EXE": "/x/ffplay",
         "PIPER_OUT_WAV": r"D:\out.wav",
     })
-    assert cfg.agent_backend == "serve"
-    assert cfg.tts_backend == "piper"
+    assert cfg.agent_backend == "run"
+    assert cfg.tts_backend == "sapi"
     assert cfg.server_url == "http://127.0.0.1:9999"
     assert cfg.piper_exe == "/x/piper"
     assert cfg.piper_model == "/x/model.onnx"
     assert cfg.ffplay_exe == "/x/ffplay"
     assert cfg.piper_out_wav == r"D:\out.wav"
+
+
+def test_serve_port_helper():
+    from config import serve_port
+    assert serve_port("http://127.0.0.1:4096") == 4096
+    assert serve_port("http://127.0.0.1:9999") == 9999
+    assert serve_port("http://127.0.0.1") == 4096
+    assert serve_port("http://127.0.0.1:notaport") == 4096

@@ -1,8 +1,9 @@
 import sys
 
-from agent_client import AgentError, make_client
+from agent_client import AgentError, RunClient, make_client
 from capture import record
 from config import load_config
+from serve import ensure_server
 from stt import transcribe
 from tts import VoiceError, speak
 
@@ -10,9 +11,9 @@ from tts import VoiceError, speak
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
                config=None, err=None, max_consecutive_errors: int = 3) -> None:
     cfg = config or load_config()
-    if client is None:
-        client = make_client(cfg)
     err = err if err is not None else sys.stderr
+    if client is None:
+        client = resolve_client(cfg, err)
     secs = record_seconds if record_seconds is not None else cfg.record_seconds
     n = 0
     consecutive_errors = 0
@@ -87,6 +88,19 @@ def _parse_once(args) -> int:
         return 1
 
 
+def resolve_client(cfg, err=None):
+    err = err if err is not None else sys.stderr
+    if cfg.agent_backend == "serve":
+        if ensure_server(cfg):
+            return make_client(cfg)
+        err.write(
+            "[aviso] serve indisponivel; usando backend 'run' (mais lento)\n"
+        )
+        err.flush()
+        return RunClient(cfg)
+    return make_client(cfg)
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
@@ -96,9 +110,10 @@ def main(argv=None) -> int:
                 sys.stderr.write("[erro] --once exige N >= 1\n")
                 sys.stderr.flush()
                 return 2
-            voice_loop(make_client(load_config()), iterations=iterations)
+            cfg = load_config()
+            voice_loop(resolve_client(cfg, sys.stderr), iterations=iterations)
             return 0
-        run_stream(sys.stdin, sys.stdout, make_client(load_config()))
+        run_stream(sys.stdin, sys.stdout, resolve_client(load_config(), sys.stderr))
         return 0
     except KeyboardInterrupt:
         sys.stderr.write("\n[voice] encerrado\n")

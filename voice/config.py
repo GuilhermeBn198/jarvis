@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 DEFAULT_OPENCODE_BIN = os.path.expanduser("~/.opencode/bin/opencode")
 DEFAULT_TIMEOUT_S = 300
@@ -11,9 +12,9 @@ DEFAULT_MIC_DEVICE = "Microphone (FIFINE Microphone)"
 DEFAULT_WHISPER_MODEL = "base"
 DEFAULT_RECORD_SECONDS = 5
 DEFAULT_LANGUAGE = "pt"
-DEFAULT_AGENT_BACKEND = "run"
+DEFAULT_AGENT_BACKEND = "serve"
 DEFAULT_SERVER_URL = "http://127.0.0.1:4096"
-DEFAULT_TTS_BACKEND = "sapi"
+DEFAULT_TTS_BACKEND = "piper"
 DEFAULT_PIPER_EXE = "/mnt/c/Users/bguil/tools/piper/piper/piper.exe"
 DEFAULT_PIPER_MODEL = "/mnt/c/Users/bguil/tools/piper/voices/pt_BR-faber-medium.onnx"
 DEFAULT_FFPLAY_EXE = (
@@ -39,6 +40,13 @@ class Config:
     piper_model: str = DEFAULT_PIPER_MODEL
     ffplay_exe: str = DEFAULT_FFPLAY_EXE
     piper_out_wav: str = DEFAULT_PIPER_OUT_WAV
+
+
+def serve_port(server_url: str, default: int = 4096) -> int:
+    try:
+        return urlparse(server_url).port or default
+    except ValueError:
+        return default
 
 
 def load_config(env: dict | None = None) -> Config:
