@@ -8,8 +8,11 @@ class VoiceError(RuntimeError):
     pass
 
 
-def _ps_script(text_b64: str, out: str | None) -> str:
-    out_line = f"$s.SetOutputToWaveFile('{out}')" if out else "if ($false) {}"
+def _ps_script(text_b64: str, out_b64: str | None) -> str:
+    out_line = (
+        "if ('{}' -ne '') {{ $s.SetOutputToWaveFile("
+        "[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{}'))) }}"
+    ).format(out_b64, out_b64) if out_b64 else "if ($false) {}"
     return (
         "Add-Type -AssemblyName System.Speech; "
         f"$t=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{text_b64}')); "
@@ -29,7 +32,10 @@ def speak(text: str, to_file: str | None = None, config: Config | None = None) -
         return
     cfg = config or load_config()
     b64 = base64.b64encode(text.encode("utf-8")).decode("ascii")
-    script = _ps_script(b64, to_file)
+    out_b64 = (
+        base64.b64encode(to_file.encode("utf-8")).decode("ascii") if to_file else None
+    )
+    script = _ps_script(b64, out_b64)
     cmd = [cfg.powershell_exe, "-NoProfile", "-EncodedCommand", _encoded(script)]
     try:
         proc = subprocess.run(
