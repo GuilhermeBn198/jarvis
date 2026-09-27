@@ -3,7 +3,9 @@ import json
 import urllib.error
 import pytest
 from config import Config
-from agent_client import RunClient, ServeClient, AgentError, make_client
+from agent_client import (
+    RunClient, ServeClient, AgentError, make_client, SESSION_TIMEOUT_S,
+)
 
 CFG = Config(opencode_bin="/x/opencode", timeout_s=10)
 SERVE_CFG = Config(opencode_bin="/x/opencode", timeout_s=10,
@@ -142,3 +144,86 @@ def test_make_client_picks_backend():
     serve = make_client(Config(opencode_bin="/x/o", timeout_s=10,
                                agent_backend="serve"))
     assert isinstance(serve, ServeClient)
+
+
+def _http_error(code):
+    return urllib.error.HTTPError(
+        "http://127.0.0.1:4096/session/x/message", code, "gone", {}, None
+    )
+
+
+def _sequence_transport(items, seen):
+    def urlopen(req, timeout=None):
+        seen.append((req.full_url, json.loads(req.data.decode("utf-8")), timeout))
+        item = items.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return _Resp(item)
+    return urlopen
+
+
+def test_serve_recovers_dead_session_once(monkeypatch):
+    seen = []
+    items = [
+        {"id": "sess-1"},
+        _http_error(404),
+        {"id": "sess-2"},
+        {"parts": [{"type": "text", "text": "ok"}]},
+    ]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _sequence_transport(items, seen))
+    client = ServeClient(SERVE_CFG)
+    assert client.ask("pergunta") == "ok"
+    assert [u for u, _, _ in seen] == [
+        "http://127.0.0.1:4096/session",
+        "http://127.0.0.1:4096/session/sess-1/message",
+        "http://127.0.0.1:4096/session",
+        "http://127.0.0.1:4096/session/sess-2/message",
+    ]
+    assert client._session_id == "sess-2"
+
+
+def test_serve_second_dead_session_raises(monkeypatch):
+    seen = []
+    items = [
+        {"id": "sess-1"},
+        _http_error(410),
+        {"id": "sess-2"},
+        _http_error(404),
+    ]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _sequence_transport(items, seen))
+    with pytest.raises(AgentError):
+        ServeClient(SERVE_CFG).ask("pergunta")
+
+
+def test_serve_non_stale_http_error_not_retried(monkeypatch):
+    seen = []
+    items = [{"id": "sess-1"}, _http_error(500)]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _sequence_transport(items, seen))
+    with pytest.raises(AgentError):
+        ServeClient(SERVE_CFG).ask("pergunta")
+    assert len(seen) == 2
+
+
+def test_serve_non_dict_json_raises(monkeypatch):
+    seen = []
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport([["nao", "dict"]], seen))
+    with pytest.raises(AgentError) as exc:
+        ServeClient(SERVE_CFG).ask("x")
+    assert "objeto JSON" in str(exc.value)
+
+
+def test_serve_session_post_uses_short_timeout(monkeypatch):
+    seen = []
+    responses = [{"id": "s"}, {"parts": [{"type": "text", "text": "ok"}]}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=300,
+                 server_url="http://127.0.0.1:4096")
+    assert ServeClient(cfg).ask("x") == "ok"
+    assert seen[0][2] == SESSION_TIMEOUT_S
+    assert seen[1][2] == 300
+

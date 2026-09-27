@@ -18,6 +18,20 @@ def test_invalid_timeout_raises():
     assert "abc" in str(exc.value)
 
 
+def test_invalid_agent_backend_raises():
+    with pytest.raises(ValueError) as exc:
+        load_config({"AGENT_BACKEND": "nope"})
+    assert "AGENT_BACKEND" in str(exc.value)
+    assert "nope" in str(exc.value)
+
+
+def test_invalid_tts_backend_raises():
+    with pytest.raises(ValueError) as exc:
+        load_config({"TTS_BACKEND": "nope"})
+    assert "TTS_BACKEND" in str(exc.value)
+    assert "nope" in str(exc.value)
+
+
 def test_backend_defaults():
     cfg = load_config({})
     assert cfg.agent_backend == "run"

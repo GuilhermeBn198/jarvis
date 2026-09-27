@@ -65,7 +65,7 @@ def test_speak_piper_builds_argv_and_uses_stdin(monkeypatch):
     assert len(calls) == 1
     cmd, kw = calls[0]
     assert cmd == ["/x/piper", "-m", "/x/m.onnx", "-f", r"D:\bench.wav"]
-    assert kw["input"] == "ola piper"
+    assert kw["input"] == "ola piper\n"
 
 
 def test_speak_piper_to_file_skips_ffplay(monkeypatch):

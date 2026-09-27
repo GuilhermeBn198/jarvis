@@ -51,7 +51,7 @@ def main() -> None:
 
     run_client = RunClient(cfg)
     run_cold = _measure("run cold", lambda: run_client.ask(TASK))
-    run_warm = _measure("run warm", lambda: run_client.ask(TASK))
+    run_second = _measure("run (2ª chamada)", lambda: run_client.ask(TASK))
 
     serve_client = ServeClient(cfg)
     serve_cold = _measure("serve cold", lambda: serve_client.ask(TASK))
@@ -76,17 +76,17 @@ def main() -> None:
     print("| Etapa | Backend | Latencia (s) |")
     print("| --- | --- | --- |")
     print(f"| Agente (frio) | run | {_fmt(run_cold)} |")
-    print(f"| Agente (quente) | run | {_fmt(run_warm)} |")
+    print(f"| Agente (2ª chamada) | run | {_fmt(run_second)} |")
     print(f"| Agente (frio) | serve | {_fmt(serve_cold)} |")
     print(f"| Agente (quente) | serve | {_fmt(serve_warm)} |")
     print(f"| TTS | sapi | {_fmt(tts_sapi)} |")
     print(f"| TTS | piper | {_fmt(tts_piper)} |")
     print()
-    print("## Combos (agente quente + TTS)")
+    print("## Combos (agente + TTS)")
     print()
     print("| Agente | TTS | Total (s) |")
     print("| --- | --- | --- |")
-    for agent_name, agent_val in (("run", run_warm), ("serve", serve_warm)):
+    for agent_name, agent_val in (("run (2ª chamada)", run_second), ("serve (quente)", serve_warm)):
         for tts_name, tts_val in (("sapi", tts_sapi), ("piper", tts_piper)):
             print(f"| {agent_name} | {tts_name} | {_fmt(_combo(agent_val, tts_val))} |")
 

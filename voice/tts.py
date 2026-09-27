@@ -74,7 +74,7 @@ def speak_piper(text: str, to_file: str | None = None,
     cmd = [cfg.piper_exe, "-m", model, "-f", out_windows]
     try:
         proc = subprocess.run(
-            cmd, input=text, text=True, capture_output=True, timeout=60
+            cmd, input=text + "\n", text=True, capture_output=True, timeout=60
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha ao sintetizar com piper: {exc}") from exc
