@@ -147,10 +147,10 @@ def test_voice_loop_builds_client_when_none(monkeypatch):
         def ask(self, task, timeout_s=None):
             return "r"
 
-    def fake_make(cfg):
+    def fake_resolve(cfg, err=None):
         made["cfg"] = cfg
         return Client()
-    monkeypatch.setattr("loop.make_client", fake_make)
+    monkeypatch.setattr("loop.resolve_client", fake_resolve)
     voice_loop(client=None, iterations=1, record_seconds=1, config=CFG)
     assert made["cfg"] is CFG
 
@@ -194,7 +194,7 @@ def test_resolve_client_serve_healthy_uses_make_client(monkeypatch):
     sentinel = object()
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: sentinel)
     cfg = Config(opencode_bin="/x/o", timeout_s=10, agent_backend="serve")
-    assert loop_mod._resolve_client(cfg, io.StringIO()) is sentinel
+    assert loop_mod.resolve_client(cfg, io.StringIO()) is sentinel
 
 
 def test_resolve_client_serve_down_falls_back_to_run(monkeypatch):
@@ -203,7 +203,7 @@ def test_resolve_client_serve_down_falls_back_to_run(monkeypatch):
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: called.append(cfg))
     cfg = Config(opencode_bin="/x/o", timeout_s=10, agent_backend="serve")
     err = io.StringIO()
-    client = loop_mod._resolve_client(cfg, err)
+    client = loop_mod.resolve_client(cfg, err)
     assert isinstance(client, loop_mod.RunClient)
     assert called == []
     assert "[aviso]" in err.getvalue()
@@ -217,5 +217,24 @@ def test_resolve_client_run_backend_skips_ensure(monkeypatch):
     sentinel = object()
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: sentinel)
     cfg = Config(opencode_bin="/x/o", timeout_s=10, agent_backend="run")
-    assert loop_mod._resolve_client(cfg, io.StringIO()) is sentinel
+    assert loop_mod.resolve_client(cfg, io.StringIO()) is sentinel
+
+
+def test_main_text_mode_falls_back_to_run_when_serve_down(monkeypatch):
+    monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: False)
+    monkeypatch.setattr(
+        loop_mod, "load_config",
+        lambda: Config(opencode_bin="/x/o", timeout_s=10, agent_backend="serve"),
+    )
+    monkeypatch.setattr(
+        loop_mod, "RunClient",
+        lambda cfg: type("C", (), {"ask": lambda self, t, timeout_s=None: "pong"})(),
+    )
+    inp, out, err = io.StringIO("Responda apenas: pong\n"), io.StringIO(), io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stdin", inp)
+    monkeypatch.setattr(loop_mod.sys, "stdout", out)
+    monkeypatch.setattr(loop_mod.sys, "stderr", err)
+    assert main([]) == 0
+    assert out.getvalue().strip() == "pong"
+    assert "[aviso]" in err.getvalue()
 

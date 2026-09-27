@@ -93,3 +93,26 @@ def test_ensure_server_never_healthy_returns_false(monkeypatch, tmp_path):
     ticks = iter([0.0, 0.0, 10.0])
     monkeypatch.setattr(serve.time, "monotonic", lambda: next(ticks))
     assert serve.ensure_server(CFG, wait_s=5) is False
+
+
+def test_spawn_handles_log_without_directory(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SERVE_LOG", "serve.log")
+    monkeypatch.setattr(serve, "is_healthy", lambda url, timeout=2: False)
+    spawned = {}
+    monkeypatch.setattr(
+        serve.subprocess, "Popen",
+        lambda cmd, **kw: spawned.update(kw) or object(),
+    )
+    monkeypatch.setattr(serve.time, "sleep", lambda s: None)
+    ticks = iter([0.0, 10.0])
+    monkeypatch.setattr(serve.time, "monotonic", lambda: next(ticks))
+    assert serve.ensure_server(CFG, wait_s=1) is False
+    assert spawned["stdout"] != serve.subprocess.DEVNULL
+
+
+def test_ensure_server_never_raises(monkeypatch):
+    def boom(url, timeout=2):
+        raise RuntimeError("kaboom")
+    monkeypatch.setattr(serve, "is_healthy", boom)
+    assert serve.ensure_server(CFG) is False
