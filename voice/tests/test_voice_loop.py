@@ -137,6 +137,24 @@ def test_voice_loop_empty_transcript_writes_stderr(monkeypatch):
     assert "nada transcrito" in err.getvalue()
 
 
+def test_voice_loop_builds_client_when_none(monkeypatch):
+    made = {}
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+    monkeypatch.setattr("loop.speak", lambda text, **k: None)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            return "r"
+
+    def fake_make(cfg):
+        made["cfg"] = cfg
+        return Client()
+    monkeypatch.setattr("loop.make_client", fake_make)
+    voice_loop(client=None, iterations=1, record_seconds=1, config=CFG)
+    assert made["cfg"] is CFG
+
+
 def test_parse_once():
     assert _parse_once(["--voice"]) == 0
     assert _parse_once(["--voice", "--once", "3"]) == 3
@@ -146,7 +164,7 @@ def test_parse_once():
 
 def test_main_voice_parses_iterations_and_stops(monkeypatch):
     seen = {}
-    monkeypatch.setattr(loop_mod, "RunClient", lambda cfg: "client")
+    monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     monkeypatch.setattr(loop_mod, "voice_loop", lambda c, iterations=0: seen.update(n=iterations))
     assert main(["--voice", "--once", "1"]) == 0
     assert seen["n"] == 1
@@ -154,14 +172,14 @@ def test_main_voice_parses_iterations_and_stops(monkeypatch):
 
 def test_main_rejects_once_zero(monkeypatch):
     called = []
-    monkeypatch.setattr(loop_mod, "RunClient", lambda cfg: "client")
+    monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     monkeypatch.setattr(loop_mod, "voice_loop", lambda c, iterations=0: called.append(iterations))
     assert main(["--voice", "--once", "0"]) == 2
     assert called == []
 
 
 def test_main_voice_handles_keyboard_interrupt(monkeypatch):
-    monkeypatch.setattr(loop_mod, "RunClient", lambda cfg: "client")
+    monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     def boom(c, iterations=0):
         raise KeyboardInterrupt
     monkeypatch.setattr(loop_mod, "voice_loop", boom)

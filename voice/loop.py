@@ -1,15 +1,17 @@
 import sys
 
-from agent_client import AgentError, RunClient
+from agent_client import AgentError, make_client
 from capture import record
 from config import load_config
 from stt import transcribe
 from tts import VoiceError, speak
 
 
-def voice_loop(client, iterations: int = 0, record_seconds: float | None = None,
+def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
                config=None, err=None, max_consecutive_errors: int = 3) -> None:
     cfg = config or load_config()
+    if client is None:
+        client = make_client(cfg)
     err = err if err is not None else sys.stderr
     secs = record_seconds if record_seconds is not None else cfg.record_seconds
     n = 0
@@ -94,9 +96,9 @@ def main(argv=None) -> int:
                 sys.stderr.write("[erro] --once exige N >= 1\n")
                 sys.stderr.flush()
                 return 2
-            voice_loop(RunClient(load_config()), iterations=iterations)
+            voice_loop(make_client(load_config()), iterations=iterations)
             return 0
-        run_stream(sys.stdin, sys.stdout, RunClient(load_config()))
+        run_stream(sys.stdin, sys.stdout, make_client(load_config()))
         return 0
     except KeyboardInterrupt:
         sys.stderr.write("\n[voice] encerrado\n")

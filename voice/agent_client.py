@@ -1,9 +1,18 @@
+import json
 import subprocess
+import urllib.error
+import urllib.request
 
 from config import Config
 
+SESSION_TIMEOUT_S = 10
+
 
 class AgentError(RuntimeError):
+    pass
+
+
+class _SessionGone(AgentError):
     pass
 
 
@@ -40,3 +49,80 @@ class RunClient:
         if not proc.stdout.strip():
             raise AgentError("agente nao retornou resposta")
         return proc.stdout.strip()
+
+
+class ServeClient:
+    def __init__(self, config: Config):
+        self._cfg = config
+        self._session_id: str | None = None
+
+    def _post(self, path: str, payload: dict, timeout: int) -> dict:
+        url = self._cfg.server_url.rstrip("/") + path
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                raw = resp.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code in (404, 410):
+                raise _SessionGone(
+                    f"sessao expirada no servidor (HTTP {exc.code})"
+                ) from exc
+            raise AgentError(
+                f"falha ao falar com o servidor em {url} ({exc})"
+            ) from exc
+        except (OSError, ValueError) as exc:
+            raise AgentError(f"falha ao falar com o servidor em {url} ({exc})") from exc
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise AgentError(f"resposta invalida do servidor ({exc})") from exc
+        if not isinstance(data, dict):
+            raise AgentError("resposta invalida do servidor (esperado objeto JSON)")
+        return data
+
+    def _ensure_session(self, timeout: int) -> str:
+        if self._session_id:
+            return self._session_id
+        data = self._post("/session", {}, min(timeout, SESSION_TIMEOUT_S))
+        session_id = data.get("id")
+        if not session_id:
+            raise AgentError("servidor nao retornou id de sessao")
+        self._session_id = session_id
+        return session_id
+
+    def _request_reply(self, session_id: str, task: str, timeout: int) -> str:
+        data = self._post(
+            f"/session/{session_id}/message",
+            {"parts": [{"type": "text", "text": task}]},
+            timeout,
+        )
+        parts = data.get("parts") or []
+        text = "".join(
+            p.get("text", "") for p in parts if p.get("type") == "text"
+        ).strip()
+        if not text:
+            raise AgentError("agente nao retornou resposta")
+        return text
+
+    def ask(self, task: str, timeout_s: int | None = None) -> str:
+        task = (task or "").strip()
+        if not task:
+            raise AgentError("tarefa vazia")
+        timeout = timeout_s if timeout_s is not None else self._cfg.timeout_s
+        session_id = self._ensure_session(timeout)
+        try:
+            return self._request_reply(session_id, task, timeout)
+        except _SessionGone:
+            self._session_id = None
+            session_id = self._ensure_session(timeout)
+            return self._request_reply(session_id, task, timeout)
+
+
+def make_client(cfg: Config):
+    if cfg.agent_backend == "serve":
+        return ServeClient(cfg)
+    return RunClient(cfg)
