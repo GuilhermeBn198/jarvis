@@ -13,9 +13,7 @@ def test_ask_returns_stdout(monkeypatch):
     monkeypatch.setattr(subprocess, "run", fake_run)
     out = RunClient(CFG).ask("faca algo")
     assert out == "resposta"
-    assert seen["cmd"][0] == "/x/opencode"
-    assert seen["cmd"][1] == "run"
-    assert seen["cmd"][-1] == "faca algo"
+    assert seen["cmd"] == ["/x/opencode", "run", "--pure", "faca algo"]
 
 def test_empty_task_raises():
     with pytest.raises(AgentError):
@@ -24,6 +22,13 @@ def test_empty_task_raises():
 def test_missing_binary_raises(monkeypatch):
     def fake_run(*a, **k):
         raise FileNotFoundError()
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(AgentError):
+        RunClient(CFG).ask("x")
+
+def test_not_executable_binary_raises(monkeypatch):
+    def fake_run(*a, **k):
+        raise PermissionError()
     monkeypatch.setattr(subprocess, "run", fake_run)
     with pytest.raises(AgentError):
         RunClient(CFG).ask("x")

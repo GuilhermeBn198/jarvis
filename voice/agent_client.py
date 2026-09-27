@@ -16,7 +16,7 @@ class RunClient:
         task = (task or "").strip()
         if not task:
             raise AgentError("tarefa vazia")
-        timeout = timeout_s or self._cfg.timeout_s
+        timeout = timeout_s if timeout_s is not None else self._cfg.timeout_s
         try:
             proc = subprocess.run(
                 [self._cfg.opencode_bin, "run", "--pure", task],
@@ -25,7 +25,7 @@ class RunClient:
                 timeout=timeout,
                 cwd=self._cwd,
             )
-        except FileNotFoundError as exc:
+        except OSError as exc:
             raise AgentError(f"opencode nao encontrado em {self._cfg.opencode_bin}") from exc
         except subprocess.TimeoutExpired as exc:
             raise AgentError(f"timeout ({timeout}s) ao chamar o agente") from exc
