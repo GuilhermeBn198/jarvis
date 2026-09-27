@@ -46,3 +46,33 @@ test("deny vence ask: sudo rm -rf /", () => {
 test("pattern array: um comando perigoso no meio", () => {
   assert.equal(d("bash", ["echo oi", "rm -rf /"]).status, "deny");
 });
+test("deny: rm -rf ~", () => {
+  assert.equal(d("bash", "rm -rf ~").status, "deny");
+});
+test("deny: rm -rf ~/", () => {
+  assert.equal(d("bash", "rm -rf ~/").status, "deny");
+});
+test("deny: rm --recursive --force /", () => {
+  assert.equal(d("bash", "rm --recursive --force /").status, "deny");
+});
+test("deny: rm -Rf /", () => {
+  assert.equal(d("bash", "rm -Rf /").status, "deny");
+});
+test("deny: metachar antes de rm -rf / (multi-comando)", () => {
+  assert.equal(d("bash", "ls && rm -rf /").status, "deny");
+});
+test("deny: rm -rf / no inicio de texto multi-linha", () => {
+  assert.equal(d("bash", "rm -rf /\necho fim").status, "deny");
+});
+test("ask: redirecionamento para authorized_keys nao e allow", () => {
+  assert.equal(d("bash", "echo x > ~/.ssh/authorized_keys").status, "ask");
+});
+test("ask: redirecionamento simples nao e allow", () => {
+  assert.equal(d("bash", "cat a > b").status, "ask");
+});
+test("ask: git branch -D (mutante) nao e allow", () => {
+  assert.equal(d("bash", "git branch -D main").status, "ask");
+});
+test("deny: rm -rf / quando nao e o ultimo comando", () => {
+  assert.equal(d("bash", "rm -rf / && echo pronto").status, "deny");
+});
