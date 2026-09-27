@@ -51,6 +51,8 @@ voice/
 
 **Contratos (puros, testáveis com subprocess fake):**
 - `agent_client.ask(task: str, timeout_s: int = 300) -> str`
+  - Nota (C1): o contrato efetivo do C1 é o método `RunClient.ask(task, timeout_s=None)`;
+    isso supersede a redação "ask module-level" desta seção.
 - `tts.speak(text: str, to_file: str | None = None) -> None`
 - `stt.transcribe(wav_path: str) -> str` (retorna `""` se vazio)
 - `capture.record(seconds: float) -> str` (caminho do WAV)
