@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { askHook } from "./safety-gate.ts";
+import { askHook } from "../safety/hook.ts";
+import { SafetyGate } from "./safety-gate.ts";
 
 async function run(type: string, pattern?: string) {
   const output: { status: "allow" | "ask" | "deny" } = { status: "allow" };
@@ -16,4 +17,8 @@ test("wiring: read -> allow", async () => {
 });
 test("wiring: desconhecido -> ask", async () => {
   assert.equal(await run("bash", "coisa-desconhecida"), "ask");
+});
+test("factory exports permission.ask hook", async () => {
+  const hooks = await SafetyGate({} as any);
+  assert.equal(typeof (hooks as any)["permission.ask"], "function");
 });

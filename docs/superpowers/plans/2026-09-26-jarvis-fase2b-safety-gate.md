@@ -24,8 +24,9 @@
   package.json                  # dependência @opencode-ai/plugin (para o runtime)
   safety/rules.ts               # motor puro
   safety/rules.test.ts          # testes do motor
-  plugins/safety-gate.ts        # plugin: só wiring do hook permission.ask
-  plugins/safety-gate.test.ts   # teste do wiring (chama o hook direto)
+  safety/hook.ts                # hook permission.ask (fora de plugins/, não é varrido pelo loader)
+  plugins/safety-gate.ts        # plugin: SÓ a factory SafetyGate (exporta nada além dela)
+  plugins/safety-gate.test.ts   # teste do wiring (hook direto + wiring da factory)
   README.md                     # como testar e o que o gate cobre
 ```
 
@@ -253,6 +254,7 @@ git commit -m "feat(jarvis): motor de regras do SafetyGate (deterministico)"
 ### Task 2: Plugin `safety-gate` + wiring test
 
 **Files:**
+- Create: `.opencode/safety/hook.ts`
 - Create: `.opencode/plugins/safety-gate.ts`
 - Create: `.opencode/plugins/safety-gate.test.ts`
 - Create: `.opencode/package.json`
@@ -260,7 +262,14 @@ git commit -m "feat(jarvis): motor de regras do SafetyGate (deterministico)"
 
 **Interfaces:**
 - Consumes: `decide` (Task 1).
-- Produces: `askHook(input, output)` e `SafetyGate` (plugin do opencode).
+- Produces: `askHook(input, output)` em `safety/hook.ts` e `SafetyGate` (plugin do opencode)
+  em `plugins/safety-gate.ts`.
+
+> **Restrição crítica do loader:** o opencode invoca **toda** função exportada de um
+> arquivo em `.opencode/plugins/` como factory de plugin. Por isso `safety-gate.ts`
+> deve exportar **apenas** `SafetyGate`; `askHook` vive em `safety/hook.ts`, que o
+> loader não varre. Exportar `askHook` do módulo do plugin faz o loader chamá-lo como
+> `askHook(input, undefined)` no startup e aborta a carga ("failed to load plugin").
 
 - [ ] **Step 1: Escrever o teste de wiring que falha**
 
@@ -268,7 +277,8 @@ Create `.opencode/plugins/safety-gate.test.ts`:
 ```ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { askHook } from "./safety-gate.ts";
+import { askHook } from "../safety/hook.ts";
+import { SafetyGate } from "./safety-gate.ts";
 
 async function run(type: string, pattern?: string) {
   const output: { status: "allow" | "ask" | "deny" } = { status: "allow" };
@@ -285,6 +295,10 @@ test("wiring: read -> allow", async () => {
 test("wiring: desconhecido -> ask", async () => {
   assert.equal(await run("bash", "coisa-desconhecida"), "ask");
 });
+test("factory exports permission.ask hook", async () => {
+  const hooks = await SafetyGate({} as any);
+  assert.equal(typeof (hooks as any)["permission.ask"], "function");
+});
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -293,14 +307,13 @@ Run:
 ```bash
 node --test .opencode/plugins/safety-gate.test.ts
 ```
-Expected: FAIL (`Cannot find module './safety-gate.ts'`).
+Expected: FAIL (`Cannot find module '../safety/hook.ts'`).
 
-- [ ] **Step 3: Implementar `safety-gate.ts`**
+- [ ] **Step 3: Implementar o hook e o plugin**
 
-Create `.opencode/plugins/safety-gate.ts`:
+Create `.opencode/safety/hook.ts`:
 ```ts
-import type { Plugin } from "@opencode-ai/plugin";
-import { decide } from "../safety/rules.ts";
+import { decide } from "./rules.ts";
 
 export async function askHook(
   input: { type: string; pattern?: string | string[]; title?: string; metadata?: unknown },
@@ -312,6 +325,12 @@ export async function askHook(
     output.status = "ask"; // fail-safe
   }
 }
+```
+
+Create `.opencode/plugins/safety-gate.ts` (exporta **apenas** a factory):
+```ts
+import type { Plugin } from "@opencode-ai/plugin";
+import { askHook } from "../safety/hook.ts";
 
 export const SafetyGate: Plugin = async () => ({
   "permission.ask": askHook,
@@ -324,7 +343,7 @@ Create `.opencode/package.json`:
 ```json
 {
   "dependencies": {
-    "@opencode-ai/plugin": "1.16.2"
+    "@opencode-ai/plugin": "1.17.18"
   }
 }
 ```
@@ -340,12 +359,12 @@ Run:
 cd /home/guilherme/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
-Expected: `# pass 35` (32 + 3), sem falhas.
+Expected: `# pass 36` (32 + 4), sem falhas.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add .opencode/plugins/safety-gate.ts .opencode/plugins/safety-gate.test.ts .opencode/package.json .gitignore
+git add .opencode/safety/hook.ts .opencode/plugins/safety-gate.ts .opencode/plugins/safety-gate.test.ts .opencode/package.json .gitignore
 git commit -m "feat(jarvis): plugin safety-gate liga o hook permission.ask ao motor"
 ```
 
@@ -390,14 +409,14 @@ Run:
 cd /home/guilherme/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
-Expected: `# pass 35`.
+Expected: `# pass 36`.
 
 - [ ] **Step 3: Confirmar que o opencode carrega o plugin sem erro**
 
 Run:
 ```bash
 cd /home/guilherme/github/jarvis
-timeout 60 opencode run --print-logs "responda apenas: ok" 2>&1 | grep -iE 'safety-gate|plugin.*error|error.*plugin' | head -10 || echo "(sem erros de plugin)"
+timeout 60 opencode run --print-logs "responda apenas: ok" 2>&1 | grep -iE 'safety-gate|failed to load plugin|plugin.*error' | head -10 || echo "(sem erros de plugin)"
 ```
 Expected: sem erro de carregamento de plugin. (Se o log não citar o plugin, considere OK desde que não haja erro.)
 
@@ -410,7 +429,7 @@ Create `docs/notes/fase2b-verification.md`:
 Data: 2026-09-26
 
 ## Unit
-- [ ] `node --test ...` = 35 passed
+- [ ] `node --test ...` = 36 passed
 
 ## Carregamento no opencode
 - [ ] plugin carregado sem erro (log)
@@ -433,4 +452,4 @@ git commit -m "docs(jarvis): README e verificacao da Fase 2-B"
 
 **1. Cobertura do spec:** arquitetura (§2 → Tasks 1-2), contrato (§3 → Task 1), integração/permission.ask (§4 → Task 2), erro/fail-safe (§5 → Task 2 `try/catch`→ask), testes (§6 → Tasks 1-3), adiados (§7 → fora do plano), critério de sucesso (§9 → Task 3).
 **2. Placeholders:** os `[ ]`/nota de observações em `fase2b-verification.md` são campos de registro (intencional).
-**3. Consistência:** `decide`, `Decision`, `askHook`, `SafetyGate` e o shape `{type, pattern}` idênticos entre tasks; contagem de testes coerente (32 + 3 = 35).
+**3. Consistência:** `decide`, `Decision`, `askHook` (em `safety/hook.ts`), `SafetyGate` e o shape `{type, pattern}` idênticos entre tasks; `plugins/safety-gate.ts` exporta só `SafetyGate`; contagem de testes coerente (32 + 4 = 36).
