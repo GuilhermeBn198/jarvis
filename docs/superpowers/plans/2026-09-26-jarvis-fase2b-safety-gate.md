@@ -24,8 +24,9 @@
   package.json                  # dependência @opencode-ai/plugin (para o runtime)
   safety/rules.ts               # motor puro
   safety/rules.test.ts          # testes do motor
-  plugins/safety-gate.ts        # plugin: só wiring do hook permission.ask
-  plugins/safety-gate.test.ts   # teste do wiring (chama o hook direto)
+  safety/hook.ts                # hook permission.ask (fora de plugins/, não é varrido pelo loader)
+  plugins/safety-gate.ts        # plugin: SÓ a factory SafetyGate (exporta nada além dela)
+  plugins/safety-gate.test.ts   # teste do wiring (hook direto + wiring da factory)
   README.md                     # como testar e o que o gate cobre
 ```
 
@@ -40,7 +41,7 @@
 **Interfaces:**
 - Produces: `decide(input) -> Decision`; `Decision`; `ActionInput`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 Create `.opencode/safety/rules.test.ts`:
 ```ts
@@ -92,9 +93,66 @@ test("deny vence ask: sudo rm -rf /", () => {
 test("pattern array: um comando perigoso no meio", () => {
   assert.equal(d("bash", ["echo oi", "rm -rf /"]).status, "deny");
 });
+test("deny: rm -rf ~", () => {
+  assert.equal(d("bash", "rm -rf ~").status, "deny");
+});
+test("deny: rm -rf ~/", () => {
+  assert.equal(d("bash", "rm -rf ~/").status, "deny");
+});
+test("deny: rm --recursive --force /", () => {
+  assert.equal(d("bash", "rm --recursive --force /").status, "deny");
+});
+test("deny: rm -Rf /", () => {
+  assert.equal(d("bash", "rm -Rf /").status, "deny");
+});
+test("deny: metachar antes de rm -rf / (multi-comando)", () => {
+  assert.equal(d("bash", "ls && rm -rf /").status, "deny");
+});
+test("deny: rm -rf / no inicio de texto multi-linha", () => {
+  assert.equal(d("bash", "rm -rf /\necho fim").status, "deny");
+});
+test("ask: redirecionamento para authorized_keys nao e allow", () => {
+  assert.equal(d("bash", "echo x > ~/.ssh/authorized_keys").status, "ask");
+});
+test("ask: redirecionamento simples nao e allow", () => {
+  assert.equal(d("bash", "cat a > b").status, "ask");
+});
+test("ask: git branch -D (mutante) nao e allow", () => {
+  assert.equal(d("bash", "git branch -D main").status, "ask");
+});
+test("deny: rm -rf / quando nao e o ultimo comando", () => {
+  assert.equal(d("bash", "rm -rf / && echo pronto").status, "deny");
+});
+test("ask: multi-linha git status + git branch -D nao e allow", () => {
+  const status = d("bash", "git status\ngit branch -D main").status;
+  assert.notEqual(status, "allow");
+  assert.equal(status, "ask");
+});
+test("ask: multi-linha ls + git push nao e allow", () => {
+  const status = d("bash", "ls\ngit push origin main").status;
+  assert.notEqual(status, "allow");
+});
+test("ask: git diff --output nao e allow", () => {
+  assert.equal(d("bash", "git diff --output=/etc/x").status, "ask");
+});
+test("deny: rm -rf /*", () => {
+  assert.equal(d("bash", "rm -rf /*").status, "deny");
+});
+test("deny: rm -rf ~/*", () => {
+  assert.equal(d("bash", "rm -rf ~/*").status, "deny");
+});
+test("deny: rm -rf ${HOME}", () => {
+  assert.equal(d("bash", "rm -rf ${HOME}").status, "deny");
+});
+test("deny: rm -rf /home/user", () => {
+  assert.equal(d("bash", "rm -rf /home/user").status, "deny");
+});
+test("ask: glob ls *.txt nao e allow", () => {
+  assert.equal(d("bash", "ls *.txt").status, "ask");
+});
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run:
 ```bash
@@ -103,7 +161,7 @@ node --test .opencode/safety/rules.test.ts
 ```
 Expected: FAIL (`Cannot find module './rules.ts'`).
 
-- [ ] **Step 3: Implementar `rules.ts`**
+- [x] **Step 3: Implementar `rules.ts`**
 
 Create `.opencode/safety/rules.ts`:
 ```ts
@@ -117,9 +175,8 @@ export type ActionInput = {
 };
 
 const DENY: Array<[RegExp, string]> = [
-  [/\brm\s+(-[a-zA-Z]*[rf][a-zA-Z]*\s+)+(\/|~|\$HOME)\b/, "remocao recursiva de raiz/home"],
   [/\bmkfs(\.\w+)?\b/, "formatacao de filesystem"],
-  [/\bdd\b[^\n]*\bof=\/dev\//, "escrita em device de bloco"],
+  [/\bdd\b[^\n]*\bof\s*=\s*\/dev\//, "escrita em device de bloco"],
   [/:\s*\(\s*\)\s*\{.*\|.*&.*\}\s*;\s*:/, "fork bomb"],
   [/\b(shred|wipefs)\b/, "destruicao de dados"],
 ];
@@ -136,35 +193,55 @@ const ASK: Array<[RegExp, string]> = [
 
 const ALLOW_TYPES = new Set(["read", "glob", "grep", "list"]);
 const ALLOW_CMD = [
-  /^\s*git\s+(status|diff|log|show|branch|remote)\b/,
-  /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)\b/,
+  /^\s*git\s+(status|diff|log|show)(\s|$)/,
+  /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,
 ];
+const UNSAFE_FOR_ALLOW = /[;&|><`$(){}\[\]*?\n\r]/;
+
+function isDangerousRm(text: string): boolean {
+  for (const line of text.split("\n")) {
+    if (!/\brm\b/.test(line)) continue;
+    const recursive = /(?:--recursive\b|-[a-z]*r[a-z]*\b)/i.test(line);
+    const force = /(?:--force\b|-[a-z]*f[a-z]*\b)/i.test(line);
+    // Qualquer alvo absoluto ou relativo ao home e "rootish". Consequencia
+    // deliberada: `rm -rf /tmp` agora e deny (antes ask) — tradeoff safety-first.
+    const rootish = /(?:^|\s)(?:\/|~|\$HOME|\$\{HOME\})(?:[^\s]*)(?:\s|$|[;&|])/.test(line);
+    if (recursive && force && rootish) return true;
+  }
+  return false;
+}
 
 export function decide(input: ActionInput): Decision {
   const patterns =
     input.pattern === undefined ? [] : Array.isArray(input.pattern) ? input.pattern : [input.pattern];
   const text = patterns.join("\n");
 
+  if (isDangerousRm(text)) return { status: "deny", reason: "rm recursivo+forcado de raiz/home" };
   for (const [re, reason] of DENY) if (re.test(text)) return { status: "deny", reason };
   for (const [re, reason] of ASK) if (re.test(text)) return { status: "ask", reason };
 
   if (ALLOW_TYPES.has(input.type)) return { status: "allow", reason: `tipo seguro: ${input.type}` };
-  if (input.type === "bash" && ALLOW_CMD.some((re) => re.test(text))) {
+  if (
+    input.type === "bash" &&
+    !UNSAFE_FOR_ALLOW.test(text) &&
+    !/(^|\s)-{1,2}o(utput)?\b/.test(text) &&
+    ALLOW_CMD.some((re) => re.test(text))
+  ) {
     return { status: "allow", reason: "comando de leitura" };
   }
   return { status: "ask", reason: "desconhecido (conservador)" };
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run:
 ```bash
 node --test .opencode/safety/rules.test.ts
 ```
-Expected: `# pass 14` (todos passam).
+Expected: `# pass 32` (todos passam).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/guilherme/github/jarvis
@@ -177,6 +254,7 @@ git commit -m "feat(jarvis): motor de regras do SafetyGate (deterministico)"
 ### Task 2: Plugin `safety-gate` + wiring test
 
 **Files:**
+- Create: `.opencode/safety/hook.ts`
 - Create: `.opencode/plugins/safety-gate.ts`
 - Create: `.opencode/plugins/safety-gate.test.ts`
 - Create: `.opencode/package.json`
@@ -184,15 +262,23 @@ git commit -m "feat(jarvis): motor de regras do SafetyGate (deterministico)"
 
 **Interfaces:**
 - Consumes: `decide` (Task 1).
-- Produces: `askHook(input, output)` e `SafetyGate` (plugin do opencode).
+- Produces: `askHook(input, output)` em `safety/hook.ts` e `SafetyGate` (plugin do opencode)
+  em `plugins/safety-gate.ts`.
 
-- [ ] **Step 1: Escrever o teste de wiring que falha**
+> **Restrição crítica do loader:** o opencode invoca **toda** função exportada de um
+> arquivo em `.opencode/plugins/` como factory de plugin. Por isso `safety-gate.ts`
+> deve exportar **apenas** `SafetyGate`; `askHook` vive em `safety/hook.ts`, que o
+> loader não varre. Exportar `askHook` do módulo do plugin faz o loader chamá-lo como
+> `askHook(input, undefined)` no startup e aborta a carga ("failed to load plugin").
+
+- [x] **Step 1: Escrever o teste de wiring que falha**
 
 Create `.opencode/plugins/safety-gate.test.ts`:
 ```ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { askHook } from "./safety-gate.ts";
+import { askHook } from "../safety/hook.ts";
+import { SafetyGate } from "./safety-gate.ts";
 
 async function run(type: string, pattern?: string) {
   const output: { status: "allow" | "ask" | "deny" } = { status: "allow" };
@@ -209,22 +295,25 @@ test("wiring: read -> allow", async () => {
 test("wiring: desconhecido -> ask", async () => {
   assert.equal(await run("bash", "coisa-desconhecida"), "ask");
 });
+test("factory exports permission.ask hook", async () => {
+  const hooks = await SafetyGate({} as any);
+  assert.equal(typeof (hooks as any)["permission.ask"], "function");
+});
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run:
 ```bash
 node --test .opencode/plugins/safety-gate.test.ts
 ```
-Expected: FAIL (`Cannot find module './safety-gate.ts'`).
+Expected: FAIL (`Cannot find module '../safety/hook.ts'`).
 
-- [ ] **Step 3: Implementar `safety-gate.ts`**
+- [x] **Step 3: Implementar o hook e o plugin**
 
-Create `.opencode/plugins/safety-gate.ts`:
+Create `.opencode/safety/hook.ts`:
 ```ts
-import type { Plugin } from "@opencode-ai/plugin";
-import { decide } from "../safety/rules.ts";
+import { decide } from "./rules.ts";
 
 export async function askHook(
   input: { type: string; pattern?: string | string[]; title?: string; metadata?: unknown },
@@ -236,19 +325,25 @@ export async function askHook(
     output.status = "ask"; // fail-safe
   }
 }
+```
+
+Create `.opencode/plugins/safety-gate.ts` (exporta **apenas** a factory):
+```ts
+import type { Plugin } from "@opencode-ai/plugin";
+import { askHook } from "../safety/hook.ts";
 
 export const SafetyGate: Plugin = async () => ({
   "permission.ask": askHook,
 });
 ```
 
-- [ ] **Step 4: Criar `.opencode/package.json` e ignorar node_modules**
+- [x] **Step 4: Criar `.opencode/package.json` e ignorar node_modules**
 
 Create `.opencode/package.json`:
 ```json
 {
   "dependencies": {
-    "@opencode-ai/plugin": "1.16.2"
+    "@opencode-ai/plugin": "1.17.18"
   }
 }
 ```
@@ -257,19 +352,19 @@ Append ao `.gitignore` do repo:
 .opencode/node_modules/
 ```
 
-- [ ] **Step 5: Rodar e ver passar (os dois testes)**
+- [x] **Step 5: Rodar e ver passar (os dois testes)**
 
 Run:
 ```bash
 cd /home/guilherme/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
-Expected: `# pass 17` (14 + 3), sem falhas.
+Expected: `# pass 36` (32 + 4), sem falhas.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
-git add .opencode/plugins/safety-gate.ts .opencode/plugins/safety-gate.test.ts .opencode/package.json .gitignore
+git add .opencode/safety/hook.ts .opencode/plugins/safety-gate.ts .opencode/plugins/safety-gate.test.ts .opencode/package.json .gitignore
 git commit -m "feat(jarvis): plugin safety-gate liga o hook permission.ask ao motor"
 ```
 
@@ -284,7 +379,7 @@ git commit -m "feat(jarvis): plugin safety-gate liga o hook permission.ask ao mo
 **Interfaces:**
 - Consumes: tudo acima.
 
-- [ ] **Step 1: Criar `.opencode/README.md`**
+- [x] **Step 1: Criar `.opencode/README.md`**
 
 Create `.opencode/README.md`:
 ```markdown
@@ -307,25 +402,25 @@ Plugin de projeto que implementa um gate determinístico de permissões via o ho
 - O motor (`safety/rules.ts`) é puro e não depende do opencode; o plugin só faz o wiring.
 ```
 
-- [ ] **Step 2: Rodar a suíte completa**
+- [x] **Step 2: Rodar a suíte completa**
 
 Run:
 ```bash
 cd /home/guilherme/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
-Expected: `# pass 17`.
+Expected: `# pass 36`.
 
-- [ ] **Step 3: Confirmar que o opencode carrega o plugin sem erro**
+- [x] **Step 3: Confirmar que o opencode carrega o plugin sem erro**
 
 Run:
 ```bash
 cd /home/guilherme/github/jarvis
-timeout 60 opencode run --print-logs "responda apenas: ok" 2>&1 | grep -iE 'safety-gate|plugin.*error|error.*plugin' | head -10 || echo "(sem erros de plugin)"
+timeout 60 opencode run --print-logs "responda apenas: ok" 2>&1 | grep -iE 'safety-gate|failed to load plugin|plugin.*error' | head -10 || echo "(sem erros de plugin)"
 ```
 Expected: sem erro de carregamento de plugin. (Se o log não citar o plugin, considere OK desde que não haja erro.)
 
-- [ ] **Step 4: Registrar a verificação**
+- [x] **Step 4: Registrar a verificação**
 
 Create `docs/notes/fase2b-verification.md`:
 ```markdown
@@ -334,17 +429,17 @@ Create `docs/notes/fase2b-verification.md`:
 Data: 2026-09-26
 
 ## Unit
-- [ ] `node --test ...` = 17 passed
+- [x] `node --test ...` = 36 passed
 
 ## Carregamento no opencode
-- [ ] plugin carregado sem erro (log)
+- [x] plugin carregado sem erro (log)
 
 ## Observações
 (registrar o que de fato aconteceu, inclusive limitações — ex.: o hook não foi
 exercitado end-to-end de forma interativa; a cobertura vem dos testes de wiring)
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .opencode/README.md docs/notes/fase2b-verification.md
@@ -357,4 +452,22 @@ git commit -m "docs(jarvis): README e verificacao da Fase 2-B"
 
 **1. Cobertura do spec:** arquitetura (§2 → Tasks 1-2), contrato (§3 → Task 1), integração/permission.ask (§4 → Task 2), erro/fail-safe (§5 → Task 2 `try/catch`→ask), testes (§6 → Tasks 1-3), adiados (§7 → fora do plano), critério de sucesso (§9 → Task 3).
 **2. Placeholders:** os `[ ]`/nota de observações em `fase2b-verification.md` são campos de registro (intencional).
-**3. Consistência:** `decide`, `Decision`, `askHook`, `SafetyGate` e o shape `{type, pattern}` idênticos entre tasks; contagem de testes coerente (14 + 3 = 17).
+**3. Consistência:** `decide`, `Decision`, `askHook` (em `safety/hook.ts`), `SafetyGate` e o shape `{type, pattern}` idênticos entre tasks; `plugins/safety-gate.ts` exporta só `SafetyGate`; contagem de testes coerente (32 + 4 = 36).
+
+---
+
+## Adendo (2026-09-27) — gate efetivo via `tool.execute.before`
+
+O hook `permission.ask` **não é despachado** no runtime opencode 1.17.18 (ver
+`docs/notes/fase2b-verification.md`, §F3). Para o gate ter efeito real adicionou-se um
+segundo handler na factory `SafetyGate`, ao lado de `permission.ask` (mantido para
+forward-compat):
+
+- `safety/hook.ts`: `actionFromToolCall(tool, args)` + `beforeToolCall(tool, args)`.
+- `plugins/safety-gate.ts`: `"tool.execute.before": (input, output) => beforeToolCall(input.tool, output.args)`
+  — lança em `deny` (bloqueia a tool); `ask` não bloqueia.
+- Testes: novo `safety/hook.test.ts` (mapeamento + bloqueio) e a factory agora exige
+  **ambos** os hooks. Total: **54 passed**.
+
+Verificação e2e real: comando `dd … of=/dev/null` → `SafetyGate bloqueou (escrita em
+device de bloco)` (não executou); `ls -la` → executou. Ver `fase2b-verification.md`.
