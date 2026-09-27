@@ -29,14 +29,16 @@ const ALLOW_CMD = [
   /^\s*git\s+(status|diff|log|show)(\s|$)/,
   /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,
 ];
-const SHELL_META = /[;&|><`]|\$\(/;
+const UNSAFE_FOR_ALLOW = /[;&|><`$(){}\[\]*?\n\r]/;
 
 function isDangerousRm(text: string): boolean {
   for (const line of text.split("\n")) {
     if (!/\brm\b/.test(line)) continue;
     const recursive = /(?:--recursive\b|-[a-z]*r[a-z]*\b)/i.test(line);
     const force = /(?:--force\b|-[a-z]*f[a-z]*\b)/i.test(line);
-    const rootish = /(?:^|\s)(?:\/|~\/|~|\$HOME)(?:\s|$|[;&|])/.test(line);
+    // Qualquer alvo absoluto ou relativo ao home e "rootish". Consequencia
+    // deliberada: `rm -rf /tmp` agora e deny (antes ask) — tradeoff safety-first.
+    const rootish = /(?:^|\s)(?:\/|~|\$HOME|\$\{HOME\})(?:[^\s]*)(?:\s|$|[;&|])/.test(line);
     if (recursive && force && rootish) return true;
   }
   return false;
@@ -52,7 +54,12 @@ export function decide(input: ActionInput): Decision {
   for (const [re, reason] of ASK) if (re.test(text)) return { status: "ask", reason };
 
   if (ALLOW_TYPES.has(input.type)) return { status: "allow", reason: `tipo seguro: ${input.type}` };
-  if (input.type === "bash" && !SHELL_META.test(text) && ALLOW_CMD.some((re) => re.test(text))) {
+  if (
+    input.type === "bash" &&
+    !UNSAFE_FOR_ALLOW.test(text) &&
+    !/(^|\s)-{1,2}o(utput)?\b/.test(text) &&
+    ALLOW_CMD.some((re) => re.test(text))
+  ) {
     return { status: "allow", reason: "comando de leitura" };
   }
   return { status: "ask", reason: "desconhecido (conservador)" };

@@ -122,6 +122,33 @@ test("ask: git branch -D (mutante) nao e allow", () => {
 test("deny: rm -rf / quando nao e o ultimo comando", () => {
   assert.equal(d("bash", "rm -rf / && echo pronto").status, "deny");
 });
+test("ask: multi-linha git status + git branch -D nao e allow", () => {
+  const status = d("bash", "git status\ngit branch -D main").status;
+  assert.notEqual(status, "allow");
+  assert.equal(status, "ask");
+});
+test("ask: multi-linha ls + git push nao e allow", () => {
+  const status = d("bash", "ls\ngit push origin main").status;
+  assert.notEqual(status, "allow");
+});
+test("ask: git diff --output nao e allow", () => {
+  assert.equal(d("bash", "git diff --output=/etc/x").status, "ask");
+});
+test("deny: rm -rf /*", () => {
+  assert.equal(d("bash", "rm -rf /*").status, "deny");
+});
+test("deny: rm -rf ~/*", () => {
+  assert.equal(d("bash", "rm -rf ~/*").status, "deny");
+});
+test("deny: rm -rf ${HOME}", () => {
+  assert.equal(d("bash", "rm -rf ${HOME}").status, "deny");
+});
+test("deny: rm -rf /home/user", () => {
+  assert.equal(d("bash", "rm -rf /home/user").status, "deny");
+});
+test("ask: glob ls *.txt nao e allow", () => {
+  assert.equal(d("bash", "ls *.txt").status, "ask");
+});
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -168,14 +195,16 @@ const ALLOW_CMD = [
   /^\s*git\s+(status|diff|log|show)(\s|$)/,
   /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,
 ];
-const SHELL_META = /[;&|><`]|\$\(/;
+const UNSAFE_FOR_ALLOW = /[;&|><`$(){}\[\]*?\n\r]/;
 
 function isDangerousRm(text: string): boolean {
   for (const line of text.split("\n")) {
     if (!/\brm\b/.test(line)) continue;
     const recursive = /(?:--recursive\b|-[a-z]*r[a-z]*\b)/i.test(line);
     const force = /(?:--force\b|-[a-z]*f[a-z]*\b)/i.test(line);
-    const rootish = /(?:^|\s)(?:\/|~\/|~|\$HOME)(?:\s|$|[;&|])/.test(line);
+    // Qualquer alvo absoluto ou relativo ao home e "rootish". Consequencia
+    // deliberada: `rm -rf /tmp` agora e deny (antes ask) — tradeoff safety-first.
+    const rootish = /(?:^|\s)(?:\/|~|\$HOME|\$\{HOME\})(?:[^\s]*)(?:\s|$|[;&|])/.test(line);
     if (recursive && force && rootish) return true;
   }
   return false;
@@ -191,7 +220,12 @@ export function decide(input: ActionInput): Decision {
   for (const [re, reason] of ASK) if (re.test(text)) return { status: "ask", reason };
 
   if (ALLOW_TYPES.has(input.type)) return { status: "allow", reason: `tipo seguro: ${input.type}` };
-  if (input.type === "bash" && !SHELL_META.test(text) && ALLOW_CMD.some((re) => re.test(text))) {
+  if (
+    input.type === "bash" &&
+    !UNSAFE_FOR_ALLOW.test(text) &&
+    !/(^|\s)-{1,2}o(utput)?\b/.test(text) &&
+    ALLOW_CMD.some((re) => re.test(text))
+  ) {
     return { status: "allow", reason: "comando de leitura" };
   }
   return { status: "ask", reason: "desconhecido (conservador)" };
@@ -204,7 +238,7 @@ Run:
 ```bash
 node --test .opencode/safety/rules.test.ts
 ```
-Expected: `# pass 24` (todos passam).
+Expected: `# pass 32` (todos passam).
 
 - [ ] **Step 5: Commit**
 
@@ -306,7 +340,7 @@ Run:
 cd /home/guilherme/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
-Expected: `# pass 27` (24 + 3), sem falhas.
+Expected: `# pass 35` (32 + 3), sem falhas.
 
 - [ ] **Step 6: Commit**
 
@@ -356,7 +390,7 @@ Run:
 cd /home/guilherme/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
-Expected: `# pass 27`.
+Expected: `# pass 35`.
 
 - [ ] **Step 3: Confirmar que o opencode carrega o plugin sem erro**
 
@@ -376,7 +410,7 @@ Create `docs/notes/fase2b-verification.md`:
 Data: 2026-09-26
 
 ## Unit
-- [ ] `node --test ...` = 27 passed
+- [ ] `node --test ...` = 35 passed
 
 ## Carregamento no opencode
 - [ ] plugin carregado sem erro (log)
@@ -399,4 +433,4 @@ git commit -m "docs(jarvis): README e verificacao da Fase 2-B"
 
 **1. Cobertura do spec:** arquitetura (§2 → Tasks 1-2), contrato (§3 → Task 1), integração/permission.ask (§4 → Task 2), erro/fail-safe (§5 → Task 2 `try/catch`→ask), testes (§6 → Tasks 1-3), adiados (§7 → fora do plano), critério de sucesso (§9 → Task 3).
 **2. Placeholders:** os `[ ]`/nota de observações em `fase2b-verification.md` são campos de registro (intencional).
-**3. Consistência:** `decide`, `Decision`, `askHook`, `SafetyGate` e o shape `{type, pattern}` idênticos entre tasks; contagem de testes coerente (24 + 3 = 27).
+**3. Consistência:** `decide`, `Decision`, `askHook`, `SafetyGate` e o shape `{type, pattern}` idênticos entre tasks; contagem de testes coerente (32 + 3 = 35).

@@ -76,3 +76,30 @@ test("ask: git branch -D (mutante) nao e allow", () => {
 test("deny: rm -rf / quando nao e o ultimo comando", () => {
   assert.equal(d("bash", "rm -rf / && echo pronto").status, "deny");
 });
+test("ask: multi-linha git status + git branch -D nao e allow", () => {
+  const status = d("bash", "git status\ngit branch -D main").status;
+  assert.notEqual(status, "allow");
+  assert.equal(status, "ask");
+});
+test("ask: multi-linha ls + git push nao e allow", () => {
+  const status = d("bash", "ls\ngit push origin main").status;
+  assert.notEqual(status, "allow");
+});
+test("ask: git diff --output nao e allow", () => {
+  assert.equal(d("bash", "git diff --output=/etc/x").status, "ask");
+});
+test("deny: rm -rf /*", () => {
+  assert.equal(d("bash", "rm -rf /*").status, "deny");
+});
+test("deny: rm -rf ~/*", () => {
+  assert.equal(d("bash", "rm -rf ~/*").status, "deny");
+});
+test("deny: rm -rf ${HOME}", () => {
+  assert.equal(d("bash", "rm -rf ${HOME}").status, "deny");
+});
+test("deny: rm -rf /home/user", () => {
+  assert.equal(d("bash", "rm -rf /home/user").status, "deny");
+});
+test("ask: glob ls *.txt nao e allow", () => {
+  assert.equal(d("bash", "ls *.txt").status, "ask");
+});
