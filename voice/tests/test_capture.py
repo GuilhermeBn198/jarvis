@@ -21,5 +21,5 @@ def test_record_builds_dshow_command(monkeypatch, tmp_path):
 
 def test_missing_ffmpeg_raises(monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError()))
-    with pytest.raises(VoiceError):
+    with pytest.raises(VoiceError, match="FFMPEG_EXE=/ff/ffmpeg.exe"):
         record(1, out_path="/tmp/x.wav", config=CFG)

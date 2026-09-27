@@ -31,7 +31,7 @@ O binário `whisper.cpp` (Linux) falhou por depender de `libgomp.so.1`, ausente 
 [mic] ──ffmpeg.exe(dshow)──▶ wav
    │(WSL chama o ffmpeg.exe do Windows)
    ▼
-STT: whisper.cpp (binário Linux, CPU)  → texto
+STT: faster-whisper (pip, CPU)  → texto
    │
    ▼
 AgentClient: opencode serve (HTTP/SDK)  → resposta   (fallback: `opencode run`)
@@ -44,10 +44,10 @@ TTS: powershell.exe SAPI  → alto-falante
 
 ```
 voice/
-  config.py          # caminhos e env (OPENCODE_BIN, WHISPER_BIN, WHISPER_MODEL, FFMPEG_EXE, MIC_DEVICE)
+  config.py          # caminhos e env (OPENCODE_BIN, WHISPER_MODEL, FFMPEG_EXE, MIC_DEVICE, POWERSHELL_EXE)
   agent_client.py    # AgentClient.ask(task) -> str  (ServeClient; RunClient como fallback simples)
   tts.py             # speak(text, to_file=None) via powershell SAPI
-  stt.py             # transcribe(wav_path) -> str  via whisper.cpp
+  stt.py             # transcribe(wav_path) -> str  via faster-whisper
   capture.py         # record(seconds) -> wav_path  via ffmpeg.exe (dshow)
   loop.py            # o ciclo: grava → transcreve → pergunta → fala
   tests/
@@ -70,12 +70,14 @@ Cada módulo isola **um** subprocess/efeito; o `loop.py` só orquestra.
 - **C3 — STT + captura:** `ffmpeg.exe` grava N s (push-to-talk simples = Enter para iniciar/parar), `whisper.cpp` transcreve, alimenta C1, e a resposta é falada (C2). Fecha o loop.
 - **C4 (opcional) — hotword:** wake-word ("jarvis"). Adiado.
 
-**Latência:** a partir do C3, o `AgentClient` de produção é o **`serve`** (servidor `opencode serve` já no ar), não o `run` — senão cada turno pagaria ~60–90 s.
+**Latência:** a partir do C3, o `AgentClient` de produção era previsto como o **`serve`** (servidor `opencode serve` já no ar), não o `run` — senão cada turno pagaria ~60–90 s.
+
+> **Deferral (C2+C3, 2026-09-27):** o `ServeClient` **não** foi implementado nesta fase. A medição real de `RunClient.ask` (um `opencode run --pure` por turno) deu **~13 s**, não os ~60–90 s estimados no cold start, o que é aceitável para uso local. Mantém-se o `RunClient` como client de produção do C3; migrar para `opencode serve` fica registrado como trabalho futuro (ver `docs/notes/fasec-verification.md`).
 
 ## 5. Configuração
 
 - `OPENCODE_BIN` (default `~/.opencode/bin/opencode`), `OPENCODE_SERVER_URL` (default `http://127.0.0.1:4096`).
-- `WHISPER_BIN` (binário Linux do whisper.cpp), `WHISPER_MODEL` (ex.: `ggml-base.bin`), `FFMPEG_EXE` (caminho do `ffmpeg.exe` no Windows), `MIC_DEVICE` (nome dshow).
+- `WHISPER_MODEL` (modelo do faster-whisper, ex.: `base`), `FFMPEG_EXE` (caminho do `ffmpeg.exe` no Windows), `MIC_DEVICE` (nome dshow).
 
 ## 6. Tratamento de erro
 
