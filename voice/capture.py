@@ -130,7 +130,7 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
         while True:
             if time.monotonic() - t0 > max_s:
                 if heard_speech:
-                    _stop(wait=False)
+                    _stop(wait=True)
                 break
             try:
                 line = lines.get(timeout=0.2)
