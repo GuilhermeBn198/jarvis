@@ -30,7 +30,10 @@ const ASK: Array<[RegExp, string]> = [
   [/\brm\s+-[a-zA-Z]*r/, "remocao recursiva"],
 ];
 
-const ALLOW_TYPES = new Set(["read", "glob", "grep", "list"]);
+// `act` cobre as tools de acao no PC (act_type/act_key/act_open/act_click).
+// O padrao carrega o texto/alvo/x,y; os DENY/CREDENTIAL/isDangerousRm acima já
+// rodaram, entao texto benigno é allow.
+const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act"]);
 const ALLOW_CMD = [
   /^\s*git\s+(status|diff|log|show)(\s|$)/,
   /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,

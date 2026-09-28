@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decide } from "./rules.ts";
+import { actionFromToolCall } from "./hook.ts";
 
 const d = (type: string, pattern?: string | string[]) => decide({ type, pattern });
 
@@ -127,4 +128,17 @@ test("allow: cat README.md nao casa credencial", () => {
 });
 test("allow: cat environment.md nao casa credencial", () => {
   assert.equal(d("bash", "cat environment.md").status, "allow");
+});
+
+test("act_open destrutivo -> deny", () => {
+  const a = actionFromToolCall("act_open", { target: "cmd /c rm -rf /" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("act_type benigno -> allow", () => {
+  const a = actionFromToolCall("act_type", { text: "ola mundo" });
+  assert.equal(decide({ ...a }).status, "allow");
+});
+test("act_click -> allow", () => {
+  const a = actionFromToolCall("act_click", { x: 1, y: 2 });
+  assert.equal(decide({ ...a }).status, "allow");
 });

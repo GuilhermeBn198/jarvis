@@ -32,6 +32,10 @@ export function actionFromToolCall(
     const p = a.filePath ?? a.path;
     return { type: tool, pattern: typeof p === "string" ? p : undefined };
   }
+  if (tool === "act_type") return { type: "act", pattern: String(a.text ?? "") };
+  if (tool === "act_key") return { type: "act", pattern: String(a.keys ?? "") };
+  if (tool === "act_open") return { type: "act", pattern: String(a.target ?? "") };
+  if (tool === "act_click") return { type: "act", pattern: `${a.x},${a.y}` };
   return { type: tool };
 }
 
