@@ -49,3 +49,21 @@ test("beforeToolCall: comando de leitura -> não throw (allow)", () => {
 test("beforeToolCall: sudo -> não throw (ask não é bloqueado aqui)", () => {
   assert.doesNotThrow(() => beforeToolCall("bash", { command: "sudo apt update" }));
 });
+
+test("beforeToolCall: act_type com ask -> throw (act sem prompt interativo)", () => {
+  assert.throws(
+    () => beforeToolCall("act_type", { text: "sudo apt update" }),
+    /SafetyGate bloqueou/,
+  );
+});
+
+test("beforeToolCall: act_type benigno -> não throw (allow)", () => {
+  assert.doesNotThrow(() => beforeToolCall("act_type", { text: "ola mundo" }));
+});
+
+test("beforeToolCall: act_open com deny -> throw", () => {
+  assert.throws(
+    () => beforeToolCall("act_open", { target: "diskpart" }),
+    /SafetyGate bloqueou/,
+  );
+});

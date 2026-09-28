@@ -1,9 +1,10 @@
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
 
-from agent_client import AgentError, RunClient, make_client
+from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
 from capture import record, record_auto, record_ptt
 from config import load_config
 from convlog import log_turn
@@ -167,6 +168,80 @@ def see_once(prompt: str, out=None, err=None, config=None) -> None:
     )
 
 
+def do_once(prompt: str, out=None, err=None, config=None) -> None:
+    """Executa uma acao no PC pelo agente `act` (modo --do), sem voz.
+
+    Forca `--agent act` independentemente do `agent` configurado; erros viram
+    mensagem clara no stderr em vez de crash.
+    """
+    out = out if out is not None else sys.stdout
+    err = err if err is not None else sys.stderr
+    cfg = config or load_config()
+    prompt = (prompt or "").strip()
+    if not prompt:
+        err.write("[erro] --do exige um prompt\n")
+        err.flush()
+        return
+    # NAO usar --pure: ele desabilita os plugins do projeto e, com isso, as
+    # tools act_* (e o SafetyGate) ficam indisponiveis (verificado via
+    # `opencode run --agent act` com/sem --pure).
+    cmd = [cfg.opencode_bin, "run", "--agent", "act", prompt]
+    t0 = time.monotonic()
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=cfg.timeout_s,
+        )
+    except FileNotFoundError:
+        err.write(
+            f"[erro] opencode nao encontrado em {cfg.opencode_bin} "
+            f"(defina OPENCODE_BIN)\n"
+        )
+        err.flush()
+        return
+    except PermissionError:
+        err.write(f"[erro] opencode em {cfg.opencode_bin} nao e executavel\n")
+        err.flush()
+        return
+    except subprocess.TimeoutExpired:
+        err.write(f"[erro] timeout ({cfg.timeout_s}s) ao chamar o agente\n")
+        err.flush()
+        return
+    except OSError as exc:
+        err.write(f"[erro] falha ao executar opencode ({exc})\n")
+        err.flush()
+        return
+    t_agent = time.monotonic()
+    answer = strip_opencode_noise(proc.stdout or "").strip()
+    error = None
+    if proc.returncode != 0:
+        error = (
+            f"opencode falhou ({proc.returncode}): "
+            f"{(proc.stderr or '').strip()[:200]}"
+        )
+    if not answer:
+        answer = f"erro: {error}" if error else "agente nao retornou resposta"
+        error = error or "sem resposta"
+    spoken = speechify(answer)
+    out.write(answer + "\n")
+    out.flush()
+    log_turn(
+        {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "mode": "act",
+            "prompt": prompt,
+            "response": answer,
+            "spoken": spoken,
+            "error": error,
+            "agent_s": round(t_agent - t0, 3),
+        },
+        config=cfg,
+    )
+
+
 def run_stream(inp, out, client, err=None) -> None:
     err = err if err is not None else sys.stderr
     for line in inp:
@@ -227,6 +302,14 @@ def main(argv=None) -> int:
                 return 2
             cfg = load_config()
             voice_loop(resolve_client(cfg, sys.stderr), iterations=iterations)
+            return 0
+        if "--do" in args:
+            i = args.index("--do")
+            if i + 1 >= len(args):
+                sys.stderr.write("[erro] --do exige um prompt\n")
+                sys.stderr.flush()
+                return 2
+            do_once(args[i + 1])
             return 0
         run_stream(sys.stdin, sys.stdout, resolve_client(load_config(), sys.stderr))
         return 0

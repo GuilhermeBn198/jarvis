@@ -35,6 +35,10 @@ class RunClient:
         cmd = [self._cfg.opencode_bin, "run"]
         if self._cfg.agent:
             cmd += ["--agent", self._cfg.agent]
+        # `--pure` desabilita os plugins do projeto (incl. o SafetyGate e as
+        # tools act_*). So e seguro com um agente SEM tools (ex.: `chat`), que
+        # e o default da voz; assim o custo de carregar plugins e evitado sem
+        # abrir um buraco de execucao. NUNCA use `--pure` com agente com tools.
         cmd += ["--pure", task]
         try:
             proc = subprocess.run(
