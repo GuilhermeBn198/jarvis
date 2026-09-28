@@ -74,6 +74,14 @@ def test_backend_env_overrides():
     assert cfg.piper_out_wav == r"D:\out.wav"
 
 
+def test_ptt_defaults_true_and_env_overrides():
+    assert load_config({}).ptt is True
+    for truthy in ("1", "true", "TRUE", "yes", "on", " On "):
+        assert load_config({"VOICE_PTT": truthy}).ptt is True
+    for falsy in ("0", "false", "FALSE", "no", "off", "", "2", "sim"):
+        assert load_config({"VOICE_PTT": falsy}).ptt is False
+
+
 def test_serve_port_helper():
     from config import serve_port
     assert serve_port("http://127.0.0.1:4096") == 4096
