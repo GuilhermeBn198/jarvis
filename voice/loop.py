@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client
-from capture import record, record_ptt
+from capture import record, record_auto, record_ptt
 from config import load_config
 from convlog import log_turn
 from sanitize import speechify
@@ -42,7 +42,14 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         n += 1
         t0 = time.monotonic()
         try:
-            if cfg.ptt:
+            if cfg.input_mode == "auto":
+                wav = record_auto(config=cfg)
+                if not wav:
+                    err.write("[voz] nada detectado\n")
+                    err.flush()
+                    consecutive_errors = 0
+                    continue
+            elif cfg.input_mode == "ptt":
                 wav = record_ptt(config=cfg)
             else:
                 wav = record(seconds=secs, config=cfg)

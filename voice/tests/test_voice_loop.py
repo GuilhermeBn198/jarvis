@@ -7,7 +7,8 @@ from config import Config
 from loop import _parse_once, main, voice_loop
 from tts import VoiceError
 
-CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, ptt=False)
+CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="fixed", ptt=False)
+AUTO_CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="auto")
 
 
 @pytest.fixture(autouse=True)
@@ -79,7 +80,7 @@ def test_voice_loop_orchestrates(monkeypatch):
 
 def test_voice_loop_uses_ptt_when_enabled(monkeypatch):
     calls = []
-    ptt_cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, ptt=True)
+    ptt_cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="ptt", ptt=True)
     monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
     monkeypatch.setattr("loop.record_ptt", lambda **k: calls.append("record_ptt") or "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
@@ -102,6 +103,43 @@ def test_voice_loop_uses_fixed_window_when_ptt_disabled(monkeypatch):
             return "x"
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert calls == ["record"]
+
+
+def test_voice_loop_auto_no_speech_skips_agent(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "loop.record_auto", lambda **k: calls.append("record_auto") or ""
+    )
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "oi")
+    monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
+    err = io.StringIO()
+
+    class Client:
+        def ask(self, *a, **k):
+            calls.append("ask")
+            return "x"
+    voice_loop(client=Client(), iterations=1, config=AUTO_CFG, err=err)
+    assert calls == ["record_auto"]
+    assert "nada detectado" in err.getvalue()
+
+
+def test_voice_loop_auto_with_speech_transcribes_asks_speaks(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "loop.record_auto",
+        lambda **k: calls.append("record_auto") or "/tmp/a.wav",
+    )
+    monkeypatch.setattr(
+        "loop.transcribe", lambda wav, **k: calls.append("stt") or "faca algo"
+    )
+    monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            calls.append("ask")
+            return "resposta"
+    voice_loop(client=Client(), iterations=1, config=AUTO_CFG)
+    assert calls == ["record_auto", "stt", "ask", "tts"]
 
 
 def test_voice_loop_empty_transcript_skips_agent(monkeypatch):

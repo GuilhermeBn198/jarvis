@@ -74,12 +74,42 @@ def test_backend_env_overrides():
     assert cfg.piper_out_wav == r"D:\out.wav"
 
 
-def test_ptt_defaults_true_and_env_overrides():
-    assert load_config({}).ptt is True
+def test_input_mode_defaults_auto():
+    cfg = load_config({})
+    assert cfg.input_mode == "auto"
+    assert cfg.ptt is False
+    assert cfg.record_seconds == 5
+
+
+def test_input_mode_env_overrides():
+    assert load_config({"VOICE_INPUT": "ptt"}).input_mode == "ptt"
+    assert load_config({"VOICE_INPUT": "ptt"}).ptt is True
+    assert load_config({"VOICE_INPUT": "fixed"}).input_mode == "fixed"
+    assert load_config({"VOICE_INPUT": "fixed"}).ptt is False
+    assert load_config({"VOICE_INPUT": "AUTO"}).input_mode == "auto"
+    assert load_config({"VOICE_INPUT": " auto "}).input_mode == "auto"
+
+
+def test_input_mode_invalid_raises():
+    with pytest.raises(ValueError) as exc:
+        load_config({"VOICE_INPUT": "nope"})
+    assert "VOICE_INPUT" in str(exc.value)
+    assert "nope" in str(exc.value)
+
+
+def test_legacy_voice_ptt_maps_to_input_mode():
     for truthy in ("1", "true", "TRUE", "yes", "on", " On "):
+        assert load_config({"VOICE_PTT": truthy}).input_mode == "ptt"
         assert load_config({"VOICE_PTT": truthy}).ptt is True
     for falsy in ("0", "false", "FALSE", "no", "off", "", "2", "sim"):
+        assert load_config({"VOICE_PTT": falsy}).input_mode == "fixed"
         assert load_config({"VOICE_PTT": falsy}).ptt is False
+
+
+def test_voice_input_wins_over_legacy_ptt():
+    cfg = load_config({"VOICE_PTT": "1", "VOICE_INPUT": "auto"})
+    assert cfg.input_mode == "auto"
+    assert cfg.ptt is False
 
 
 def test_serve_port_helper():
