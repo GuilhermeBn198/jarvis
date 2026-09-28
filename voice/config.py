@@ -82,7 +82,7 @@ def load_config(env: dict | None = None) -> Config:
         raise ValueError(
             f"TTS_BACKEND deve ser 'sapi' ou 'piper': {tts_backend}"
         )
-    ptt = str(e.get("VOICE_PTT", "1")).strip().lower() not in ("0", "false")
+    ptt = str(e.get("VOICE_PTT", "1")).strip().lower() in ("1", "true", "yes", "on")
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,

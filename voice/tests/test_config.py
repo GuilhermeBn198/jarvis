@@ -76,10 +76,10 @@ def test_backend_env_overrides():
 
 def test_ptt_defaults_true_and_env_overrides():
     assert load_config({}).ptt is True
-    assert load_config({"VOICE_PTT": "1"}).ptt is True
-    assert load_config({"VOICE_PTT": "0"}).ptt is False
-    assert load_config({"VOICE_PTT": "false"}).ptt is False
-    assert load_config({"VOICE_PTT": "FALSE"}).ptt is False
+    for truthy in ("1", "true", "TRUE", "yes", "on", " On "):
+        assert load_config({"VOICE_PTT": truthy}).ptt is True
+    for falsy in ("0", "false", "FALSE", "no", "off", "", "2", "sim"):
+        assert load_config({"VOICE_PTT": falsy}).ptt is False
 
 
 def test_serve_port_helper():

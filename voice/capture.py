@@ -29,17 +29,17 @@ def record_ptt(out_path: str | None = None, config: Config | None = None,
     out = out_path or "/tmp/jarvis_rec.wav"
     cmd = [cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i",
            f"audio={cfg.mic_device}", out]
+    prompt_fn("Pressione Enter para comecar a gravar...")
     try:
         proc = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(
             f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
         ) from exc
     try:
-        prompt_fn("Pressione Enter para comecar a gravar...")
         prompt_fn("Fale agora. Pressione Enter para parar...")
         proc.stdin.write(b"q")
         proc.stdin.flush()
@@ -48,6 +48,13 @@ def record_ptt(out_path: str | None = None, config: Config | None = None,
         raise VoiceError(
             f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
         ) from exc
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            try:
+                proc.wait(timeout=5)
+            except Exception:
+                pass
     if proc.returncode != 0:
         raise VoiceError(f"ffmpeg falhou ({proc.returncode})")
     return out

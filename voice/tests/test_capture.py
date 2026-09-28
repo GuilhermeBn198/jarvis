@@ -20,9 +20,30 @@ class FakeProc:
         self.stdin = FakeStdin()
         self.returncode = 0
         self.waited = None
+        self.killed = False
     def wait(self, timeout=None):
         self.waited = timeout
         return self.returncode
+    def poll(self):
+        return None if self.waited is None else self.returncode
+    def kill(self):
+        self.killed = True
+
+
+class HangingProc(FakeProc):
+    def __init__(self, cmd):
+        super().__init__(cmd)
+        self.alive = True
+    def wait(self, timeout=None):
+        if self.alive:
+            raise subprocess.TimeoutExpired(self.cmd, timeout)
+        self.waited = timeout
+        return self.returncode
+    def poll(self):
+        return None if self.alive else self.returncode
+    def kill(self):
+        self.killed = True
+        self.alive = False
 
 def test_record_builds_dshow_command(monkeypatch, tmp_path):
     seen = {}
@@ -66,6 +87,8 @@ def test_record_ptt_starts_ffmpeg_and_stops_with_q(monkeypatch, tmp_path):
     assert "parar" in prompts[1]
     assert seen["proc"].stdin.data == b"q"
     assert seen["proc"].waited == 20
+    assert seen["proc"].killed is False
+    assert seen["kw"]["stderr"] is subprocess.DEVNULL
     assert result == out
 
 
@@ -86,3 +109,32 @@ def test_record_ptt_nonzero_raises(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kw: BadProc(cmd))
     with pytest.raises(VoiceError, match="ffmpeg falhou"):
         record_ptt(out_path="/tmp/x.wav", config=CFG, prompt_fn=lambda *a: None)
+
+
+def test_record_ptt_kills_and_reaps_on_timeout(monkeypatch):
+    seen = {}
+    def fake_popen(cmd, **kw):
+        proc = HangingProc(cmd)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    with pytest.raises(VoiceError, match="falha ao gravar audio"):
+        record_ptt(out_path="/tmp/x.wav", config=CFG, prompt_fn=lambda *a: None)
+    assert seen["proc"].killed is True
+    assert seen["proc"].waited == 5
+
+
+def test_record_ptt_kills_and_reaps_on_broken_pipe(monkeypatch):
+    seen = {}
+    def fake_popen(cmd, **kw):
+        proc = FakeProc(cmd)
+        def boom(_):
+            raise BrokenPipeError("pipe fechado")
+        proc.stdin.write = boom
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    with pytest.raises(VoiceError, match="falha ao gravar audio"):
+        record_ptt(out_path="/tmp/x.wav", config=CFG, prompt_fn=lambda *a: None)
+    assert seen["proc"].killed is True
+    assert seen["proc"].waited == 5

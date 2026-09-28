@@ -107,12 +107,14 @@ def test_voice_loop_uses_fixed_window_when_ptt_disabled(monkeypatch):
 def test_voice_loop_empty_transcript_skips_agent(monkeypatch):
     calls = []
     monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.record_ptt", lambda **k: calls.append("record_ptt") or "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "")
     monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
     class Client:
         def ask(self, *a, **k):
             calls.append("ask"); return "x"
-    voice_loop(client=Client(), iterations=1, record_seconds=1)
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert calls == ["record", "stt"]
     assert "ask" not in calls
 
 
