@@ -33,6 +33,13 @@
         "bash": "ask"
       }
     },
+    "act": {
+      "description": "Executa acoes no PC (digitar, teclas, clicar, abrir) com seguranca.",
+      "mode": "primary",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "prompt": "Voce controla o PC do usuario via as tools act_*. Use o MINIMO necessario; explique em uma frase o que vai fazer.",
+      "permission": { "edit": "deny", "bash": "deny" }
+    },
     "orchestrator": {
       "description": "Orquestrador: planeja e decompoe tarefas e mantem o raciocinio pesado na nuvem. A delegacao automatica ao modelo local foi DESCARTADA (ver docs/notes/fase1-verification.md); o modelo local segue disponivel via @local-executor.",
       "mode": "primary",
