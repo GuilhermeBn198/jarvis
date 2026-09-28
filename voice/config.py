@@ -50,6 +50,7 @@ class Config:
     vision_model: str = DEFAULT_VISION_MODEL
     vision_trigger: str = DEFAULT_VISION_TRIGGER
     vision_png: str = DEFAULT_VISION_PNG
+    ptt: bool = True
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -81,6 +82,7 @@ def load_config(env: dict | None = None) -> Config:
         raise ValueError(
             f"TTS_BACKEND deve ser 'sapi' ou 'piper': {tts_backend}"
         )
+    ptt = str(e.get("VOICE_PTT", "1")).strip().lower() not in ("0", "false")
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -102,4 +104,5 @@ def load_config(env: dict | None = None) -> Config:
         vision_model=e.get("VISION_MODEL", DEFAULT_VISION_MODEL),
         vision_trigger=e.get("VISION_TRIGGER", DEFAULT_VISION_TRIGGER),
         vision_png=e.get("VISION_PNG", DEFAULT_VISION_PNG),
+        ptt=ptt,
     )

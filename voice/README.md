@@ -12,6 +12,16 @@ Ponte de texto: stdin → agente (opencode) → stdout.
     python loop.py --voice          # loop de voz (Ctrl+C para sair)
     python loop.py --voice --once 1 # uma rodada (para teste)
 
+#### Push-to-talk (default)
+Por padrão a gravação é **push-to-talk**: o loop pede Enter para começar,
+você fala e aperta Enter de novo para parar — sem janela fixa que corta a
+fala. O STT usa VAD (`vad_filter=True`) e descarta áudio sem fala, evitando
+alucinações do Whisper em silêncio/ruído.
+
+Para voltar à janela fixa de `RECORD_SECONDS` segundos:
+
+    VOICE_PTT=0 python loop.py --voice
+
 Por padrão a voz usa `serve` (agente) + `piper` (TTS). O loop sobe o
 `opencode serve` automaticamente se ele ainda não estiver no ar; se não
 conseguir, avisa e cai para o backend `run` (mais lento), então a voz
@@ -73,7 +83,8 @@ contra `sapi` ~4s. No total, `serve`+`piper` ~4,8s contra `run`+`sapi` ~20s.
 | `FFMPEG_EXE` | caminho do ffmpeg.exe do Windows (acima) | binário de captura |
 | `MIC_DEVICE` | `Microphone (FIFINE Microphone)` | nome do device dshow |
 | `WHISPER_MODEL` | `base` | modelo do faster-whisper |
-| `RECORD_SECONDS` | `5` | duração da gravação por turno |
+| `RECORD_SECONDS` | `5` | duração da gravação por turno (só com `VOICE_PTT=0`) |
+| `VOICE_PTT` | `1` | push-to-talk (Enter/Enter); `0`/`false` usa a janela fixa |
 | `VOICE_LANGUAGE` | `pt` | idioma do STT |
 | `POWERSHELL_EXE` | `powershell.exe` | PowerShell para o TTS (SAPI) |
 | `OPENCODE_BIN` | `~/.opencode/bin/opencode` | binário do agente |

@@ -7,7 +7,7 @@ from config import Config
 from loop import _parse_once, main, voice_loop
 from tts import VoiceError
 
-CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1)
+CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, ptt=False)
 
 
 @pytest.fixture(autouse=True)
@@ -74,8 +74,35 @@ def test_voice_loop_orchestrates(monkeypatch):
         def ask(self, task, timeout_s=None):
             calls.append("ask")
             return "resposta"
-    voice_loop(client=Client(), iterations=1, record_seconds=1)
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert calls == ["record", "stt", "ask", "tts"]
+
+def test_voice_loop_uses_ptt_when_enabled(monkeypatch):
+    calls = []
+    ptt_cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, ptt=True)
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.record_ptt", lambda **k: calls.append("record_ptt") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
+
+    class Client:
+        def ask(self, *a, **k):
+            return "x"
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=ptt_cfg)
+    assert calls == ["record_ptt"]
+
+
+def test_voice_loop_uses_fixed_window_when_ptt_disabled(monkeypatch):
+    calls = []
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.record_ptt", lambda **k: calls.append("record_ptt") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
+
+    class Client:
+        def ask(self, *a, **k):
+            return "x"
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert calls == ["record"]
+
 
 def test_voice_loop_empty_transcript_skips_agent(monkeypatch):
     calls = []
