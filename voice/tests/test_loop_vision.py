@@ -7,7 +7,7 @@ import loop as loop_mod
 from config import Config
 from sanitize import speechify
 
-CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, ptt=False)
+CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="fixed", ptt=False)
 
 
 @pytest.fixture(autouse=True)

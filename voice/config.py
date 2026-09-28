@@ -11,6 +11,8 @@ DEFAULT_FFMPEG_EXE = (
 DEFAULT_MIC_DEVICE = "Microphone (FIFINE Microphone)"
 DEFAULT_WHISPER_MODEL = "base"
 DEFAULT_RECORD_SECONDS = 5
+DEFAULT_INPUT_MODE = "auto"
+INPUT_MODES = ("auto", "ptt", "fixed")
 DEFAULT_LANGUAGE = "pt"
 DEFAULT_AGENT_BACKEND = "serve"
 DEFAULT_SERVER_URL = "http://127.0.0.1:4096"
@@ -50,7 +52,8 @@ class Config:
     vision_model: str = DEFAULT_VISION_MODEL
     vision_trigger: str = DEFAULT_VISION_TRIGGER
     vision_png: str = DEFAULT_VISION_PNG
-    ptt: bool = True
+    input_mode: str = DEFAULT_INPUT_MODE
+    ptt: bool = False
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -82,7 +85,22 @@ def load_config(env: dict | None = None) -> Config:
         raise ValueError(
             f"TTS_BACKEND deve ser 'sapi' ou 'piper': {tts_backend}"
         )
-    ptt = str(e.get("VOICE_PTT", "1")).strip().lower() in ("1", "true", "yes", "on")
+    legacy_ptt = str(e.get("VOICE_PTT", "1")).strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+    raw_input = e.get("VOICE_INPUT")
+    if raw_input is None:
+        if "VOICE_PTT" in e:
+            input_mode = "ptt" if legacy_ptt else "fixed"
+        else:
+            input_mode = DEFAULT_INPUT_MODE
+    else:
+        input_mode = str(raw_input).strip().lower()
+        if input_mode not in INPUT_MODES:
+            raise ValueError(
+                f"VOICE_INPUT deve ser 'auto', 'ptt' ou 'fixed': {raw_input}"
+            )
+    ptt = input_mode == "ptt"
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -104,5 +122,6 @@ def load_config(env: dict | None = None) -> Config:
         vision_model=e.get("VISION_MODEL", DEFAULT_VISION_MODEL),
         vision_trigger=e.get("VISION_TRIGGER", DEFAULT_VISION_TRIGGER),
         vision_png=e.get("VISION_PNG", DEFAULT_VISION_PNG),
+        input_mode=input_mode,
         ptt=ptt,
     )

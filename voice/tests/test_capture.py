@@ -1,6 +1,6 @@
-import io, subprocess, pytest
+import io, subprocess, threading, pytest
 from config import Config
-from capture import record, record_ptt, VoiceError
+from capture import record, record_auto, record_ptt, VoiceError
 
 CFG = Config(opencode_bin="/x/o", timeout_s=10, ffmpeg_exe="/ff/ffmpeg.exe", mic_device="Mic X", record_seconds=5)
 
@@ -138,3 +138,166 @@ def test_record_ptt_kills_and_reaps_on_broken_pipe(monkeypatch):
         record_ptt(out_path="/tmp/x.wav", config=CFG, prompt_fn=lambda *a: None)
     assert seen["proc"].killed is True
     assert seen["proc"].waited == 5
+
+
+class FakeAutoStdin:
+    def __init__(self):
+        self.data = ""
+    def write(self, s):
+        self.data += s
+    def flush(self):
+        pass
+
+
+class BlockingStderr:
+    def __init__(self, lines):
+        self._lines = list(lines)
+        self.release = threading.Event()
+    def __iter__(self):
+        for line in self._lines:
+            yield line
+        self.release.wait(timeout=5)
+
+
+class FakeAutoProc:
+    def __init__(self, cmd, lines, block=False):
+        self.cmd = cmd
+        self.stdin = FakeAutoStdin()
+        self.stderr = BlockingStderr(lines) if block else iter(list(lines))
+        self.returncode = 0
+        self.waited = None
+        self.killed = False
+    def wait(self, timeout=None):
+        self.waited = timeout
+        return self.returncode
+    def poll(self):
+        return None if self.waited is None else self.returncode
+    def kill(self):
+        self.killed = True
+
+
+def test_record_auto_stops_on_silence_after_speech(monkeypatch):
+    seen = {}
+    lines = [
+        "[silencedetect @ 0x1] silence_end: 1.00 | silence_duration: 2.0\n",
+        "[silencedetect @ 0x1] silence_start: 3.00\n",
+    ]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines)
+        seen["cmd"] = cmd
+        seen["kw"] = kw
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    out = r"C:\Users\bguil\tools\x.wav"
+    result = record_auto(out_path=out, config=CFG)
+    joined = " ".join(seen["cmd"])
+    assert "/ff/ffmpeg.exe" in joined
+    assert "-f dshow" in joined
+    assert "audio=Mic X" in joined
+    assert "silencedetect=noise=-35dB:d=1.0" in joined
+    assert "-t 15" in joined
+    assert "C:\\Users\\bguil\\tools\\x.wav" in seen["cmd"]
+    assert seen["kw"]["stderr"] is subprocess.PIPE
+    assert seen["kw"]["text"] is True
+    assert seen["proc"].stdin.data == "q"
+    assert seen["proc"].waited == 20
+    assert seen["proc"].killed is False
+    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+
+
+def test_record_auto_leading_silence_then_speech_stops(monkeypatch):
+    seen = {}
+    lines = [
+        "[silencedetect @ 0x1] silence_start: 0\n",
+        "[silencedetect @ 0x1] silence_end: 1.19 | silence_duration: 1.19\n",
+        "[silencedetect @ 0x1] silence_start: 3.80\n",
+    ]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    out = r"C:\Users\bguil\tools\x.wav"
+    result = record_auto(out_path=out, config=CFG)
+    assert seen["proc"].stdin.data == "q"
+    assert seen["proc"].waited == 20
+    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+
+
+def test_record_auto_immediate_speech_without_silence_end(monkeypatch):
+    seen = {}
+    lines = ["[silencedetect @ 0x1] silence_start: 2.80\n"]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    out = r"C:\Users\bguil\tools\x.wav"
+    result = record_auto(out_path=out, config=CFG)
+    assert seen["proc"].stdin.data == "q"
+    assert seen["proc"].waited == 20
+    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+
+
+def test_record_auto_leading_silence_only_returns_empty(monkeypatch):
+    seen = {}
+    lines = ["[silencedetect @ 0x1] silence_start: 0\n"]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines, block=True)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    try:
+        result = record_auto(out_path="/tmp/x.wav", config=CFG, wait_s=0.3)
+    finally:
+        seen["proc"].stderr.release.set()
+    assert result == ""
+    assert seen["proc"].stdin.data == ""
+    assert seen["proc"].killed is True
+
+
+def test_record_auto_returns_empty_when_no_speech(monkeypatch):
+    seen = {}
+    lines = ["[silencedetect @ 0x1] silence_start: 0\n"]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines, block=True)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    try:
+        result = record_auto(out_path="/tmp/x.wav", config=CFG, wait_s=0.3)
+    finally:
+        seen["proc"].stderr.release.set()
+    assert result == ""
+    assert seen["proc"].stdin.data == ""
+    assert seen["proc"].killed is True
+    assert seen["proc"].waited == 5
+
+
+def test_record_auto_honors_max_s_cap(monkeypatch):
+    seen = {}
+    lines = ["[silencedetect @ 0x1] silence_end: 0.5\n"]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines, block=True)
+        seen["proc"] = proc
+        seen["cmd"] = cmd
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    try:
+        result = record_auto(out_path="/tmp/x.wav", config=CFG, max_s=0.3, wait_s=8)
+    finally:
+        seen["proc"].stderr.release.set()
+    assert result == "/tmp/x.wav"
+    assert seen["proc"].stdin.data == "q"
+    assert seen["proc"].killed is True
+    assert "-t 0.3" in " ".join(seen["cmd"])
+
+
+def test_record_auto_missing_ffmpeg_raises(monkeypatch):
+    monkeypatch.setattr(
+        subprocess, "Popen",
+        lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError()),
+    )
+    with pytest.raises(VoiceError, match="FFMPEG_EXE=/ff/ffmpeg.exe"):
+        record_auto(out_path="/tmp/x.wav", config=CFG)
