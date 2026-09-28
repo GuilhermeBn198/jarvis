@@ -8,6 +8,12 @@ CFG = Config(opencode_bin="/x/opencode", timeout_s=10,
              vision_model="opencode-go/deepseek-v4-flash-vision-exp",
              vision_png="C:\\Users\\x\\tools\\shot.png")
 
+
+@pytest.fixture(autouse=True)
+def _no_server(monkeypatch):
+    """Por padrao os testes de `see` usam o fallback `run`."""
+    monkeypatch.setattr(vision, "ensure_server", lambda cfg, **k: False)
+
 def test_capture_builds_gdigrab(monkeypatch):
     seen = {}
     def fake_run(cmd, **kw):
@@ -57,3 +63,69 @@ def test_see_message_before_f(monkeypatch):
     assert "-f" in cmd and "/mnt/c/Users/x/tools/shot.png" in cmd
     assert cmd.index("o que tem na tela?") < cmd.index("-f")   # msg antes de -f
     assert out == "uma tela com x"
+
+
+def test_see_uses_serve_when_healthy(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(vision, "ensure_server", lambda cfg, **k: True)
+
+    class FakeServe:
+        def __init__(self, cfg):
+            seen["cfg"] = cfg
+
+        def see(self, prompt, png, model_id=None):
+            seen["call"] = (prompt, png, model_id)
+            return "tela via serve"
+
+    monkeypatch.setattr(vision, "ServeClient", FakeServe)
+
+    def no_run(*a, **k):
+        raise AssertionError("nao deveria usar `run`")
+
+    monkeypatch.setattr(subprocess, "run", no_run)
+    out = vision.see("o que tem?", "/mnt/c/x/shot.png", config=CFG)
+    assert out == "tela via serve"
+    assert seen["call"] == (
+        "o que tem?", "/mnt/c/x/shot.png", CFG.vision_model,
+    )
+
+
+def test_see_serve_error_maps_to_voice_error(monkeypatch):
+    from agent_client import AgentError
+
+    monkeypatch.setattr(vision, "ensure_server", lambda cfg, **k: True)
+
+    class FakeServe:
+        def __init__(self, cfg):
+            pass
+
+        def see(self, *a, **k):
+            raise AgentError("sessao morreu")
+
+    monkeypatch.setattr(vision, "ServeClient", FakeServe)
+    with pytest.raises(vision.VoiceError, match="sessao morreu"):
+        vision.see("x", "/mnt/c/x/shot.png", config=CFG)
+
+
+def test_see_falls_back_to_run_when_server_down(monkeypatch):
+    monkeypatch.setattr(vision, "ensure_server", lambda cfg, **k: False)
+
+    def boom(*a, **k):
+        raise AssertionError("nao deveria usar `serve`")
+
+    class FakeServe:
+        def __init__(self, cfg):
+            boom()
+
+    monkeypatch.setattr(vision, "ServeClient", FakeServe)
+
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, "tela via run\n", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    out = vision.see("o que tem?", "/mnt/c/x/shot.png", config=CFG)
+    assert out == "tela via run"
+    assert seen["cmd"][1] == "run"

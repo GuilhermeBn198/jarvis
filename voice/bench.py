@@ -1,16 +1,21 @@
-"""Benchmark de latencia da voz: agentes (run/serve) x TTS (sapi/piper).
+"""Benchmark de latencia da voz: agentes (run/serve) x TTS (sapi/piper) x visao.
 
 Rode com: python bench.py
 """
 import dataclasses
+import os
 import time
 
 from agent_client import RunClient, ServeClient
 from config import load_config
+from paths import _windows_to_wsl
+from serve import ensure_server
 from tts import speak
+from vision import _see_via_run, capture
 
 TASK = "Responda apenas com a palavra: ok"
 TTS_TEXT = "teste de latencia do jarvis"
+VISION_TASK = "Descreva em uma frase o que aparece na tela."
 
 
 def _timed(fn):
@@ -46,6 +51,13 @@ def _combo(agent, tts):
     return agent + tts
 
 
+def _vision_png(cfg) -> str:
+    path = _windows_to_wsl(cfg.vision_png)
+    if os.path.exists(path):
+        return path
+    return capture(config=cfg)
+
+
 def main() -> None:
     cfg = load_config()
 
@@ -56,6 +68,28 @@ def main() -> None:
     serve_client = ServeClient(cfg)
     serve_cold = _measure("serve cold", lambda: serve_client.ask(TASK))
     serve_warm = _measure("serve warm", lambda: serve_client.ask(TASK))
+
+    # Visao: serve (session aquecida) vs run (startup do opencode).
+    png = None
+    vision_serve = None
+    vision_run = None
+    try:
+        png = _vision_png(cfg)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[bench] nao consegui obter o PNG de visao: {exc}")
+    if png:
+        if ensure_server(cfg):
+            vision_serve = _measure(
+                "visao serve",
+                lambda: ServeClient(cfg).see(
+                    VISION_TASK, png, model_id=cfg.vision_model
+                ),
+            )
+        else:
+            print("[bench] serve indisponivel; pulando visao via serve")
+        vision_run = _measure(
+            "visao run", lambda: _see_via_run(cfg, VISION_TASK, png)
+        )
 
     sapi_cfg = dataclasses.replace(cfg, tts_backend="sapi")
     piper_cfg = dataclasses.replace(cfg, tts_backend="piper")
@@ -71,6 +105,7 @@ def main() -> None:
     print("# Bench de latencia - Jarvis voice")
     print()
     print(f'Tarefa do agente: "{TASK}"')
+    print(f'Tarefa de visao: "{VISION_TASK}"')
     print(f'Texto do TTS: "{TTS_TEXT}"')
     print()
     print("| Etapa | Backend | Latencia (s) |")
@@ -79,6 +114,8 @@ def main() -> None:
     print(f"| Agente (2ª chamada) | run | {_fmt(run_second)} |")
     print(f"| Agente (frio) | serve | {_fmt(serve_cold)} |")
     print(f"| Agente (quente) | serve | {_fmt(serve_warm)} |")
+    print(f"| Visao | serve | {_fmt(vision_serve)} |")
+    print(f"| Visao | run | {_fmt(vision_run)} |")
     print(f"| TTS | sapi | {_fmt(tts_sapi)} |")
     print(f"| TTS | piper | {_fmt(tts_piper)} |")
     print()
@@ -89,6 +126,17 @@ def main() -> None:
     for agent_name, agent_val in (("run (2ª chamada)", run_second), ("serve (quente)", serve_warm)):
         for tts_name, tts_val in (("sapi", tts_sapi), ("piper", tts_piper)):
             print(f"| {agent_name} | {tts_name} | {_fmt(_combo(agent_val, tts_val))} |")
+    print()
+    print("## Visao (serve vs run)")
+    print()
+    print("| Modo | Latencia (s) |")
+    print("| --- | --- |")
+    print(f"| serve | {_fmt(vision_serve)} |")
+    print(f"| run | {_fmt(vision_run)} |")
+    if vision_serve is not None and vision_run is not None and vision_run > 0:
+        gain = (1.0 - vision_serve / vision_run) * 100.0
+        print()
+        print(f"Ganho do serve na visao: {gain:.0f}%")
 
 
 if __name__ == "__main__":

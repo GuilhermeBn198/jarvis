@@ -1,4 +1,6 @@
+import base64
 import json
+import os
 import subprocess
 import urllib.error
 import urllib.request
@@ -7,6 +9,16 @@ from config import Config
 from sanitize import drop_leading_tui, strip_ansi
 
 SESSION_TIMEOUT_S = 10
+
+
+def _model_payload(model_id: str) -> dict:
+    """Converte 'provider/model' no objeto `model` da API do serve."""
+    provider, sep, model = model_id.partition("/")
+    if not sep or not provider or not model:
+        raise AgentError(
+            f"model_id invalido (esperado 'provider/model'): {model_id}"
+        )
+    return {"providerID": provider, "modelID": model}
 
 
 def strip_opencode_noise(text: str) -> str:
@@ -109,6 +121,16 @@ class ServeClient:
         self._session_id = session_id
         return session_id
 
+    @staticmethod
+    def _extract_reply(data: dict) -> str:
+        parts = data.get("parts") or []
+        text = "".join(
+            p.get("text", "") for p in parts if p.get("type") == "text"
+        ).strip()
+        if not text:
+            raise AgentError("agente nao retornou resposta")
+        return text
+
     def _request_reply(self, session_id: str, task: str, timeout: int) -> str:
         payload = {"parts": [{"type": "text", "text": task}]}
         if self._cfg.agent:
@@ -118,13 +140,50 @@ class ServeClient:
             payload,
             timeout,
         )
-        parts = data.get("parts") or []
-        text = "".join(
-            p.get("text", "") for p in parts if p.get("type") == "text"
-        ).strip()
-        if not text:
-            raise AgentError("agente nao retornou resposta")
-        return text
+        return self._extract_reply(data)
+
+    def see(self, prompt: str, png_path: str, model_id: str | None = None) -> str:
+        """Manda uma imagem (PNG) + prompt para o agente via serve.
+
+        Reaproveita a sessao lazy e envia a imagem como `FilePartInput`
+        (data URL base64). Sem o startup do `opencode run` a visao cai de
+        ~29s para ~6.5s (ver .superpowers/sdd/latency-opt-report.md).
+        """
+        prompt = (prompt or "").strip()
+        if not prompt:
+            raise AgentError("prompt vazio")
+        try:
+            with open(png_path, "rb") as fh:
+                raw = fh.read()
+        except OSError as exc:
+            raise AgentError(f"falha ao ler a imagem {png_path} ({exc})") from exc
+        if not raw:
+            raise AgentError(f"imagem vazia: {png_path}")
+        b64 = base64.b64encode(raw).decode("ascii")
+        payload = {
+            "parts": [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "file",
+                    "mime": "image/png",
+                    "filename": os.path.basename(png_path) or "shot.png",
+                    "url": "data:image/png;base64," + b64,
+                },
+            ],
+        }
+        if model_id:
+            payload["model"] = _model_payload(model_id)
+        if self._cfg.agent:
+            payload["agent"] = self._cfg.agent
+        timeout = self._cfg.timeout_s
+        session_id = self._ensure_session(timeout)
+        try:
+            data = self._post(f"/session/{session_id}/message", payload, timeout)
+        except _SessionGone:
+            self._session_id = None
+            session_id = self._ensure_session(timeout)
+            data = self._post(f"/session/{session_id}/message", payload, timeout)
+        return self._extract_reply(data)
 
     def ask(self, task: str, timeout_s: int | None = None) -> str:
         task = (task or "").strip()

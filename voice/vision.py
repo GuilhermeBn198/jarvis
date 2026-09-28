@@ -1,8 +1,9 @@
 import subprocess
 
-from agent_client import strip_opencode_noise
+from agent_client import AgentError, ServeClient, strip_opencode_noise
 from config import Config, load_config
 from paths import _windows_to_wsl, _wsl_to_windows
+from serve import ensure_server
 from tts import VoiceError
 
 
@@ -26,12 +27,11 @@ def capture(out_path: str | None = None, config: Config | None = None) -> str:
     return _windows_to_wsl(win_path)
 
 
-def see(prompt: str, png_path: str, config: Config | None = None) -> str:
-    cfg = config or load_config()
-    prompt = (prompt or "").strip() or "Descreva o que esta na tela."
-    # NAO usar --pure e usar o agente TOOL-LESS `chat`: o conteudo da tela e
-    # nao-conflavel e nao pode rodar um agente com tools/plugins (SafetyGate,
-    # act_*) habilitados. `chat` nao tem tools, entao nao ha buraco de execucao.
+def _see_via_run(cfg: Config, prompt: str, png_path: str) -> str:
+    """Fallback de visao via `opencode run` (startup caro: ~29s).
+
+    NAO usar --pure e usar o agente TOOL-LESS `chat`.
+    """
     cmd = [
         cfg.opencode_bin, "run", "--agent", "chat", prompt,
         "-m", cfg.vision_model, "-f", png_path,
@@ -50,3 +50,19 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
     if not cleaned:
         raise VoiceError("visao nao retornou resposta")
     return cleaned
+
+
+def see(prompt: str, png_path: str, config: Config | None = None) -> str:
+    cfg = config or load_config()
+    prompt = (prompt or "").strip() or "Descreva o que esta na tela."
+    # Via de regra usamos o `serve` (session ja aquecida): o startup do
+    # `opencode run` domina a latencia de visao (~29s run vs ~6.5s serve).
+    # O agente continua sendo o TOOL-LESS `chat`: o conteudo da tela e
+    # nao-conflavel e nao pode rodar tools/plugins (SafetyGate, act_*).
+    if ensure_server(cfg):
+        try:
+            return ServeClient(cfg).see(prompt, png_path, model_id=cfg.vision_model)
+        except AgentError as exc:
+            raise VoiceError(f"visao falhou: {exc}") from exc
+    # Fallback: servidor indisponivel -> `opencode run`.
+    return _see_via_run(cfg, prompt, png_path)
