@@ -1,8 +1,12 @@
 import sys
+import time
+from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client
 from capture import record
 from config import load_config
+from convlog import log_turn
+from sanitize import speechify
 from serve import ensure_server
 from stt import transcribe
 from tts import VoiceError, speak
@@ -34,28 +38,58 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
 
     while iterations == 0 or n < iterations:
         n += 1
+        t0 = time.monotonic()
         try:
             wav = record(seconds=secs, config=cfg)
+            t_rec = time.monotonic()
             text = transcribe(wav, config=cfg)
         except VoiceError as exc:
             if _voice_error(exc):
                 return
             continue
+        t_stt = time.monotonic()
         if not text:
             err.write("[voz] nada transcrito\n")
             err.flush()
             consecutive_errors = 0
             continue
+        error = None
+        t_agent0 = time.monotonic()
         try:
             answer = client.ask(text)
         except AgentError as exc:
+            error = str(exc)
             answer = f"erro: {exc}"
+        t_agent1 = time.monotonic()
+        spoken = speechify(answer)
+        aborted = False
+        tts_failed = False
+        t_tts0 = time.monotonic()
         try:
-            speak(answer, config=cfg)
+            speak(spoken, config=cfg)
         except VoiceError as exc:
+            tts_failed = True
             aborted = _voice_error(exc)
             err.write(f"[fallback texto] {answer}\n")
             err.flush()
+        t_tts1 = time.monotonic()
+        log_turn(
+            {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "transcript": text,
+                "response": answer,
+                "spoken": spoken,
+                "agent_backend": cfg.agent_backend,
+                "tts_backend": cfg.tts_backend,
+                "error": error,
+                "record_s": round(t_rec - t0, 3),
+                "stt_s": round(t_stt - t_rec, 3),
+                "agent_s": round(t_agent1 - t_agent0, 3),
+                "tts_s": round(t_tts1 - t_tts0, 3),
+            },
+            config=cfg,
+        )
+        if tts_failed:
             if aborted:
                 return
             continue

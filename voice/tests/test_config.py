@@ -32,6 +32,18 @@ def test_invalid_tts_backend_raises():
     assert "nope" in str(exc.value)
 
 
+def test_voice_agent_and_log_defaults():
+    cfg = load_config({})
+    assert cfg.agent == "chat"
+    assert cfg.voice_log_path.endswith("voice-log.jsonl")
+
+
+def test_voice_agent_and_log_env_overrides():
+    cfg = load_config({"VOICE_AGENT": "orchestrator", "VOICE_LOG": "/tmp/v.jsonl"})
+    assert cfg.agent == "orchestrator"
+    assert cfg.voice_log_path == "/tmp/v.jsonl"
+
+
 def test_backend_defaults():
     cfg = load_config({})
     assert cfg.agent_backend == "serve"
