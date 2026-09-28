@@ -10,6 +10,7 @@ from sanitize import speechify
 from serve import ensure_server
 from stt import transcribe
 from tts import VoiceError, speak
+from vision import capture, see
 
 
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
@@ -51,6 +52,15 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         if not text:
             err.write("[voz] nada transcrito\n")
             err.flush()
+            consecutive_errors = 0
+            continue
+        if is_vision_request(text, cfg.vision_trigger):
+            try:
+                see_once(strip_trigger(text, cfg.vision_trigger), err=err, config=cfg)
+            except VoiceError as exc:
+                if _voice_error(exc):
+                    return
+                continue
             consecutive_errors = 0
             continue
         error = None
@@ -96,6 +106,55 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         consecutive_errors = 0
 
 
+def is_vision_request(text: str, trigger: str) -> bool:
+    if not trigger:
+        return False
+    return (text or "").strip().lower().startswith(trigger.lower())
+
+
+def strip_trigger(text: str, trigger: str) -> str:
+    t = (text or "").strip()
+    if trigger and t.lower().startswith(trigger.lower()):
+        return t[len(trigger):].strip()
+    return t
+
+
+def see_once(prompt: str, out=None, err=None, config=None) -> None:
+    out = out if out is not None else sys.stdout
+    err = err if err is not None else sys.stderr
+    cfg = config or load_config()
+    t0 = time.monotonic()
+    png = capture(config=cfg)
+    t_cap = time.monotonic()
+    answer = see(prompt, png, config=cfg)
+    t_see = time.monotonic()
+    text = answer if isinstance(answer, str) else str(answer)
+    spoken = speechify(text)
+    out.write(text + "\n")
+    out.flush()
+    error = None
+    try:
+        speak(spoken, config=cfg)
+    except VoiceError as exc:
+        error = str(exc)
+        err.write(f"[fallback texto] {text}\n")
+        err.flush()
+    log_turn(
+        {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "mode": "vision",
+            "prompt": prompt,
+            "response": text,
+            "spoken": spoken,
+            "tts_backend": cfg.tts_backend,
+            "error": error,
+            "capture_s": round(t_cap - t0, 3),
+            "agent_s": round(t_see - t_cap, 3),
+        },
+        config=cfg,
+    )
+
+
 def run_stream(inp, out, client, err=None) -> None:
     err = err if err is not None else sys.stderr
     for line in inp:
@@ -138,6 +197,11 @@ def resolve_client(cfg, err=None):
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
+        if "--see" in args:
+            i = args.index("--see")
+            question = args[i + 1] if i + 1 < len(args) else ""
+            see_once(question)
+            return 0
         if "--voice" in args:
             iterations = _parse_once(args)
             if "--once" in args and iterations < 1:
