@@ -290,7 +290,8 @@ def test_record_auto_honors_max_s_cap(monkeypatch):
         seen["proc"].stderr.release.set()
     assert result == "/tmp/x.wav"
     assert seen["proc"].stdin.data == "q"
-    assert seen["proc"].killed is True
+    assert seen["proc"].waited == 20
+    assert seen["proc"].killed is False
     assert "-t 0.3" in " ".join(seen["cmd"])
 
 
