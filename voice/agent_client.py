@@ -9,6 +9,11 @@ from sanitize import drop_leading_tui, strip_ansi
 SESSION_TIMEOUT_S = 10
 
 
+def strip_opencode_noise(text: str) -> str:
+    """Remove ANSI e o cabecalho do TUI (`> build · model`) da saida do opencode."""
+    return drop_leading_tui(strip_ansi(text))
+
+
 class AgentError(RuntimeError):
     pass
 
@@ -51,7 +56,7 @@ class RunClient:
             raise AgentError(f"timeout ({timeout}s) ao chamar o agente") from exc
         if proc.returncode != 0:
             raise AgentError(f"opencode falhou ({proc.returncode}): {proc.stderr.strip()[:200]}")
-        cleaned = drop_leading_tui(strip_ansi(proc.stdout))
+        cleaned = strip_opencode_noise(proc.stdout)
         if not cleaned.strip():
             raise AgentError("agente nao retornou resposta")
         return cleaned.strip()

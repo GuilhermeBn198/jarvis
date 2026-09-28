@@ -23,6 +23,9 @@ DEFAULT_FFPLAY_EXE = (
     "/mnt/c/Users/bguil/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffplay.exe"
 )
 DEFAULT_PIPER_OUT_WAV = r"C:\Users\bguil\tools\piper\out.wav"
+DEFAULT_VISION_MODEL = "opencode-go/deepseek-v4-flash-vision-exp"
+DEFAULT_VISION_TRIGGER = "olha"
+DEFAULT_VISION_PNG = r"C:\Users\bguil\tools\shot.png"
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,9 @@ class Config:
     piper_model: str = DEFAULT_PIPER_MODEL
     ffplay_exe: str = DEFAULT_FFPLAY_EXE
     piper_out_wav: str = DEFAULT_PIPER_OUT_WAV
+    vision_model: str = DEFAULT_VISION_MODEL
+    vision_trigger: str = DEFAULT_VISION_TRIGGER
+    vision_png: str = DEFAULT_VISION_PNG
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -93,4 +99,7 @@ def load_config(env: dict | None = None) -> Config:
         piper_model=e.get("PIPER_MODEL", DEFAULT_PIPER_MODEL),
         ffplay_exe=e.get("FFPLAY_EXE", DEFAULT_FFPLAY_EXE),
         piper_out_wav=e.get("PIPER_OUT_WAV", DEFAULT_PIPER_OUT_WAV),
+        vision_model=e.get("VISION_MODEL", DEFAULT_VISION_MODEL),
+        vision_trigger=e.get("VISION_TRIGGER", DEFAULT_VISION_TRIGGER),
+        vision_png=e.get("VISION_PNG", DEFAULT_VISION_PNG),
     )
