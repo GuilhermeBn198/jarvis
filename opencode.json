@@ -15,6 +15,13 @@
     }
   },
   "agent": {
+    "chat": {
+      "description": "Conversa rapida por voz: respostas curtas e naturais, sem ferramentas.",
+      "mode": "primary",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "prompt": "Voce e um assistente conversacional por voz. Responda em texto puro, curto e natural, SEM markdown, SEM blocos de codigo. Se pedirem codigo, diga em uma frase o que faria, sem formatar.",
+      "permission": { "*": "deny" }
+    },
     "local-executor": {
       "description": "Executa sub-tarefas baratas e bem delimitadas no modelo local (GPU): extracoes, formatacoes, resumos curtos, boilerplate e chamadas de ferramenta simples. Use quando a tarefa NAO exigir raciocinio profundo; para planejamento/arquitetura, use a nuvem.",
       "mode": "subagent",

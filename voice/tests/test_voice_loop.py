@@ -10,6 +10,60 @@ from tts import VoiceError
 CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1)
 
 
+@pytest.fixture(autouse=True)
+def _no_convlog(monkeypatch):
+    monkeypatch.setattr("loop.log_turn", lambda *a, **k: None)
+
+
+def test_voice_loop_logs_turn_and_speaks_sanitized(monkeypatch):
+    records = []
+    spoken_texts = []
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+    monkeypatch.setattr("loop.speak", lambda text, **k: spoken_texts.append(text))
+    monkeypatch.setattr(
+        "loop.log_turn", lambda rec, config=None: records.append(rec)
+    )
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            return "**Resposta** `crua`\n```python\nprint(1)\n```"
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert spoken_texts == ["Resposta crua bloco de código omitido"]
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["transcript"] == "faca algo"
+    assert rec["response"] == "**Resposta** `crua`\n```python\nprint(1)\n```"
+    assert rec["spoken"] == "Resposta crua bloco de código omitido"
+    assert rec["agent_backend"] == CFG.agent_backend
+    assert rec["tts_backend"] == CFG.tts_backend
+    assert rec["error"] is None
+    for key in ("ts", "record_s", "stt_s", "agent_s", "tts_s"):
+        assert key in rec
+
+
+def test_voice_loop_logs_agent_error(monkeypatch):
+    records = []
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+    monkeypatch.setattr("loop.speak", lambda text, **k: None)
+    monkeypatch.setattr(
+        "loop.log_turn", lambda rec, config=None: records.append(rec)
+    )
+
+    from agent_client import AgentError
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            raise AgentError("boom")
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert len(records) == 1
+    assert records[0]["error"] == "boom"
+    assert records[0]["response"] == "erro: boom"
+
+
 def test_voice_loop_orchestrates(monkeypatch):
     calls = []
     monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")

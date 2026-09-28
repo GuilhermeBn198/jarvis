@@ -26,6 +26,56 @@ def test_empty_task_raises():
     with pytest.raises(AgentError):
         RunClient(CFG).ask("   ")
 
+
+def test_run_client_strips_ansi_and_header(monkeypatch):
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(
+            cmd, 0, stdout="\x1b[0m\n> build \u00b7 deepseek-v4.1-flash\nresposta\x1b[0m\n",
+            stderr="",
+        )
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert RunClient(CFG).ask("x") == "resposta"
+
+
+def test_run_client_passes_agent_when_configured(monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10,
+                 agent_backend="run", agent="chat")
+    RunClient(cfg).ask("x")
+    assert seen["cmd"] == ["/x/opencode", "run", "--agent", "chat", "--pure", "x"]
+
+
+def test_no_agent_flag_when_unset(monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    RunClient(CFG).ask("x")
+    assert "--agent" not in seen["cmd"]
+
+
+def test_serve_passes_agent_when_configured(monkeypatch):
+    seen = []
+    responses = [{"id": "s"}, {"parts": [{"type": "text", "text": "ok"}]}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
+                 server_url="http://127.0.0.1:4096", agent="chat")
+    assert ServeClient(cfg).ask("pergunta") == "ok"
+    assert seen[1][1] == {
+        "parts": [{"type": "text", "text": "pergunta"}],
+        "agent": "chat",
+    }
+
 def test_missing_binary_raises(monkeypatch):
     def fake_run(*a, **k):
         raise FileNotFoundError()

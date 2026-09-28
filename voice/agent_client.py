@@ -4,6 +4,7 @@ import urllib.error
 import urllib.request
 
 from config import Config
+from sanitize import drop_leading_tui, strip_ansi
 
 SESSION_TIMEOUT_S = 10
 
@@ -26,9 +27,13 @@ class RunClient:
         if not task:
             raise AgentError("tarefa vazia")
         timeout = timeout_s if timeout_s is not None else self._cfg.timeout_s
+        cmd = [self._cfg.opencode_bin, "run"]
+        if self._cfg.agent:
+            cmd += ["--agent", self._cfg.agent]
+        cmd += ["--pure", task]
         try:
             proc = subprocess.run(
-                [self._cfg.opencode_bin, "run", "--pure", task],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
@@ -46,9 +51,10 @@ class RunClient:
             raise AgentError(f"timeout ({timeout}s) ao chamar o agente") from exc
         if proc.returncode != 0:
             raise AgentError(f"opencode falhou ({proc.returncode}): {proc.stderr.strip()[:200]}")
-        if not proc.stdout.strip():
+        cleaned = drop_leading_tui(strip_ansi(proc.stdout))
+        if not cleaned.strip():
             raise AgentError("agente nao retornou resposta")
-        return proc.stdout.strip()
+        return cleaned.strip()
 
 
 class ServeClient:
@@ -95,9 +101,12 @@ class ServeClient:
         return session_id
 
     def _request_reply(self, session_id: str, task: str, timeout: int) -> str:
+        payload = {"parts": [{"type": "text", "text": task}]}
+        if self._cfg.agent:
+            payload["agent"] = self._cfg.agent
         data = self._post(
             f"/session/{session_id}/message",
-            {"parts": [{"type": "text", "text": task}]},
+            payload,
             timeout,
         )
         parts = data.get("parts") or []
