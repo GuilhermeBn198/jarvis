@@ -329,6 +329,57 @@ def test_serve_see_reuses_session_and_passes_agent(monkeypatch, tmp_path):
     assert sum(1 for u, _, _ in seen if u.endswith("/session")) == 1
 
 
+def test_serve_see_forces_tool_less_chat_agent(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    responses = [{"id": "s"}, {"parts": [{"type": "text", "text": "ok"}]}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
+                 server_url="http://127.0.0.1:4096", agent=None)
+    assert ServeClient(cfg).see("o que tem?", str(png)) == "ok"
+    assert seen[1][1]["agent"] == "chat"
+
+
+def test_serve_see_agent_override(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    responses = [{"id": "s"}, {"parts": [{"type": "text", "text": "ok"}]}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
+                 server_url="http://127.0.0.1:4096", agent=None)
+    assert ServeClient(cfg).see("o que tem?", str(png), agent="outro") == "ok"
+    assert seen[1][1]["agent"] == "outro"
+
+
+def test_serve_see_recovers_dead_session_once(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    items = [
+        {"id": "sess-1"},
+        _http_error(404),
+        {"id": "sess-2"},
+        {"parts": [{"type": "text", "text": "ok"}]},
+    ]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _sequence_transport(items, seen))
+    client = ServeClient(SERVE_CFG)
+    assert client.see("o que tem?", str(png)) == "ok"
+    assert [u for u, _, _ in seen] == [
+        "http://127.0.0.1:4096/session",
+        "http://127.0.0.1:4096/session/sess-1/message",
+        "http://127.0.0.1:4096/session",
+        "http://127.0.0.1:4096/session/sess-2/message",
+    ]
+    assert client._session_id == "sess-2"
+    assert seen[1][1]["agent"] == "chat"
+    assert seen[3][1]["agent"] == "chat"
+
+
 def test_serve_see_empty_prompt_raises_without_http(monkeypatch, tmp_path):
     png = tmp_path / "shot.png"
     png.write_bytes(b"x")

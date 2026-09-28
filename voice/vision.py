@@ -59,10 +59,15 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
     # `opencode run` domina a latencia de visao (~29s run vs ~6.5s serve).
     # O agente continua sendo o TOOL-LESS `chat`: o conteudo da tela e
     # nao-conflavel e nao pode rodar tools/plugins (SafetyGate, act_*).
-    if ensure_server(cfg):
+    # wait_s curto: um spawn que nunca fica saudavel nao pode atrasar o
+    # fallback `run` em ~20s.
+    if ensure_server(cfg, wait_s=3):
         try:
             return ServeClient(cfg).see(prompt, png_path, model_id=cfg.vision_model)
-        except AgentError as exc:
-            raise VoiceError(f"visao falhou: {exc}") from exc
-    # Fallback: servidor indisponivel -> `opencode run`.
+        except (AgentError, VoiceError):
+            # Servidor saudavel no check, mas a chamada falhou (sessao
+            # morreu, timeout, etc.): cai para `run` uma vez, reutilizando
+            # o PNG ja capturado (sem re-capturar a tela).
+            pass
+    # Fallback: servidor indisponivel ou falha pos-check -> `opencode run`.
     return _see_via_run(cfg, prompt, png_path)

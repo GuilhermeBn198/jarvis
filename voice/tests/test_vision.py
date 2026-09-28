@@ -90,7 +90,7 @@ def test_see_uses_serve_when_healthy(monkeypatch):
     )
 
 
-def test_see_serve_error_maps_to_voice_error(monkeypatch):
+def test_see_falls_back_to_run_on_serve_error(monkeypatch):
     from agent_client import AgentError
 
     monkeypatch.setattr(vision, "ensure_server", lambda cfg, **k: True)
@@ -103,8 +103,32 @@ def test_see_serve_error_maps_to_voice_error(monkeypatch):
             raise AgentError("sessao morreu")
 
     monkeypatch.setattr(vision, "ServeClient", FakeServe)
-    with pytest.raises(vision.VoiceError, match="sessao morreu"):
-        vision.see("x", "/mnt/c/x/shot.png", config=CFG)
+
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, "tela via run\n", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    out = vision.see("x", "/mnt/c/x/shot.png", config=CFG)
+    assert out == "tela via run"
+    assert seen["cmd"][1] == "run"
+
+
+def test_see_uses_short_wait_when_ensuring_server(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(
+        vision, "ensure_server", lambda cfg, **k: seen.update(k) or False
+    )
+
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 0, "tela via run\n", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    vision.see("x", "/mnt/c/x/shot.png", config=CFG)
+    assert seen.get("wait_s") == 3
+
 
 
 def test_see_falls_back_to_run_when_server_down(monkeypatch):

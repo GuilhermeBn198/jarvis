@@ -142,12 +142,23 @@ class ServeClient:
         )
         return self._extract_reply(data)
 
-    def see(self, prompt: str, png_path: str, model_id: str | None = None) -> str:
+    def see(
+        self,
+        prompt: str,
+        png_path: str,
+        model_id: str | None = None,
+        agent: str = "chat",
+    ) -> str:
         """Manda uma imagem (PNG) + prompt para o agente via serve.
 
         Reaproveita a sessao lazy e envia a imagem como `FilePartInput`
         (data URL base64). Sem o startup do `opencode run` a visao cai de
         ~29s para ~6.5s (ver .superpowers/sdd/latency-opt-report.md).
+
+        O agente e SEMPRE o tool-less `chat`: o conteudo da tela e
+        nao-conflavel e nunca pode rodar tools/plugins (SafetyGate, act_*).
+        Nao usar `cfg.agent` (que pode estar vazio e cair no default do
+        servidor, possivelmente COM tools).
         """
         prompt = (prompt or "").strip()
         if not prompt:
@@ -173,8 +184,8 @@ class ServeClient:
         }
         if model_id:
             payload["model"] = _model_payload(model_id)
-        if self._cfg.agent:
-            payload["agent"] = self._cfg.agent
+        if agent:
+            payload["agent"] = agent
         timeout = self._cfg.timeout_s
         session_id = self._ensure_session(timeout)
         try:
