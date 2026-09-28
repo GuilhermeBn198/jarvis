@@ -206,6 +206,57 @@ def test_record_auto_stops_on_silence_after_speech(monkeypatch):
     assert result == "/mnt/c/Users/bguil/tools/x.wav"
 
 
+def test_record_auto_leading_silence_then_speech_stops(monkeypatch):
+    seen = {}
+    lines = [
+        "[silencedetect @ 0x1] silence_start: 0\n",
+        "[silencedetect @ 0x1] silence_end: 1.19 | silence_duration: 1.19\n",
+        "[silencedetect @ 0x1] silence_start: 3.80\n",
+    ]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    out = r"C:\Users\bguil\tools\x.wav"
+    result = record_auto(out_path=out, config=CFG)
+    assert seen["proc"].stdin.data == "q"
+    assert seen["proc"].waited == 20
+    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+
+
+def test_record_auto_immediate_speech_without_silence_end(monkeypatch):
+    seen = {}
+    lines = ["[silencedetect @ 0x1] silence_start: 2.80\n"]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    out = r"C:\Users\bguil\tools\x.wav"
+    result = record_auto(out_path=out, config=CFG)
+    assert seen["proc"].stdin.data == "q"
+    assert seen["proc"].waited == 20
+    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+
+
+def test_record_auto_leading_silence_only_returns_empty(monkeypatch):
+    seen = {}
+    lines = ["[silencedetect @ 0x1] silence_start: 0\n"]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines, block=True)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    try:
+        result = record_auto(out_path="/tmp/x.wav", config=CFG, wait_s=0.3)
+    finally:
+        seen["proc"].stderr.release.set()
+    assert result == ""
+    assert seen["proc"].stdin.data == ""
+    assert seen["proc"].killed is True
+
+
 def test_record_auto_returns_empty_when_no_speech(monkeypatch):
     seen = {}
     lines = ["[silencedetect @ 0x1] silence_start: 0\n"]

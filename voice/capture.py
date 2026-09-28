@@ -4,17 +4,24 @@ import threading
 import time
 
 from config import Config, load_config
+from paths import _windows_to_wsl, _wsl_to_windows
 from tts import VoiceError
-from vision import _windows_to_wsl, _wsl_to_windows
 
+# Defaults consistentes: ffmpeg e o microfone sao do Windows (dshow),
+# entao ambos os modos gravam num diretorio visivel ao Windows.
+DEFAULT_OUT_WAV = r"C:\Users\bguil\tools\jarvis_rec.wav"
 DEFAULT_AUTO_OUT_WAV = r"C:\Users\bguil\tools\jarvis_rec_auto.wav"
+
+# Limiar (s) abaixo do qual um silence_start e considerado a pausa
+# inicial da captura, e nao o fim de uma fala.
+EPS = 0.3
 
 
 def record(seconds: float, out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
-    out = out_path or "/tmp/jarvis_rec.wav"
+    out = out_path or DEFAULT_OUT_WAV
     cmd = [cfg.ffmpeg_exe, "-f", "dshow", "-i", f"audio={cfg.mic_device}",
-           "-t", str(seconds), "-y", out]
+           "-t", str(seconds), "-y", _wsl_to_windows(out)]
     try:
         proc = subprocess.run(
             cmd, capture_output=True, text=True, errors="replace",
@@ -26,15 +33,15 @@ def record(seconds: float, out_path: str | None = None, config: Config | None = 
         ) from exc
     if proc.returncode != 0:
         raise VoiceError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
-    return out
+    return _windows_to_wsl(out)
 
 
 def record_ptt(out_path: str | None = None, config: Config | None = None,
                prompt_fn=input) -> str:
     cfg = config or load_config()
-    out = out_path or "/tmp/jarvis_rec.wav"
+    out = out_path or DEFAULT_OUT_WAV
     cmd = [cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i",
-           f"audio={cfg.mic_device}", out]
+           f"audio={cfg.mic_device}", _wsl_to_windows(out)]
     prompt_fn("Pressione Enter para comecar a gravar...")
     try:
         proc = subprocess.Popen(
@@ -63,12 +70,20 @@ def record_ptt(out_path: str | None = None, config: Config | None = None,
                 pass
     if proc.returncode != 0:
         raise VoiceError(f"ffmpeg falhou ({proc.returncode})")
-    return out
+    return _windows_to_wsl(out)
+
+
+def _parse_silence_start(line: str) -> float | None:
+    try:
+        tail = line.split("silence_start:", 1)[1]
+        return float(tail.strip().split()[0])
+    except (IndexError, ValueError):
+        return None
 
 
 def record_auto(out_path: str | None = None, config: Config | None = None,
                 max_s: float = 15, wait_s: float = 8.0, silence_s: float = 1.0,
-                noise_db: int = -35) -> str:
+                noise_db: int = -35, eps: float = EPS) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_AUTO_OUT_WAV
     cmd = [
@@ -100,14 +115,22 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
 
     threading.Thread(target=_reader, daemon=True).start()
 
+    def _stop(wait: bool) -> None:
+        try:
+            proc.stdin.write("q")
+            proc.stdin.flush()
+            if wait:
+                proc.wait(timeout=20)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
     heard_speech = False
     t0 = time.monotonic()
     try:
         while True:
             if time.monotonic() - t0 > max_s:
                 if heard_speech:
-                    proc.stdin.write("q")
-                    proc.stdin.flush()
+                    _stop(wait=False)
                 break
             try:
                 line = lines.get(timeout=0.2)
@@ -119,11 +142,19 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
                 break
             if "silence_end" in line:
                 heard_speech = True
-            elif "silence_start" in line and heard_speech:
-                proc.stdin.write("q")
-                proc.stdin.flush()
-                proc.wait(timeout=20)
-                break
+            elif "silence_start" in line:
+                t = _parse_silence_start(line)
+                if heard_speech:
+                    # Fala terminou (silencio apos inicio conhecido).
+                    _stop(wait=True)
+                    break
+                if t is not None and t > eps:
+                    # Audio nao-silencioso desde o inicio ate t: houve fala
+                    # imediata (sem leading silence, sem silence_end).
+                    heard_speech = True
+                    _stop(wait=True)
+                    break
+                # t <= eps: pausa inicial; continua aguardando.
             if not heard_speech and time.monotonic() - t0 > wait_s:
                 break
     except (OSError, subprocess.SubprocessError) as exc:
