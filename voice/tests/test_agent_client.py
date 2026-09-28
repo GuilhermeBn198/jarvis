@@ -7,9 +7,10 @@ from agent_client import (
     RunClient, ServeClient, AgentError, make_client, SESSION_TIMEOUT_S,
 )
 
-CFG = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="run")
+CFG = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="run",
+             agent=None)
 SERVE_CFG = Config(opencode_bin="/x/opencode", timeout_s=10,
-                   agent_backend="serve",
+                   agent_backend="serve", agent=None,
                    server_url="http://127.0.0.1:4096")
 
 def test_ask_returns_stdout(monkeypatch):

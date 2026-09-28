@@ -36,7 +36,7 @@ class Config:
     record_seconds: int = DEFAULT_RECORD_SECONDS
     language: str = DEFAULT_LANGUAGE
     agent_backend: str = DEFAULT_AGENT_BACKEND
-    agent: str | None = None
+    agent: str | None = DEFAULT_AGENT
     server_url: str = DEFAULT_SERVER_URL
     tts_backend: str = DEFAULT_TTS_BACKEND
     voice_log_path: str = DEFAULT_VOICE_LOG

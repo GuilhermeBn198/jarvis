@@ -55,6 +55,44 @@ def test_bold_headers_links_tables():
     assert "item um item dois" in out
 
 
+def test_underscores_in_identifiers_kept():
+    assert speechify("use foo_bar e user_id") == "use foo_bar e user_id"
+
+
+def test_markdown_emphasis_removed():
+    assert speechify("isso e *importante* e **forte**") == (
+        "isso e importante e forte"
+    )
+
+
+def test_stray_asterisks_kept():
+    assert speechify("2 * 3 = 6") == "2 * 3 = 6"
+
+
+def test_leading_legit_blockquote_kept():
+    out = speechify("> citacao aqui")
+    assert "citacao" in out
+    assert ">" not in out
+
+
+def test_unclosed_fence_omitted():
+    out = speechify("Veja:\n```python\nprint(1)\n")
+    assert "bloco de código omitido" in out
+    assert "print(1)" not in out
+    assert "```" not in out
+
+
+def test_tilde_fence_omitted():
+    out = speechify("Veja:\n~~~python\nprint(1)\n~~~\n")
+    assert "bloco de código omitido" in out
+    assert "print(1)" not in out
+
+
+def test_speak_code_not_mangled():
+    out = speechify("```\na_b | c_d\n```", speak_code=True)
+    assert out == "a_b | c_d"
+
+
 def test_whitespace_collapsed():
     assert speechify("a\n\n\n  b\t\tc ") == "a b c"
 
@@ -71,4 +109,4 @@ def test_never_raises_on_weird_input():
 
 
 def test_drop_leading_tui_keeps_later_lines():
-    assert drop_leading_tui("> head\nlinha\n> outra") == "linha\n> outra"
+    assert drop_leading_tui("> head · modelo\nlinha\n> outra") == "linha\n> outra"
