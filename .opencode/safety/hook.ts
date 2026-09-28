@@ -41,9 +41,17 @@ export function actionFromToolCall(
 
 // Gancho `tool.execute.before`: bloqueia (throw) quando o motor decide deny.
 // O runtime despacha este hook de fato (ao contrário de `permission.ask` em
-// 1.17.18). `ask` NÃO é bloqueado aqui — a camada de permissões do opencode
-// continua responsável por pedir confirmação.
+// 1.17.18). Para tools comuns, `ask` NÃO é bloqueado aqui — a camada de
+// permissões do opencode continua responsável por pedir confirmação.
+//
+// Exceção: tools `act_*` (action type === "act") NÃO têm prompt interativo. Uma
+// tecla ou texto pode chegar a um terminal com foco, então `ask` também é
+// bloqueado por segurança. `deny` vale para todos os tipos.
 export function beforeToolCall(tool: string, args: unknown): void {
-  const d = decide(actionFromToolCall(tool, args));
+  const action = actionFromToolCall(tool, args);
+  const d = decide(action);
   if (d.status === "deny") throw new Error(`SafetyGate bloqueou (${d.reason})`);
+  if (action.type === "act" && d.status === "ask") {
+    throw new Error(`SafetyGate bloqueou (act sem prompt: ${d.reason})`);
+  }
 }

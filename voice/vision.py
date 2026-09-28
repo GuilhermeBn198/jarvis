@@ -29,8 +29,11 @@ def capture(out_path: str | None = None, config: Config | None = None) -> str:
 def see(prompt: str, png_path: str, config: Config | None = None) -> str:
     cfg = config or load_config()
     prompt = (prompt or "").strip() or "Descreva o que esta na tela."
+    # NAO usar --pure e usar o agente TOOL-LESS `chat`: o conteudo da tela e
+    # nao-conflavel e nao pode rodar um agente com tools/plugins (SafetyGate,
+    # act_*) habilitados. `chat` nao tem tools, entao nao ha buraco de execucao.
     cmd = [
-        cfg.opencode_bin, "run", "--pure", prompt,
+        cfg.opencode_bin, "run", "--agent", "chat", prompt,
         "-m", cfg.vision_model, "-f", png_path,
     ]
     try:

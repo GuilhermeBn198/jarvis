@@ -56,6 +56,13 @@ servidor saudável, executa
 `OPENCODE_SERVER_URL` (default `http://127.0.0.1:4096`) é a fonte de verdade:
 a porta usada na subida é derivada dele.
 
+> **Invariante do `--pure`:** `--pure` desabilita os plugins do projeto,
+> incluindo o SafetyGate e as tools `act_*`. Use-o **apenas** com um agente
+> **sem tools** (o default da voz é `chat`, tool-free); assim evita-se o custo
+> de carregar plugins sem abrir um buraco de execução. O modo `--do` NÃO usa
+> `--pure` porque precisa das tools `act_*` e do gate. A visão (`--see`) usa o
+> agente tool-less `chat` sem `--pure`, pois o conteúdo da tela é não-confiável.
+
 ### TTS (`piper`, default)
 O `piper` precisa de:
 - `PIPER_EXE` e `PIPER_MODEL` apontando para o binário e a voz `.onnx`

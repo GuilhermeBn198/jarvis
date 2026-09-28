@@ -12,13 +12,22 @@ const DENY: Array<[RegExp, string]> = [
   [/\bdd\b[^\n]*\bof\s*=\s*\/dev\//i, "escrita em device de bloco"],
   [/:\s*\(\s*\)\s*\{.*\|.*&.*\}\s*;\s*:/, "fork bomb"],
   [/\b(shred|wipefs)\b/i, "destruicao de dados"],
+  // Windows: as tools `act_*` podem digitar/executar comandos destrutivos.
+  [/\bformat\b[^\n]*\b[a-z]:/i, "formatacao de drive (Windows)"],
+  [/\bdiskpart\b/i, "diskpart (Windows)"],
+  [/\bvssadmin\b[^\n]*delete/i, "vssadmin delete (Windows)"],
+  [/\bdel\b[^\n]*\/[sq]\b/i, "del recursivo/silencioso (Windows)"],
+  [/\brd\b[^\n]*\/s\b/i, "rd recursivo (Windows)"],
+  [/Remove-Item[^\n]*-Recurse/i, "Remove-Item -Recurse (PowerShell)"],
+  [/Remove-Item[^\n]*-Force/i, "Remove-Item -Force (PowerShell)"],
 ];
 
 // Spec §3: ler/exfiltrar credenciais (~/.ssh, .env, ~/.aws, tokens) e DENY.
 // Aplicado ao texto inteiro ANTES da allowlist de leitura (read/glob/...), pois
-// o `pattern` de uma leitura traz o caminho.
+// o `pattern` de uma leitura traz o caminho. O limite aceita `/`, `\` (Windows,
+// p.ex. `C:\Users\x\.ssh\id_rsa`) ou espaco.
 const CREDENTIAL =
-  /(^|[\/\s])(\.ssh|\.aws|\.gnupg|\.git-credentials|\.netrc|\.env(\.[\w-]+)?\b|id_rsa|id_ed25519|authorized_keys|known_hosts|credentials|\.npmrc|\.pypirc|shadow|sudoers)\b/i;
+  /(^|[\/\\\s])(\.ssh|\.aws|\.gnupg|\.git-credentials|\.netrc|\.env(\.[\w-]+)?\b|id_rsa|id_ed25519|authorized_keys|known_hosts|credentials|\.npmrc|\.pypirc|shadow|sudoers)\b/i;
 
 const ASK: Array<[RegExp, string]> = [
   [/\bsudo\b/, "privilegio elevado"],

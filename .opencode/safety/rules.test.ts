@@ -142,3 +142,40 @@ test("act_click -> allow", () => {
   const a = actionFromToolCall("act_click", { x: 1, y: 2 });
   assert.equal(decide({ ...a }).status, "allow");
 });
+
+test("deny: act_type format drive (Windows)", () => {
+  const a = actionFromToolCall("act_type", { text: "format C:" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("deny: act_open diskpart", () => {
+  const a = actionFromToolCall("act_open", { target: "diskpart" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("deny: act_type vssadmin delete (Windows)", () => {
+  const a = actionFromToolCall("act_type", { text: "vssadmin delete shadows /all" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("deny: act_type del /s (Windows)", () => {
+  const a = actionFromToolCall("act_type", { text: "del /s C:\\temp" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("deny: act_open rd /s (Windows)", () => {
+  const a = actionFromToolCall("act_open", { target: "rd /s /q C:\\temp" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("deny: act_type Remove-Item -Recurse (PowerShell)", () => {
+  const a = actionFromToolCall("act_type", { text: "Remove-Item C:\\x -Recurse" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("deny: act_type Remove-Item -Force (PowerShell)", () => {
+  const a = actionFromToolCall("act_type", { text: "Remove-Item C:\\x -Force" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("deny: credencial com barra invertida do Windows", () => {
+  const a = actionFromToolCall("act_open", { target: "C:\\Users\\x\\.ssh\\id_rsa" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("allow: act_type benigno nao casa regra Windows", () => {
+  const a = actionFromToolCall("act_type", { text: "ola mundo" });
+  assert.equal(decide({ ...a }).status, "allow");
+});

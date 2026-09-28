@@ -6,7 +6,7 @@ import pytest
 from config import Config
 import loop
 
-CFG = Config(opencode_bin="/x/opencode", timeout_s=10, agent="act")
+CFG = Config(opencode_bin="/x/opencode", timeout_s=10, agent="chat")
 
 
 @pytest.fixture(autouse=True)
@@ -25,5 +25,6 @@ def test_do_uses_agent_act(monkeypatch):
     out = io.StringIO()
     loop.do_once("abra o notepad", out=out, config=CFG)
     assert "--agent" in seen["cmd"] and "act" in seen["cmd"]
+    assert "--pure" not in seen["cmd"]
     assert "abra o notepad" in seen["cmd"]
     assert "feito" in out.getvalue()
