@@ -11,11 +11,13 @@ Itens registrados para atacar depois, com contexto.
 - visão (`--see`, usa `run`): **~29 s** (dominado pelo startup do `run`)
 
 **Ideias a investigar (quando atacarmos):**
-- [ ] Usar `serve` também no caminho de **visão** (hoje `vision.see` chama `opencode run` → paga startup).
-- [ ] Reduzir o contexto/system prompt do agente `chat` (menos tokens = menos latência).
-- [ ] Streaming: começar a falar (TTS por sentença) enquanto o texto ainda é gerado.
-- [ ] Testar modelos mais rápidos para conversa (ex.: `opencode-go/gpt-6-luna`) — medi igual, então provavelmente **não** ajuda; o gargalo é overhead do agente/contexto.
-- [ ] Medir com `bench.py` antes/depois de cada mudança (comparação por dados).
+- [x] Usar `serve` também no caminho de **visão** — FEITO: **4,8s vs 11,5s** (−58%); `vision.see` usa serve com fallback para `run`.
+- [x] Reduzir o contexto/system prompt do agente `chat` (tools off) — TESTADO: **sem ganho** (1,84 vs 1,85s, n=8) → revertido; o gargalo não são as tools listadas.
+- [ ] Streaming: começar a falar (TTS por sentença) enquanto o texto ainda é gerado (reduz a latência *percebida*; exige consumir o SSE `/event`).
+- [x] Testar modelos mais rápidos para conversa (ex.: `opencode-go/gpt-6-luna`) — medido igual (~6,6–9,2s); **não** ajuda (gargalo é overhead, não geração).
+- [x] Medir com `bench.py` antes/depois — `bench.py` agora mede agente (run/serve) + TTS + visão.
+
+**Números atuais (medidos):** conversa `chat` via serve quente **~1,4–2,1s**; visão via serve **~3–5s**; TTS Piper ~1,1s.
 
 ## 2. Robustez de entrada de voz (feito nesta rodada)
 - [x] Whisper alucinando em silêncio (ex.: transcreveu `'1, 2, 1'`/"101") → habilitar **VAD** + anti-hallucination no `faster-whisper`.

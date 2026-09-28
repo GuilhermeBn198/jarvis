@@ -280,3 +280,150 @@ def test_serve_session_post_uses_short_timeout(monkeypatch):
     assert seen[0][2] == SESSION_TIMEOUT_S
     assert seen[1][2] == 300
 
+
+def test_serve_see_sends_image_and_model(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+    responses = [{"id": "s"}, {"parts": [{"type": "text", "text": " uma tela "}]}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
+                 server_url="http://127.0.0.1:4096", agent=None)
+    out = ServeClient(cfg).see(
+        " o que tem? ", str(png),
+        model_id="opencode-go/deepseek-v4-flash-vision-exp",
+    )
+    assert out == "uma tela"
+    url, payload, _ = seen[1]
+    assert url == "http://127.0.0.1:4096/session/s/message"
+    text_part, file_part = payload["parts"]
+    assert text_part == {"type": "text", "text": "o que tem?"}
+    assert file_part["type"] == "file"
+    assert file_part["mime"] == "image/png"
+    assert file_part["filename"] == "shot.png"
+    assert file_part["url"].startswith("data:image/png;base64,")
+    assert payload["model"] == {
+        "providerID": "opencode-go", "modelID": "deepseek-v4-flash-vision-exp",
+    }
+
+
+def test_serve_see_reuses_session_and_passes_agent(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    responses = [
+        {"id": "sess-1"},
+        {"parts": [{"type": "text", "text": "a"}]},
+        {"parts": [{"type": "text", "text": "b"}]},
+    ]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
+                 server_url="http://127.0.0.1:4096", agent="chat")
+    client = ServeClient(cfg)
+    assert client.see("a", str(png)) == "a"
+    assert client.see("b", str(png)) == "b"
+    assert seen[1][1]["agent"] == "chat"
+    assert "model" not in seen[1][1]
+    assert sum(1 for u, _, _ in seen if u.endswith("/session")) == 1
+
+
+def test_serve_see_forces_tool_less_chat_agent(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    responses = [{"id": "s"}, {"parts": [{"type": "text", "text": "ok"}]}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
+                 server_url="http://127.0.0.1:4096", agent=None)
+    assert ServeClient(cfg).see("o que tem?", str(png)) == "ok"
+    assert seen[1][1]["agent"] == "chat"
+
+
+def test_serve_see_agent_override(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    responses = [{"id": "s"}, {"parts": [{"type": "text", "text": "ok"}]}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
+                 server_url="http://127.0.0.1:4096", agent=None)
+    assert ServeClient(cfg).see("o que tem?", str(png), agent="outro") == "ok"
+    assert seen[1][1]["agent"] == "outro"
+
+
+def test_serve_see_recovers_dead_session_once(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    items = [
+        {"id": "sess-1"},
+        _http_error(404),
+        {"id": "sess-2"},
+        {"parts": [{"type": "text", "text": "ok"}]},
+    ]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _sequence_transport(items, seen))
+    client = ServeClient(SERVE_CFG)
+    assert client.see("o que tem?", str(png)) == "ok"
+    assert [u for u, _, _ in seen] == [
+        "http://127.0.0.1:4096/session",
+        "http://127.0.0.1:4096/session/sess-1/message",
+        "http://127.0.0.1:4096/session",
+        "http://127.0.0.1:4096/session/sess-2/message",
+    ]
+    assert client._session_id == "sess-2"
+    assert seen[1][1]["agent"] == "chat"
+    assert seen[3][1]["agent"] == "chat"
+
+
+def test_serve_see_empty_prompt_raises_without_http(monkeypatch, tmp_path):
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+
+    def boom(*a, **k):
+        raise AssertionError("nao deveria chamar HTTP")
+
+    monkeypatch.setattr("agent_client.urllib.request.urlopen", boom)
+    with pytest.raises(AgentError):
+        ServeClient(SERVE_CFG).see("   ", str(png))
+
+
+def test_serve_see_missing_file_raises(monkeypatch, tmp_path):
+    def boom(*a, **k):
+        raise AssertionError("nao deveria chamar HTTP")
+
+    monkeypatch.setattr("agent_client.urllib.request.urlopen", boom)
+    with pytest.raises(AgentError) as exc:
+        ServeClient(SERVE_CFG).see("x", str(tmp_path / "nao_existe.png"))
+    assert "imagem" in str(exc.value)
+
+
+def test_serve_see_empty_reply_raises(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+    responses = [{"id": "s"}, {"parts": []}]
+    monkeypatch.setattr("agent_client.urllib.request.urlopen",
+                        _fake_transport(responses, seen))
+    with pytest.raises(AgentError) as exc:
+        ServeClient(SERVE_CFG).see("x", str(png))
+    assert "nao retornou resposta" in str(exc.value)
+
+
+def test_serve_see_bad_model_id_raises(monkeypatch, tmp_path):
+    seen = []
+    png = tmp_path / "shot.png"
+    png.write_bytes(b"x")
+
+    def boom(*a, **k):
+        raise AssertionError("nao deveria chamar HTTP")
+
+    monkeypatch.setattr("agent_client.urllib.request.urlopen", boom)
+    with pytest.raises(AgentError) as exc:
+        ServeClient(SERVE_CFG).see("x", str(png), model_id="sem-barra")
+    assert "model_id" in str(exc.value)
+
