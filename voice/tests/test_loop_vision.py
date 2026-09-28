@@ -5,6 +5,7 @@ import pytest
 import loop
 import loop as loop_mod
 from config import Config
+from sanitize import speechify
 
 CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1)
 
@@ -16,19 +17,32 @@ def _no_convlog(monkeypatch):
 
 def test_see_once_uses_capture_and_see(monkeypatch):
     calls = {}
-    monkeypatch.setattr(loop, "capture", lambda **k: calls.setdefault("cap", "/mnt/c/x.png") or "/mnt/c/x.png")
-    monkeypatch.setattr(loop, "see", lambda p, png, **k: calls.setdefault("see", (p, png)) or "uma tela")
-    monkeypatch.setattr(loop, "speak", lambda t, **k: calls.setdefault("tts", t))
+
+    def fake_capture(**k):
+        calls["cap"] = "/mnt/c/x.png"
+        return "/mnt/c/x.png"
+
+    def fake_see(prompt, png, **k):
+        calls["see"] = (prompt, png)
+        return "uma tela"
+
+    monkeypatch.setattr(loop, "capture", fake_capture)
+    monkeypatch.setattr(loop, "see", fake_see)
+    monkeypatch.setattr(loop, "speak", lambda t, **k: calls.update(tts=t))
     out = io.StringIO()
     loop.see_once("o que tem?", out=out, config=None)
     assert calls["cap"] == "/mnt/c/x.png"
     assert calls["see"][0] == "o que tem?"
-    assert "uma tela" in out.getvalue() or calls.get("tts")
+    assert "uma tela" in out.getvalue()
+    assert calls["tts"] == speechify("uma tela")
 
 
 def test_voice_trigger_detection():
     assert loop.is_vision_request("olha o que tem na tela", "olha") is True
+    assert loop.is_vision_request("olha, me ajuda", "olha") is True
+    assert loop.is_vision_request("olhar a lua", "olha") is False
     assert loop.is_vision_request("qual a capital da franca", "olha") is False
+
 
 
 def test_strip_trigger_removes_prefix():

@@ -23,7 +23,7 @@ def _windows_to_wsl(p: str) -> str:
 
 def capture(out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
-    win_path = out_path or cfg.vision_png
+    win_path = _wsl_to_windows(out_path) if out_path else cfg.vision_png
     cmd = [
         cfg.ffmpeg_exe, "-y", "-f", "gdigrab", "-i", "desktop",
         "-frames:v", "1", "-update", "1", win_path,
@@ -58,4 +58,7 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
         raise VoiceError(
             f"visao falhou ({proc.returncode}): {proc.stderr.strip()[:200]}"
         )
-    return strip_opencode_noise(proc.stdout).strip()
+    cleaned = strip_opencode_noise(proc.stdout).strip()
+    if not cleaned:
+        raise VoiceError("visao nao retornou resposta")
+    return cleaned

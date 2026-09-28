@@ -26,6 +26,23 @@ def test_capture_failure_raises(monkeypatch):
     with pytest.raises(Exception):
         vision.capture(config=CFG)
 
+def test_capture_converts_wsl_out_path(monkeypatch):
+    seen = {}
+    def fake_run(cmd, **kw):
+        seen["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    out = vision.capture(out_path="/mnt/c/Users/x/shot.png", config=CFG)
+    assert "C:\\Users\\x\\shot.png" in seen["cmd"]
+    assert out == "/mnt/c/Users/x/shot.png"
+
+def test_see_empty_output_raises(monkeypatch):
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 0, "   \n", "")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(vision.VoiceError, match="nao retornou resposta"):
+        vision.see("o que tem?", "/mnt/c/Users/x/tools/shot.png", config=CFG)
+
 def test_see_message_before_f(monkeypatch):
     seen = {}
     def fake_run(cmd, **kw):

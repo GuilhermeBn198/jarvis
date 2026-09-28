@@ -1,3 +1,4 @@
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -109,7 +110,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
 def is_vision_request(text: str, trigger: str) -> bool:
     if not trigger:
         return False
-    return (text or "").strip().lower().startswith(trigger.lower())
+    pattern = r"^\s*" + re.escape(trigger) + r"\b"
+    return re.match(pattern, text or "", re.IGNORECASE) is not None
 
 
 def strip_trigger(text: str, trigger: str) -> str:
@@ -200,7 +202,12 @@ def main(argv=None) -> int:
         if "--see" in args:
             i = args.index("--see")
             question = args[i + 1] if i + 1 < len(args) else ""
-            see_once(question)
+            try:
+                see_once(question)
+            except VoiceError as exc:
+                sys.stderr.write(f"[erro] {exc}\n")
+                sys.stderr.flush()
+                return 1
             return 0
         if "--voice" in args:
             iterations = _parse_once(args)
