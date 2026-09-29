@@ -15,6 +15,11 @@ HEARTBEAT_S = 10.0
 
 def _make_handler(hub):
     class Handler(BaseHTTPRequestHandler):
+        # SSE precisa de HTTP/1.1: o EventSource do Chromium/WebView2 rejeita
+        # uma resposta HTTP/1.0 com `Connection: keep-alive` (o curl aceita,
+        # mas o webview nao entrega os eventos).
+        protocol_version = "HTTP/1.1"
+
         def log_message(self, *args):
             pass
 

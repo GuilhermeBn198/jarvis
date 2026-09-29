@@ -1,3 +1,4 @@
+import http.client
 import json
 import queue
 import time
@@ -206,3 +207,19 @@ def test_start_stop_is_clean():
     hub.start()  # idempotente
     hub.stop()
     hub.stop()  # idempotente
+
+
+def test_server_uses_http_1_1():
+    # SSE exige HTTP/1.1: o EventSource do WebView2 rejeita HTTP/1.0 com
+    # `Connection: keep-alive` (ver notes/jarvis-state-indicator.md).
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", hub._port, timeout=2)
+        conn.request("GET", "/state")
+        resp = conn.getresponse()
+        assert resp.version == 11
+        resp.read()
+        conn.close()
+    finally:
+        hub.stop()
