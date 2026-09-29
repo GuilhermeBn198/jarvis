@@ -16,7 +16,8 @@ from vision import capture, see
 
 
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
-               config=None, err=None, max_consecutive_errors: int = 3) -> None:
+               config=None, err=None, max_consecutive_errors: int = 3,
+               hub=None, orphan_timeout_s: float = 15.0) -> None:
     cfg = config or load_config()
     err = err if err is not None else sys.stderr
     if client is None:
@@ -24,6 +25,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
     secs = record_seconds if record_seconds is not None else cfg.record_seconds
     n = 0
     consecutive_errors = 0
+    if hub is not None:
+        hub.set("idle")
 
     def _voice_error(exc: VoiceError) -> bool:
         nonlocal consecutive_errors
@@ -43,32 +46,44 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         n += 1
         t0 = time.monotonic()
         try:
+            if hub is not None:
+                hub.set("listening")
             if cfg.input_mode == "auto":
                 wav = record_auto(config=cfg)
                 if not wav:
                     err.write("[voz] nada detectado\n")
                     err.flush()
                     consecutive_errors = 0
+                    if hub is not None:
+                        hub.set("idle")
                     continue
             elif cfg.input_mode == "ptt":
                 wav = record_ptt(config=cfg)
             else:
                 wav = record(seconds=secs, config=cfg)
             t_rec = time.monotonic()
+            if hub is not None:
+                hub.set("transcribing")
             text = transcribe(wav, config=cfg)
         except VoiceError as exc:
+            if hub is not None:
+                hub.set("error")
             if _voice_error(exc):
                 return
+            if hub is not None:
+                hub.set("idle")
             continue
         t_stt = time.monotonic()
         if not text:
             err.write("[voz] nada transcrito\n")
             err.flush()
             consecutive_errors = 0
+            if hub is not None:
+                hub.set("idle")
             continue
         if is_vision_request(text, cfg.vision_trigger):
             try:
-                see_once(strip_trigger(text, cfg.vision_trigger), err=err, config=cfg)
+                see_once(strip_trigger(text, cfg.vision_trigger), err=err, config=cfg, hub=hub)
             except VoiceError as exc:
                 if _voice_error(exc):
                     return
@@ -77,18 +92,26 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             continue
         error = None
         t_agent0 = time.monotonic()
+        if hub is not None:
+            hub.set("thinking")
         try:
             answer = client.ask(text)
         except AgentError as exc:
             error = str(exc)
             answer = f"erro: {exc}"
+            if hub is not None:
+                hub.set("error")
         t_agent1 = time.monotonic()
         spoken = speechify(answer)
         aborted = False
         tts_failed = False
         t_tts0 = time.monotonic()
+        muted = False
         try:
-            speak(spoken, config=cfg)
+            if not muted and hub is not None:
+                hub.set("speaking")
+            if not muted:
+                speak(spoken, config=cfg)
         except VoiceError as exc:
             tts_failed = True
             aborted = _voice_error(exc)
@@ -116,6 +139,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 return
             continue
         consecutive_errors = 0
+        if hub is not None:
+            hub.set("idle")
 
 
 def is_vision_request(text: str, trigger: str) -> bool:
@@ -132,13 +157,15 @@ def strip_trigger(text: str, trigger: str) -> str:
     return t
 
 
-def see_once(prompt: str, out=None, err=None, config=None) -> None:
+def see_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     out = out if out is not None else sys.stdout
     err = err if err is not None else sys.stderr
     cfg = config or load_config()
     t0 = time.monotonic()
     png = capture(config=cfg)
     t_cap = time.monotonic()
+    if hub is not None:
+        hub.set("thinking")
     answer = see(prompt, png, config=cfg)
     t_see = time.monotonic()
     text = answer if isinstance(answer, str) else str(answer)
@@ -147,6 +174,8 @@ def see_once(prompt: str, out=None, err=None, config=None) -> None:
     out.flush()
     error = None
     try:
+        if hub is not None:
+            hub.set("speaking")
         speak(spoken, config=cfg)
     except VoiceError as exc:
         error = str(exc)
@@ -166,9 +195,11 @@ def see_once(prompt: str, out=None, err=None, config=None) -> None:
         },
         config=cfg,
     )
+    if hub is not None:
+        hub.set("idle")
 
 
-def do_once(prompt: str, out=None, err=None, config=None) -> None:
+def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     """Executa uma acao no PC pelo agente `act` (modo --do), sem voz.
 
     Forca `--agent act` independentemente do `agent` configurado; erros viram
@@ -185,6 +216,8 @@ def do_once(prompt: str, out=None, err=None, config=None) -> None:
     # NAO usar --pure: ele desabilita os plugins do projeto e, com isso, as
     # tools act_* (e o SafetyGate) ficam indisponiveis (verificado via
     # `opencode run --agent act` com/sem --pure).
+    if hub is not None:
+        hub.set("acting")
     cmd = [cfg.opencode_bin, "run", "--agent", "act", prompt]
     t0 = time.monotonic()
     try:
@@ -228,6 +261,8 @@ def do_once(prompt: str, out=None, err=None, config=None) -> None:
     spoken = speechify(answer)
     out.write(answer + "\n")
     out.flush()
+    if hub is not None:
+        hub.set("idle")
     log_turn(
         {
             "ts": datetime.now(timezone.utc).isoformat(),

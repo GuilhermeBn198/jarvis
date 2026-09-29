@@ -359,3 +359,63 @@ def test_main_text_mode_falls_back_to_run_when_serve_down(monkeypatch):
     assert out.getvalue().strip() == "pong"
     assert "[aviso]" in err.getvalue()
 
+
+class FakeHub:
+    def __init__(self):
+        self.states = []
+
+    def set(self, state, detail=None):
+        self.states.append(state)
+
+    def take_command(self):
+        return None
+
+    def subscribers(self):
+        return 1
+
+
+def test_voice_loop_emits_happy_path_states(monkeypatch):
+    hub = FakeHub()
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+    monkeypatch.setattr("loop.speak", lambda text, **k: None)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            return "resposta"
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=hub)
+    assert hub.states == [
+        "idle", "listening", "transcribing", "thinking", "speaking", "idle",
+    ]
+
+
+def test_voice_loop_emits_error_on_agent_failure(monkeypatch):
+    from agent_client import AgentError
+
+    hub = FakeHub()
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+    monkeypatch.setattr("loop.speak", lambda text, **k: None)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            raise AgentError("boom")
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=hub)
+    assert hub.states == [
+        "idle", "listening", "transcribing", "thinking", "error", "speaking", "idle",
+    ]
+
+
+def test_voice_loop_without_hub_still_runs(monkeypatch):
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "x")
+    monkeypatch.setattr("loop.speak", lambda text, **k: None)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            return "r"
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+
