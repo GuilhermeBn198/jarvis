@@ -28,3 +28,21 @@ def test_do_uses_agent_act(monkeypatch):
     assert "--pure" not in seen["cmd"]
     assert "abra o notepad" in seen["cmd"]
     assert "feito" in out.getvalue()
+
+
+def test_do_restores_idle_when_opencode_missing(monkeypatch):
+    class FakeHub:
+        def __init__(self):
+            self.states = []
+
+        def set(self, state):
+            self.states.append(state)
+
+    def boom(cmd, **kw):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(subprocess, "run", boom)
+    hub = FakeHub()
+    loop.do_once("abra algo", out=io.StringIO(), err=io.StringIO(), config=CFG, hub=hub)
+    assert hub.states[0] == "acting"
+    assert hub.states[-1] == "idle"

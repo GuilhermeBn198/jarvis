@@ -88,10 +88,10 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 if hub is not None:
                     hub.set("error")
                 abort = _voice_error(exc)
-                if hub is not None:
-                    hub.set("idle")
                 if abort:
                     return
+                if hub is not None:
+                    hub.set("idle")
                 continue
             consecutive_errors = 0
             continue
@@ -140,10 +140,12 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             config=cfg,
         )
         if tts_failed:
+            if aborted:
+                if hub is not None:
+                    hub.set("error")
+                return
             if hub is not None:
                 hub.set("idle")
-            if aborted:
-                return
             continue
         consecutive_errors = 0
         if hub is not None:
@@ -241,18 +243,26 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
             f"(defina OPENCODE_BIN)\n"
         )
         err.flush()
+        if hub is not None:
+            hub.set("idle")
         return
     except PermissionError:
         err.write(f"[erro] opencode em {cfg.opencode_bin} nao e executavel\n")
         err.flush()
+        if hub is not None:
+            hub.set("idle")
         return
     except subprocess.TimeoutExpired:
         err.write(f"[erro] timeout ({cfg.timeout_s}s) ao chamar o agente\n")
         err.flush()
+        if hub is not None:
+            hub.set("idle")
         return
     except OSError as exc:
         err.write(f"[erro] falha ao executar opencode ({exc})\n")
         err.flush()
+        if hub is not None:
+            hub.set("idle")
         return
     t_agent = time.monotonic()
     answer = strip_opencode_noise(proc.stdout or "").strip()

@@ -444,13 +444,59 @@ def test_voice_loop_tts_failure_emits_idle(monkeypatch):
 
 
 def test_voice_loop_without_hub_still_runs(monkeypatch):
+    calls = []
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "x")
     monkeypatch.setattr("loop.speak", lambda text, **k: None)
 
     class Client:
         def ask(self, task, timeout_s=None):
+            calls.append("ask")
             return "r"
 
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert calls == ["ask"]
+
+
+def test_voice_loop_tts_abort_ends_error(monkeypatch):
+    hub = FakeHub()
+    calls = []
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+
+    def boom(text, **k):
+        calls.append("speak")
+        raise VoiceError("SAPI indisponivel")
+    monkeypatch.setattr("loop.speak", boom)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            calls.append("ask")
+            return "resposta"
+
+    voice_loop(client=Client(), iterations=0, record_seconds=1, config=CFG,
+               hub=hub, max_consecutive_errors=1, err=io.StringIO())
+    assert hub.states[-1] == "error"
+    assert calls == ["record", "ask", "speak"]
+
+
+def test_voice_loop_vision_abort_ends_error(monkeypatch):
+    hub = FakeHub()
+    calls = []
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "olha isso")
+
+    def boom(**k):
+        raise VoiceError("sem camera")
+    monkeypatch.setattr("loop.capture", boom)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            calls.append("ask")
+            return "resposta"
+
+    voice_loop(client=Client(), iterations=0, record_seconds=1, config=CFG,
+               hub=hub, max_consecutive_errors=1, err=io.StringIO())
+    assert hub.states[-1] == "error"
+    assert calls == ["record", "stt"]
 
