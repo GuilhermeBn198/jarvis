@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>jarvis</title>
+  </head>
+  <body>
+    <div class="handle" data-tauri-drag-region title="arrastar">⋮⋮</div>
+    <div id="orb" class="orb" data-state="offline"></div>
+    <div id="label" class="label">offline</div>
+    <div id="menu" class="menu hidden">
+      <button data-cmd="mute">Mudo</button>
+      <button data-cmd="pause">Pausar</button>
+      <button id="brain" data-cmd="brain">Reiniciar cérebro</button>
+      <button data-cmd="quit">Sair</button>
+    </div>
+    <script src="main.js"></script>
+  </body>
+</html>

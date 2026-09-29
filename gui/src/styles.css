@@ -1,0 +1,98 @@
+html, body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.handle {
+  position: fixed;
+  top: 2px;
+  right: 34px;
+  color: #475569;
+  font: 12px system-ui;
+  cursor: grab;
+  padding: 2px 6px;
+}
+
+.orb {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  cursor: pointer;
+  --c: #64748b;
+  background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--c) 75%, white), var(--c));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--c) 65%, transparent);
+}
+
+.orb::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--c) 40%, transparent);
+}
+
+.orb[data-state="idle"] { --c: #64748b; animation: breathe 4.5s ease-in-out infinite; }
+.orb[data-state="listening"] { --c: #22d3ee; animation: pulse 1.4s ease-in-out infinite; }
+.orb[data-state="listening"]::after { animation: ripple 1.6s ease-out infinite; }
+.orb[data-state="transcribing"] { --c: #a855f7; animation: spin 1.2s linear infinite; }
+.orb[data-state="thinking"] { --c: #34d399; animation: pulse 1.1s ease-in-out infinite; }
+.orb[data-state="speaking"] { --c: #f59e0b; animation: speak 0.55s ease-in-out infinite; }
+.orb[data-state="acting"] { --c: #f43f5e; animation: spin 2.2s linear infinite; }
+.orb[data-state="error"] { --c: #ef4444; animation: flash 0.7s steps(2) infinite; }
+.orb[data-state="offline"] { --c: #475569; }
+
+@keyframes breathe { 0%,100% { transform: scale(1); opacity: .72 } 50% { transform: scale(1.06); opacity: 1 } }
+@keyframes pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.14) } }
+@keyframes ripple { 0% { transform: scale(.9); opacity: .8 } 100% { transform: scale(1.7); opacity: 0 } }
+@keyframes spin { 0% { transform: rotate(0) scale(1.04) } 100% { transform: rotate(360deg) scale(1.04) } }
+@keyframes speak { 0%,100% { transform: scaleY(1) } 50% { transform: scaleY(1.18) scaleX(.92) } }
+@keyframes flash { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+
+.label {
+  position: fixed;
+  right: 88px;
+  bottom: 38px;
+  display: none;
+  color: #c7cedb;
+  font: 12px system-ui;
+  background: #0b0e14cc;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.label.show { display: block; }
+
+.menu {
+  position: fixed;
+  right: 18px;
+  bottom: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #0b0e14ee;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.menu.hidden { display: none; }
+
+.menu button {
+  background: transparent;
+  border: 0;
+  color: #c7cedb;
+  font: 12px system-ui;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.menu button:hover { background: #1b1e27; }
