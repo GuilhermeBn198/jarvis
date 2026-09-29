@@ -1,7 +1,9 @@
 import base64
 import json
 import os
+import socket
 import subprocess
+import time
 import urllib.error
 import urllib.request
 
@@ -208,6 +210,122 @@ class ServeClient:
             self._session_id = None
             session_id = self._ensure_session(timeout)
             return self._request_reply(session_id, task, timeout)
+
+    def _post_no_content(self, path: str, payload: dict, timeout: int) -> None:
+        url = self._cfg.server_url.rstrip("/") + path
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                resp.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code in (404, 410):
+                raise _SessionGone(
+                    f"sessao expirada no servidor (HTTP {exc.code})"
+                ) from exc
+            raise AgentError(
+                f"falha ao falar com o servidor em {url} ({exc})"
+            ) from exc
+        except (OSError, ValueError) as exc:
+            raise AgentError(f"falha ao falar com o servidor em {url} ({exc})") from exc
+
+    def _consume_events(self, stream, session_id, on_delta, on_idle, timeout):
+        deadline = time.monotonic() + timeout
+        parts: dict[str, str] = {}
+        roles: dict[str, str] = {}
+        done = False
+        while not done:
+            if time.monotonic() >= deadline:
+                raise AgentError("timeout ao aguardar a resposta")
+            try:
+                raw = stream.readline()
+            except (socket.timeout, TimeoutError):
+                if on_idle is not None:
+                    on_idle()
+                continue
+            if not raw:
+                break
+            line = raw.decode("utf-8", "replace").strip()
+            if not line.startswith("data:"):
+                continue
+            payload = line[5:].strip()
+            if not payload:
+                continue
+            try:
+                obj = json.loads(payload)
+            except ValueError:
+                continue
+            etype = obj.get("type")
+            props = obj.get("properties") or {}
+            if etype == "message.updated":
+                info = props.get("info") or {}
+                mid = info.get("id")
+                role = info.get("role")
+                if mid and role:
+                    roles[mid] = role
+                continue
+            if etype == "message.part.updated":
+                part = props.get("part") or {}
+                if part.get("type") != "text":
+                    continue
+                if part.get("sessionID") and part["sessionID"] != session_id:
+                    continue
+                mid = part.get("messageID")
+                if mid is not None and roles.get(mid) != "assistant":
+                    continue
+                pid = part.get("id") or "?"
+                new = part.get("text") or ""
+                prev = parts.get(pid, "")
+                delta = new[len(prev):] if new.startswith(prev) else new
+                parts[pid] = new
+                if delta:
+                    on_delta(delta)
+            elif etype in ("session.idle", "session.error"):
+                sid = props.get("sessionID")
+                if sid and sid != session_id:
+                    continue
+                done = True
+        text = "".join(parts.values()).strip()
+        if not text:
+            raise AgentError("agente nao retornou resposta")
+        return text
+
+    def stream(self, task, on_delta, on_idle=None, timeout_s=None) -> str:
+        task = (task or "").strip()
+        if not task:
+            raise AgentError("tarefa vazia")
+        timeout = timeout_s if timeout_s is not None else self._cfg.timeout_s
+        session_id = self._ensure_session(timeout)
+        url = self._cfg.server_url.rstrip("/") + "/event"
+        try:
+            events = urllib.request.urlopen(url, timeout=timeout)
+        except (OSError, ValueError) as exc:
+            raise AgentError(f"falha ao assinar /event ({exc})") from exc
+        try:
+            payload = {"parts": [{"type": "text", "text": task}]}
+            if self._cfg.agent:
+                payload["agent"] = self._cfg.agent
+            try:
+                self._post_no_content(
+                    f"/session/{session_id}/prompt_async", payload, timeout
+                )
+            except _SessionGone:
+                self._session_id = None
+                session_id = self._ensure_session(timeout)
+                self._post_no_content(
+                    f"/session/{session_id}/prompt_async", payload, timeout
+                )
+            return self._consume_events(
+                events, session_id, on_delta, on_idle, timeout
+            )
+        finally:
+            try:
+                events.close()
+            except OSError:
+                pass
 
 
 def make_client(cfg: Config):

@@ -1,4 +1,5 @@
 import subprocess
+import io
 import json
 import urllib.error
 import pytest
@@ -426,4 +427,96 @@ def test_serve_see_bad_model_id_raises(monkeypatch, tmp_path):
     with pytest.raises(AgentError) as exc:
         ServeClient(SERVE_CFG).see("x", str(png), model_id="sem-barra")
     assert "model_id" in str(exc.value)
+
+
+def _sse(*objs):
+    return io.BytesIO(
+        "".join("data: " + json.dumps(o) + "\n\n" for o in objs).encode()
+    )
+
+
+def _stream_cfg():
+    return Config(opencode_bin="/x/o", timeout_s=10, agent="chat")
+
+
+def _part(pid, text, sid="S"):
+    return {"type": "message.part.updated",
+            "properties": {"part": {"id": pid, "type": "text",
+                                    "sessionID": sid, "text": text}}}
+
+
+def _msg(mid, role, sid="S"):
+    return {"type": "message.updated",
+            "properties": {"info": {"id": mid, "role": role, "sessionID": sid}}}
+
+
+def test_consume_events_cumulative_text_emits_deltas():
+    client = ServeClient(_stream_cfg())
+    deltas = []
+    stream = _sse(_part("p1", "Olá"), _part("p1", "Olá, tudo"),
+                  {"type": "session.idle", "properties": {"sessionID": "S"}})
+    text = client._consume_events(stream, "S", deltas.append, None, 10)
+    assert deltas == ["Olá", ", tudo"]
+    assert text == "Olá, tudo"
+
+
+def test_consume_events_ignores_other_sessions():
+    client = ServeClient(_stream_cfg())
+    deltas = []
+    stream = _sse(_part("p1", "outro", sid="X"),
+                  _part("p2", "meu", sid="S"),
+                  {"type": "session.idle", "properties": {"sessionID": "S"}})
+    client._consume_events(stream, "S", deltas.append, None, 10)
+    assert deltas == ["meu"]
+
+
+def test_consume_events_empty_raises():
+    client = ServeClient(_stream_cfg())
+    stream = _sse({"type": "session.idle", "properties": {"sessionID": "S"}})
+    try:
+        client._consume_events(stream, "S", lambda d: None, None, 10)
+        assert False, "deveria levantar"
+    except AgentError:
+        pass
+
+
+def test_consume_events_skips_user_prompt_echo():
+    client = ServeClient(_stream_cfg())
+    deltas = []
+    stream = _sse(
+        _msg("m-user", "user"),
+        {"type": "message.part.updated",
+         "properties": {"part": {"id": "pu", "type": "text", "sessionID": "S",
+                                 "messageID": "m-user",
+                                 "text": "pergunta do usuario"}}},
+        _msg("m-asst", "assistant"),
+        {"type": "message.part.updated",
+         "properties": {"part": {"id": "pa", "type": "text", "sessionID": "S",
+                                 "messageID": "m-asst", "text": "resposta"}}},
+        {"type": "session.idle", "properties": {"sessionID": "S"}},
+    )
+    text = client._consume_events(stream, "S", deltas.append, None, 10)
+    assert deltas == ["resposta"]
+    assert text == "resposta"
+
+
+def test_stream_posts_async_and_returns_text(monkeypatch):
+    client = ServeClient(_stream_cfg())
+    monkeypatch.setattr(client, "_ensure_session", lambda timeout: "S")
+    posted = {}
+
+    def fake_post_no_content(path, payload, timeout):
+        posted["path"] = path
+        posted["payload"] = payload
+
+    monkeypatch.setattr(client, "_post_no_content", fake_post_no_content)
+    stream = _sse(_part("p1", "resposta"),
+                  {"type": "session.idle", "properties": {"sessionID": "S"}})
+    monkeypatch.setattr("urllib.request.urlopen", lambda url, timeout=None: stream)
+    deltas = []
+    text = client.stream("faca algo", deltas.append)
+    assert posted["path"].endswith("/prompt_async")
+    assert posted["payload"]["agent"] == "chat"
+    assert text == "resposta"
+    assert deltas == ["resposta"]
 
