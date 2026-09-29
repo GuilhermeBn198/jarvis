@@ -25,6 +25,23 @@ def gui_lost(require_gui: bool, subscribers: int, last_gui_ts: float,
     return (now - last_gui_ts) > timeout
 
 
+def _emit(hub, state, detail=None) -> None:
+    """Publica um estado no hub, se houver, sem nunca derrubar a voz.
+
+    Qualquer falha do hub (ausente, desconectado, com `set` quebrado) e
+    engolida: o indicador nunca pode interromper o loop de voz.
+    """
+    if hub is None:
+        return
+    try:
+        if detail is None:
+            hub.set(state)
+        else:
+            hub.set(state, detail)
+    except Exception:
+        pass
+
+
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
                config=None, err=None, max_consecutive_errors: int = 3,
                hub=None, orphan_timeout_s: float = 15.0) -> None:
@@ -35,11 +52,11 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
     secs = record_seconds if record_seconds is not None else cfg.record_seconds
     n = 0
     consecutive_errors = 0
-    if hub is not None:
-        hub.set("idle")
+    _emit(hub, "idle")
     last_gui_ts = time.monotonic()
     muted = False
     paused = False
+    was_paused = False
 
     def _voice_error(exc: VoiceError) -> bool:
         nonlocal consecutive_errors
@@ -58,7 +75,10 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
     while iterations == 0 or n < iterations:
         n += 1
         if hub is not None:
-            cmd = hub.take_command()
+            try:
+                cmd = hub.take_command()
+            except Exception:
+                cmd = None
             while cmd is not None:
                 if cmd == "quit":
                     return
@@ -66,87 +86,88 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                     muted = not muted
                 elif cmd == "pause":
                     paused = not paused
-                cmd = hub.take_command()
+                try:
+                    cmd = hub.take_command()
+                except Exception:
+                    cmd = None
+            try:
+                subs = hub.subscribers()
+            except Exception:
+                subs = 0
             now = time.monotonic()
-            if hub.subscribers() > 0:
+            if subs > 0:
                 last_gui_ts = now
-            elif gui_lost(cfg.state_require_gui, 0, last_gui_ts, now, orphan_timeout_s):
+            elif gui_lost(cfg.state_require_gui, subs, last_gui_ts, now, orphan_timeout_s):
                 err.write("[voz] overlay ausente; encerrando\n")
                 err.flush()
                 return
             if paused:
-                hub.set("idle")
+                if not was_paused:
+                    _emit(hub, "idle")
+                    was_paused = True
+                time.sleep(0.25)
                 continue
+            was_paused = False
         t0 = time.monotonic()
         try:
-            if hub is not None:
-                hub.set("listening")
+            _emit(hub, "listening")
             if cfg.input_mode == "auto":
                 wav = record_auto(config=cfg)
                 if not wav:
                     err.write("[voz] nada detectado\n")
                     err.flush()
                     consecutive_errors = 0
-                    if hub is not None:
-                        hub.set("idle")
+                    _emit(hub, "idle")
                     continue
             elif cfg.input_mode == "ptt":
                 wav = record_ptt(config=cfg)
             else:
                 wav = record(seconds=secs, config=cfg)
             t_rec = time.monotonic()
-            if hub is not None:
-                hub.set("transcribing")
+            _emit(hub, "transcribing")
             text = transcribe(wav, config=cfg)
         except VoiceError as exc:
-            if hub is not None:
-                hub.set("error")
+            _emit(hub, "error")
             if _voice_error(exc):
                 return
-            if hub is not None:
-                hub.set("idle")
+            _emit(hub, "idle")
             continue
         t_stt = time.monotonic()
         if not text:
             err.write("[voz] nada transcrito\n")
             err.flush()
             consecutive_errors = 0
-            if hub is not None:
-                hub.set("idle")
+            _emit(hub, "idle")
             continue
         if is_vision_request(text, cfg.vision_trigger):
             try:
                 see_once(strip_trigger(text, cfg.vision_trigger), err=err, config=cfg, hub=hub)
             except VoiceError as exc:
-                if hub is not None:
-                    hub.set("error")
+                _emit(hub, "error")
                 abort = _voice_error(exc)
                 if abort:
                     return
-                if hub is not None:
-                    hub.set("idle")
+                _emit(hub, "idle")
                 continue
             consecutive_errors = 0
             continue
         error = None
         t_agent0 = time.monotonic()
-        if hub is not None:
-            hub.set("thinking")
+        _emit(hub, "thinking")
         try:
             answer = client.ask(text)
         except AgentError as exc:
             error = str(exc)
             answer = f"erro: {exc}"
-            if hub is not None:
-                hub.set("error")
+            _emit(hub, "error")
         t_agent1 = time.monotonic()
         spoken = speechify(answer)
         aborted = False
         tts_failed = False
         t_tts0 = time.monotonic()
         try:
-            if not muted and hub is not None:
-                hub.set("speaking")
+            if not muted:
+                _emit(hub, "speaking")
             if not muted:
                 speak(spoken, config=cfg)
         except VoiceError as exc:
@@ -173,15 +194,12 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         )
         if tts_failed:
             if aborted:
-                if hub is not None:
-                    hub.set("error")
+                _emit(hub, "error")
                 return
-            if hub is not None:
-                hub.set("idle")
+            _emit(hub, "idle")
             continue
         consecutive_errors = 0
-        if hub is not None:
-            hub.set("idle")
+        _emit(hub, "idle")
 
 
 def is_vision_request(text: str, trigger: str) -> bool:
@@ -205,8 +223,7 @@ def see_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     t0 = time.monotonic()
     png = capture(config=cfg)
     t_cap = time.monotonic()
-    if hub is not None:
-        hub.set("thinking")
+    _emit(hub, "thinking")
     answer = see(prompt, png, config=cfg)
     t_see = time.monotonic()
     text = answer if isinstance(answer, str) else str(answer)
@@ -215,8 +232,7 @@ def see_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     out.flush()
     error = None
     try:
-        if hub is not None:
-            hub.set("speaking")
+        _emit(hub, "speaking")
         speak(spoken, config=cfg)
     except VoiceError as exc:
         error = str(exc)
@@ -236,8 +252,7 @@ def see_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
         },
         config=cfg,
     )
-    if hub is not None:
-        hub.set("idle")
+    _emit(hub, "idle")
 
 
 def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
@@ -257,8 +272,7 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     # NAO usar --pure: ele desabilita os plugins do projeto e, com isso, as
     # tools act_* (e o SafetyGate) ficam indisponiveis (verificado via
     # `opencode run --agent act` com/sem --pure).
-    if hub is not None:
-        hub.set("acting")
+    _emit(hub, "acting")
     cmd = [cfg.opencode_bin, "run", "--agent", "act", prompt]
     t0 = time.monotonic()
     try:
@@ -275,26 +289,22 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
             f"(defina OPENCODE_BIN)\n"
         )
         err.flush()
-        if hub is not None:
-            hub.set("idle")
+        _emit(hub, "idle")
         return
     except PermissionError:
         err.write(f"[erro] opencode em {cfg.opencode_bin} nao e executavel\n")
         err.flush()
-        if hub is not None:
-            hub.set("idle")
+        _emit(hub, "idle")
         return
     except subprocess.TimeoutExpired:
         err.write(f"[erro] timeout ({cfg.timeout_s}s) ao chamar o agente\n")
         err.flush()
-        if hub is not None:
-            hub.set("idle")
+        _emit(hub, "idle")
         return
     except OSError as exc:
         err.write(f"[erro] falha ao executar opencode ({exc})\n")
         err.flush()
-        if hub is not None:
-            hub.set("idle")
+        _emit(hub, "idle")
         return
     t_agent = time.monotonic()
     answer = strip_opencode_noise(proc.stdout or "").strip()
@@ -310,8 +320,7 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     spoken = speechify(answer)
     out.write(answer + "\n")
     out.flush()
-    if hub is not None:
-        hub.set("idle")
+    _emit(hub, "idle")
     log_turn(
         {
             "ts": datetime.now(timezone.utc).isoformat(),

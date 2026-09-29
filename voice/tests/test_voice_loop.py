@@ -606,6 +606,40 @@ def test_pause_command_skips_capture(monkeypatch):
     assert "record" not in calls
 
 
+def test_pause_does_not_busy_loop(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+    sleeps = []
+    monkeypatch.setattr("loop.time.sleep", lambda s: sleeps.append(s))
+    hub = CmdHub(cmds=["pause"], subs=1)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                 input_mode="fixed", ptt=False, state_require_gui=False)
+    voice_loop(client=ClientOK(), iterations=6, record_seconds=1, config=cfg, hub=hub)
+    # idle so na entrada + na transicao para pausa; nao a cada iteracao.
+    assert hub.states.count("idle") == 2
+    assert len(sleeps) == 6
+    assert "record" not in calls
+
+
+def test_hub_failure_does_not_break_loop(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+
+    class BadHub:
+        def set(self, state, detail=None):
+            raise RuntimeError("hub quebrado")
+
+        def take_command(self):
+            raise RuntimeError("hub quebrado")
+
+        def subscribers(self):
+            raise RuntimeError("hub quebrado")
+
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=CFG,
+               hub=BadHub())
+    assert calls == ["record", "stt", "tts"]
+
+
 def test_mute_command_skips_tts_but_logs(monkeypatch):
     calls = []
     records = []

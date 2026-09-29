@@ -1,5 +1,8 @@
+import json
 import queue
+import time
 import urllib.error
+import urllib.request
 
 import pytest
 
@@ -107,8 +110,63 @@ def test_events_sends_snapshot_then_transitions():
         assert json.loads(second[6:])["state"] == "listening"
         resp.close()
         hub.stop()
-        time.sleep(0.05)
+        deadline = time.monotonic() + 1.0
+        while hub.subscribers() != 0 and time.monotonic() < deadline:
+            time.sleep(0.05)
         assert hub.subscribers() == 0
+    finally:
+        hub.stop()
+
+
+def test_cors_headers_on_state_and_events():
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        with urllib.request.urlopen(
+            urllib.request.Request(
+                f"http://127.0.0.1:{hub._port}/state",
+                headers={"Origin": "http://tauri.localhost"},
+            ),
+            timeout=2,
+        ) as r:
+            assert r.headers["Access-Control-Allow-Origin"] == "*"
+        resp = urllib.request.urlopen(
+            urllib.request.Request(
+                f"http://127.0.0.1:{hub._port}/events",
+                headers={"Origin": "http://tauri.localhost"},
+            ),
+            timeout=3,
+        )
+        try:
+            assert resp.headers["Access-Control-Allow-Origin"] == "*"
+        finally:
+            resp.close()
+    finally:
+        hub.stop()
+
+
+def test_options_preflight_allows_cross_origin():
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        resp = urllib.request.urlopen(
+            urllib.request.Request(
+                f"http://127.0.0.1:{hub._port}/command",
+                method="OPTIONS",
+                headers={
+                    "Origin": "http://tauri.localhost",
+                    "Access-Control-Request-Method": "POST",
+                },
+            ),
+            timeout=2,
+        )
+        try:
+            assert resp.status == 204
+            assert resp.headers["Access-Control-Allow-Origin"] == "*"
+            assert "POST" in resp.headers["Access-Control-Allow-Methods"]
+            assert "Content-Type" in resp.headers["Access-Control-Allow-Headers"]
+        finally:
+            resp.close()
     finally:
         hub.stop()
 
