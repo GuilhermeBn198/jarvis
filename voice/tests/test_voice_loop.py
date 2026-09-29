@@ -717,6 +717,25 @@ def test_stream_turn_speaks_chunks_in_order(monkeypatch):
     assert "speaking" in hub.states
 
 
+def test_stream_turn_emits_speaking_before_first_audio(monkeypatch):
+    hub = FakeHub()
+    snapshots = []
+    monkeypatch.setattr(
+        "stream.speak", lambda text, **k: snapshots.append(list(hub.states))
+    )
+
+    class StreamClient:
+        def stream(self, task, on_delta, on_idle=None, timeout_s=None):
+            on_delta("Uma frase completa. ")
+            return "Uma frase completa."
+
+    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), hub, False,
+                                time.monotonic(), io.StringIO())
+    assert res.spoken == ["Uma frase completa."]
+    assert snapshots
+    assert "speaking" in snapshots[0]
+
+
 def test_stream_turn_failure_before_speech(monkeypatch):
     class BoomClient:
         def stream(self, *a, **k):
@@ -753,10 +772,12 @@ def test_stream_turn_muted_does_not_speak(monkeypatch):
             on_delta("Uma resposta qualquer. ")
             return "Uma resposta qualquer."
 
-    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), FakeHub(), True,
+    hub = FakeHub()
+    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), hub, True,
                                 time.monotonic(), io.StringIO())
     assert res.answer == "Uma resposta qualquer."
     assert spoken == []
+    assert "speaking" not in hub.states
 
 
 def test_voice_loop_falls_back_to_ask_when_stream_fails(monkeypatch):

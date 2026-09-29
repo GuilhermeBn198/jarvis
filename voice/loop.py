@@ -66,13 +66,18 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
     spoken: list[str] = []
     failed: str | None = None
     answer: str | None = None
+    spoke_started = False
 
     def emit(chunks):
+        nonlocal spoke_started
         for chunk in chunks:
             spoken_text = speechify(chunk)
             if spoken_text:
                 spoken.append(spoken_text)
                 if speaker is not None:
+                    if not spoke_started:
+                        spoke_started = True
+                        _emit(hub, "speaking")
                     speaker.say(spoken_text)
 
     try:
@@ -95,8 +100,6 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
         err.write(f"[voz] streaming falhou ({failed})\n")
         err.flush()
     streamed = failed is None and answer is not None
-    if streamed and hub is not None and spoken:
-        _emit(hub, "speaking")
     return StreamResult(answer, spoken, _first_audio(speaker, t0), streamed, failed)
 
 
