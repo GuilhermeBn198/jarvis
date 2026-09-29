@@ -15,6 +15,7 @@ from tts import speak
 from vision import _see_via_run, capture
 
 TASK = "Responda apenas com a palavra: ok"
+STREAM_TASK = "Explique em 3 frases o que e fuso horario."
 TTS_TEXT = "teste de latencia do jarvis"
 VISION_TASK = "Descreva em uma frase o que aparece na tela."
 
@@ -84,7 +85,9 @@ def main() -> None:
                     first["t"] = time.perf_counter() - started
 
         try:
-            serve_client.stream(TASK, on_delta)
+            # Prompt proprio (mais longo que TASK) para garantir um 1º pedaco:
+            # a resposta curta de TASK nao atinge min_chars do chunker.
+            serve_client.stream(STREAM_TASK, on_delta)
         finally:
             stream_total = time.perf_counter() - started
         stream_first = first["t"]
@@ -127,6 +130,7 @@ def main() -> None:
     print("# Bench de latencia - Jarvis voice")
     print()
     print(f'Tarefa do agente: "{TASK}"')
+    print(f'Tarefa do streaming: "{STREAM_TASK}"')
     print(f'Tarefa de visao: "{VISION_TASK}"')
     print(f'Texto do TTS: "{TTS_TEXT}"')
     print()
