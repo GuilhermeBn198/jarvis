@@ -85,7 +85,12 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             try:
                 see_once(strip_trigger(text, cfg.vision_trigger), err=err, config=cfg, hub=hub)
             except VoiceError as exc:
-                if _voice_error(exc):
+                if hub is not None:
+                    hub.set("error")
+                abort = _voice_error(exc)
+                if hub is not None:
+                    hub.set("idle")
+                if abort:
                     return
                 continue
             consecutive_errors = 0
@@ -135,6 +140,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             config=cfg,
         )
         if tts_failed:
+            if hub is not None:
+                hub.set("idle")
             if aborted:
                 return
             continue

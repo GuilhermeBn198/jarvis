@@ -408,6 +408,41 @@ def test_voice_loop_emits_error_on_agent_failure(monkeypatch):
     ]
 
 
+def test_voice_loop_vision_failure_emits_error_then_idle(monkeypatch):
+    hub = FakeHub()
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "olha isso")
+
+    def boom(**k):
+        raise VoiceError("sem camera")
+    monkeypatch.setattr("loop.capture", boom)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            return "resposta"
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=hub)
+    assert "error" in hub.states
+    assert hub.states[-1] == "idle"
+
+
+def test_voice_loop_tts_failure_emits_idle(monkeypatch):
+    hub = FakeHub()
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+
+    def boom(text, **k):
+        raise VoiceError("SAPI indisponivel")
+    monkeypatch.setattr("loop.speak", boom)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            return "resposta"
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=hub)
+    assert hub.states[-1] == "idle"
+
+
 def test_voice_loop_without_hub_still_runs(monkeypatch):
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "x")
