@@ -141,3 +141,33 @@ def test_state_port_invalid_raises():
     with pytest.raises(ValueError) as exc:
         load_config({"JARVIS_STATE_PORT": "abc"})
     assert "JARVIS_STATE_PORT" in str(exc.value)
+
+
+def test_stream_defaults():
+    from config import (DEFAULT_STREAM_IDLE_MS, DEFAULT_STREAM_MIN_CHARS,
+                        DEFAULT_STREAM_TTS)
+    cfg = load_config({})
+    assert cfg.stream_tts is True
+    assert cfg.stream_idle_ms == DEFAULT_STREAM_IDLE_MS == 400
+    assert cfg.stream_min_chars == DEFAULT_STREAM_MIN_CHARS == 15
+    assert DEFAULT_STREAM_TTS is True
+
+
+def test_stream_env_overrides():
+    cfg = load_config({
+        "VOICE_STREAM_TTS": "0",
+        "VOICE_STREAM_IDLE_MS": "250",
+        "VOICE_STREAM_MIN_CHARS": "30",
+    })
+    assert cfg.stream_tts is False
+    assert cfg.stream_idle_ms == 250
+    assert cfg.stream_min_chars == 30
+
+
+def test_stream_invalid_ints_raise():
+    with pytest.raises(ValueError) as exc:
+        load_config({"VOICE_STREAM_IDLE_MS": "abc"})
+    assert "VOICE_STREAM_IDLE_MS" in str(exc.value)
+    with pytest.raises(ValueError) as exc:
+        load_config({"VOICE_STREAM_MIN_CHARS": "x"})
+    assert "VOICE_STREAM_MIN_CHARS" in str(exc.value)

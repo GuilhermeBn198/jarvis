@@ -30,6 +30,9 @@ DEFAULT_VISION_TRIGGER = "olha"
 DEFAULT_VISION_PNG = r"C:\Users\bguil\tools\shot.png"
 DEFAULT_STATE_PORT = 8765
 DEFAULT_STATE_REQUIRE_GUI = False
+DEFAULT_STREAM_TTS = True
+DEFAULT_STREAM_IDLE_MS = 400
+DEFAULT_STREAM_MIN_CHARS = 15
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,9 @@ class Config:
     ptt: bool = False
     state_port: int = DEFAULT_STATE_PORT
     state_require_gui: bool = DEFAULT_STATE_REQUIRE_GUI
+    stream_tts: bool = DEFAULT_STREAM_TTS
+    stream_idle_ms: int = DEFAULT_STREAM_IDLE_MS
+    stream_min_chars: int = DEFAULT_STREAM_MIN_CHARS
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -113,6 +119,21 @@ def load_config(env: dict | None = None) -> Config:
     state_require_gui = str(
         e.get("JARVIS_REQUIRE_GUI", "0")
     ).strip().lower() in ("1", "true", "yes", "on")
+    stream_tts = str(e.get("VOICE_STREAM_TTS", "1")).strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+    raw_idle = e.get("VOICE_STREAM_IDLE_MS", DEFAULT_STREAM_IDLE_MS)
+    try:
+        stream_idle_ms = int(raw_idle)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"VOICE_STREAM_IDLE_MS deve ser inteiro: {raw_idle}") from exc
+    raw_min = e.get("VOICE_STREAM_MIN_CHARS", DEFAULT_STREAM_MIN_CHARS)
+    try:
+        stream_min_chars = int(raw_min)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"VOICE_STREAM_MIN_CHARS deve ser inteiro: {raw_min}"
+        ) from exc
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -138,4 +159,7 @@ def load_config(env: dict | None = None) -> Config:
         ptt=ptt,
         state_port=state_port,
         state_require_gui=state_require_gui,
+        stream_tts=stream_tts,
+        stream_idle_ms=stream_idle_ms,
+        stream_min_chars=stream_min_chars,
     )
