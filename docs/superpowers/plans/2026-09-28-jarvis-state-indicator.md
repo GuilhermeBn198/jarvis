@@ -543,6 +543,12 @@ class FakeHub:
     def set(self, state, detail=None):
         self.states.append(state)
 
+    def take_command(self):
+        return None
+
+    def subscribers(self):
+        return 1
+
 
 def test_voice_loop_emits_happy_path_states(monkeypatch):
     hub = FakeHub()
@@ -574,7 +580,7 @@ def test_voice_loop_emits_error_on_agent_failure(monkeypatch):
 
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=hub)
     assert hub.states == [
-        "idle", "listening", "transcribing", "thinking", "error", "idle",
+        "idle", "listening", "transcribing", "thinking", "error", "speaking", "idle",
     ]
 
 
@@ -845,8 +851,13 @@ class FakeHubServer:
 
 
 def test_start_hub_starts_and_returns():
-    hub = loop_mod._start_hub(CFG, io.StringIO())
-    assert hub is not None
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, state_port=0)
+    hub = loop_mod._start_hub(cfg, io.StringIO())
+    try:
+        assert hub is not None
+        assert hub.subscribers() == 0
+    finally:
+        hub.stop()
 
 
 def test_main_starts_and_stops_hub(monkeypatch):
