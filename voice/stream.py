@@ -1,3 +1,9 @@
+import queue
+import threading
+import time
+
+from tts import VoiceError, speak
+
 CODE_OMIT = "bloco de código omitido"
 _CODE_FENCE = "```"
 _TERMINATORS = ".!?…"
@@ -99,3 +105,47 @@ class SentenceChunker:
         while j >= 0 and b[j].isalpha():
             j -= 1
         return b[j + 1:i].lower() in _ABBREV
+
+
+class Speaker:
+    """Fila FIFO com 1 worker: fala os pedaços em ordem, sem derrubar o loop."""
+
+    def __init__(self, cfg):
+        self._cfg = cfg
+        self._q: queue.Queue = queue.Queue()
+        self._thread: threading.Thread | None = None
+        self.error: VoiceError | None = None
+        self.first_speak_ts: float | None = None
+
+    def say(self, text: str) -> None:
+        if not text:
+            return
+        if self._thread is None:
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+        self._q.put(text)
+
+    def _run(self) -> None:
+        while True:
+            item = self._q.get()
+            if item is None:
+                return
+            try:
+                if self.first_speak_ts is None:
+                    self.first_speak_ts = time.monotonic()
+                speak(item, config=self._cfg)
+            except VoiceError as exc:
+                self.error = exc
+                while True:
+                    try:
+                        self._q.get_nowait()
+                    except queue.Empty:
+                        return
+
+    def close(self) -> None:
+        if self._thread is not None:
+            self._q.put(None)
+
+    def join(self) -> None:
+        if self._thread is not None:
+            self._thread.join()

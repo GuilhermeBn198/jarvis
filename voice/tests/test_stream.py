@@ -1,4 +1,50 @@
+import stream as stream_mod
 from stream import CODE_OMIT, SentenceChunker
+from tts import VoiceError
+
+
+class _Cfg:
+    pass
+
+
+def test_speaker_speaks_in_order(monkeypatch):
+    spoken = []
+    monkeypatch.setattr("stream.speak", lambda text, **k: spoken.append(text))
+    sp = stream_mod.Speaker(_Cfg())
+    sp.say("a")
+    sp.say("b")
+    sp.close()
+    sp.join()
+    assert spoken == ["a", "b"]
+    assert sp.error is None
+    assert sp.first_speak_ts is not None
+
+
+def test_speaker_error_aborts_queue(monkeypatch):
+    spoken = []
+
+    def fake_speak(text, **k):
+        spoken.append(text)
+        if text == "b":
+            raise VoiceError("boom")
+
+    monkeypatch.setattr("stream.speak", fake_speak)
+    sp = stream_mod.Speaker(_Cfg())
+    sp.say("a")
+    sp.say("b")
+    sp.say("c")
+    sp.close()
+    sp.join()
+    assert spoken == ["a", "b"]
+    assert isinstance(sp.error, VoiceError)
+
+
+def test_speaker_close_without_say_is_noop():
+    sp = stream_mod.Speaker(_Cfg())
+    sp.close()
+    sp.join()
+    assert sp.error is None
+    assert sp.first_speak_ts is None
 
 
 def test_emits_complete_sentence():
