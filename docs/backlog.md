@@ -53,4 +53,8 @@ Itens registrados para atacar depois, com contexto.
 
 **Notas:** não logar áudio/imagem (só o rótulo de estado); o `convlog`/timings seguem para diagnóstico, mas o estado é efêmero.
 
-**Fases:** v1 = **tray icon** por estado → v2 = **overlay flutuante** → v3 = **avatar animado**.
+**Como rodar (v1):**
+- Cérebro (WSL): `cd voice && . .venv/bin/activate && python loop.py --voice` (o `StateHub` sobe em `127.0.0.1:8765`; env `JARVIS_STATE_PORT`, `JARVIS_REQUIRE_GUI`).
+- Overlay (Windows): `cd gui/src-tauri && cargo run` (Tauri 2, frontend estático embutido, **sem Node**; requer Rust + MSVC Build Tools + WebView2). O menu tem "Iniciar/Reiniciar cérebro" (sobe o loop via `wsl.exe`).
+
+**Fases:** v1 = **overlay/orbe + SSE** → FEITO (spec `docs/superpowers/specs/2026-09-28-jarvis-state-indicator-design.md`, plano `docs/superpowers/plans/2026-09-28-jarvis-state-indicator.md`; GUI em `gui/`) → v2 = reativo ao áudio → v3 = avatar animado.
