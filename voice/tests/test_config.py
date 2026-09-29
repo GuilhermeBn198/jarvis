@@ -118,3 +118,26 @@ def test_serve_port_helper():
     assert serve_port("http://127.0.0.1:9999") == 9999
     assert serve_port("http://127.0.0.1") == 4096
     assert serve_port("http://127.0.0.1:notaport") == 4096
+
+
+def test_state_defaults():
+    from config import DEFAULT_STATE_PORT
+    cfg = load_config({})
+    assert cfg.state_port == DEFAULT_STATE_PORT == 8765
+    assert cfg.state_require_gui is False
+
+
+def test_state_env_overrides():
+    cfg = load_config({"JARVIS_STATE_PORT": "9000", "JARVIS_REQUIRE_GUI": "1"})
+    assert cfg.state_port == 9000
+    assert cfg.state_require_gui is True
+    for truthy in ("1", "true", "TRUE", "yes", "on"):
+        assert load_config({"JARVIS_REQUIRE_GUI": truthy}).state_require_gui is True
+    for falsy in ("0", "false", "no", "off", ""):
+        assert load_config({"JARVIS_REQUIRE_GUI": falsy}).state_require_gui is False
+
+
+def test_state_port_invalid_raises():
+    with pytest.raises(ValueError) as exc:
+        load_config({"JARVIS_STATE_PORT": "abc"})
+    assert "JARVIS_STATE_PORT" in str(exc.value)

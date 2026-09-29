@@ -28,6 +28,8 @@ DEFAULT_PIPER_OUT_WAV = r"C:\Users\bguil\tools\piper\out.wav"
 DEFAULT_VISION_MODEL = "opencode-go/deepseek-v4-flash-vision-exp"
 DEFAULT_VISION_TRIGGER = "olha"
 DEFAULT_VISION_PNG = r"C:\Users\bguil\tools\shot.png"
+DEFAULT_STATE_PORT = 8765
+DEFAULT_STATE_REQUIRE_GUI = False
 
 
 @dataclass(frozen=True)
@@ -54,6 +56,8 @@ class Config:
     vision_png: str = DEFAULT_VISION_PNG
     input_mode: str = DEFAULT_INPUT_MODE
     ptt: bool = False
+    state_port: int = DEFAULT_STATE_PORT
+    state_require_gui: bool = DEFAULT_STATE_REQUIRE_GUI
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -101,6 +105,14 @@ def load_config(env: dict | None = None) -> Config:
                 f"VOICE_INPUT deve ser 'auto', 'ptt' ou 'fixed': {raw_input}"
             )
     ptt = input_mode == "ptt"
+    raw_state_port = e.get("JARVIS_STATE_PORT", DEFAULT_STATE_PORT)
+    try:
+        state_port = int(raw_state_port)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"JARVIS_STATE_PORT deve ser inteiro: {raw_state_port}") from exc
+    state_require_gui = str(
+        e.get("JARVIS_REQUIRE_GUI", "0")
+    ).strip().lower() in ("1", "true", "yes", "on")
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -124,4 +136,6 @@ def load_config(env: dict | None = None) -> Config:
         vision_png=e.get("VISION_PNG", DEFAULT_VISION_PNG),
         input_mode=input_mode,
         ptt=ptt,
+        state_port=state_port,
+        state_require_gui=state_require_gui,
     )
