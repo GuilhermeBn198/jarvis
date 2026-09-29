@@ -2,6 +2,7 @@ import re
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
@@ -12,6 +13,7 @@ from sanitize import speechify
 from serve import ensure_server
 from state import StateHub
 from stt import transcribe
+from stream import SentenceChunker, Speaker
 from tts import VoiceError, speak
 from vision import capture, see
 
@@ -40,6 +42,62 @@ def _emit(hub, state, detail=None) -> None:
             hub.set(state, detail)
     except Exception:
         pass
+
+
+@dataclass
+class StreamResult:
+    answer: str | None
+    spoken: list[str]
+    first_audio_s: float | None
+    streamed: bool
+    failed: str | None
+
+
+def _first_audio(speaker, t0):
+    if speaker is None or speaker.first_speak_ts is None:
+        return None
+    return round(speaker.first_speak_ts - t0, 3)
+
+
+def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
+    """Tenta falar por streaming. NAO chama ask() — o fallback e do voice_loop."""
+    chunker = SentenceChunker(min_chars=cfg.stream_min_chars)
+    speaker = Speaker(cfg) if not muted else None
+    spoken: list[str] = []
+    failed: str | None = None
+    answer: str | None = None
+
+    def emit(chunks):
+        for chunk in chunks:
+            spoken_text = speechify(chunk)
+            if spoken_text:
+                spoken.append(spoken_text)
+                if speaker is not None:
+                    speaker.say(spoken_text)
+
+    try:
+        answer = client.stream(
+            text,
+            lambda d: emit(chunker.feed(d)),
+            lambda: emit(chunker.flush()),
+            timeout_s=cfg.timeout_s,
+        )
+        emit(chunker.flush())
+    except (AgentError, VoiceError) as exc:
+        failed = str(exc)
+    finally:
+        if speaker is not None:
+            speaker.close()
+            speaker.join()
+            if speaker.error is not None and failed is None:
+                failed = str(speaker.error)
+    if failed is not None:
+        err.write(f"[voz] streaming falhou ({failed})\n")
+        err.flush()
+    streamed = failed is None and answer is not None
+    if streamed and hub is not None and spoken:
+        _emit(hub, "speaking")
+    return StreamResult(answer, spoken, _first_audio(speaker, t0), streamed, failed)
 
 
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
@@ -154,27 +212,40 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         error = None
         t_agent0 = time.monotonic()
         _emit(hub, "thinking")
-        try:
-            answer = client.ask(text)
-        except AgentError as exc:
-            error = str(exc)
-            answer = f"erro: {exc}"
-            _emit(hub, "error")
-        t_agent1 = time.monotonic()
-        spoken = speechify(answer)
-        aborted = False
+        first_audio = None
+        streamed = False
         tts_failed = False
-        t_tts0 = time.monotonic()
-        try:
-            if not muted:
-                _emit(hub, "speaking")
-            if not muted:
-                speak(spoken, config=cfg)
-        except VoiceError as exc:
-            tts_failed = True
-            aborted = _voice_error(exc)
-            err.write(f"[fallback texto] {answer}\n")
-            err.flush()
+        aborted = False
+        answer = None
+        t_tts0 = t_agent0
+        if cfg.stream_tts and hasattr(client, "stream"):
+            res = _stream_turn(client, text, cfg, hub, muted, t_agent0, err)
+            first_audio = res.first_audio_s
+            if res.streamed or res.spoken:
+                answer = res.answer or " ".join(res.spoken)
+                spoken = " ".join(res.spoken)
+                streamed = res.streamed
+                error = res.failed
+        if answer is None:
+            try:
+                answer = client.ask(text)
+            except AgentError as exc:
+                error = str(exc)
+                answer = f"erro: {exc}"
+                _emit(hub, "error")
+            spoken = speechify(answer)
+            t_tts0 = time.monotonic()
+            try:
+                if not muted:
+                    _emit(hub, "speaking")
+                if not muted:
+                    speak(spoken, config=cfg)
+            except VoiceError as exc:
+                tts_failed = True
+                aborted = _voice_error(exc)
+                err.write(f"[fallback texto] {answer}\n")
+                err.flush()
+        t_agent1 = time.monotonic()
         t_tts1 = time.monotonic()
         log_turn(
             {
@@ -189,6 +260,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 "stt_s": round(t_stt - t_rec, 3),
                 "agent_s": round(t_agent1 - t_agent0, 3),
                 "tts_s": round(t_tts1 - t_tts0, 3),
+                "stream": streamed,
+                "first_audio_s": first_audio,
             },
             config=cfg,
         )

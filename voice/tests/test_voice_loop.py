@@ -1,4 +1,5 @@
 import io
+import time
 
 import pytest
 
@@ -684,4 +685,118 @@ def test_orphan_does_not_exit_with_subscriber(monkeypatch):
     voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg,
                hub=hub, orphan_timeout_s=15.0)
     assert "record" in calls
+
+
+from agent_client import AgentError
+
+
+def _stream_cfg(**over):
+    base = dict(opencode_bin="/x/o", timeout_s=10, agent_backend="serve",
+                input_mode="fixed", ptt=False, stream_tts=True,
+                stream_min_chars=5)
+    base.update(over)
+    return Config(**base)
+
+
+def test_stream_turn_speaks_chunks_in_order(monkeypatch):
+    spoken = []
+    monkeypatch.setattr("stream.speak", lambda text, **k: spoken.append(text))
+
+    class StreamClient:
+        def stream(self, task, on_delta, on_idle=None, timeout_s=None):
+            on_delta("Olá, tudo bem? ")
+            on_delta("Como posso ajudar você hoje? ")
+            return "Olá, tudo bem? Como posso ajudar você hoje?"
+
+    hub = FakeHub()
+    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), hub, False,
+                                time.monotonic(), io.StringIO())
+    assert res.streamed is True
+    assert res.spoken == ["Olá, tudo bem?", "Como posso ajudar você hoje?"]
+    assert spoken == res.spoken
+    assert "speaking" in hub.states
+
+
+def test_stream_turn_failure_before_speech(monkeypatch):
+    class BoomClient:
+        def stream(self, *a, **k):
+            raise AgentError("sem sse")
+
+    res = loop_mod._stream_turn(BoomClient(), "oi", _stream_cfg(), FakeHub(), False,
+                                time.monotonic(), io.StringIO())
+    assert res.streamed is False
+    assert res.spoken == []
+    assert res.failed == "sem sse"
+
+
+def test_stream_turn_failure_after_speech_keeps_spoken(monkeypatch):
+    monkeypatch.setattr("stream.speak", lambda text, **k: None)
+
+    class HalfClient:
+        def stream(self, task, on_delta, on_idle=None, timeout_s=None):
+            on_delta("Uma frase completa. ")
+            raise AgentError("caiu no meio")
+
+    res = loop_mod._stream_turn(HalfClient(), "oi", _stream_cfg(), FakeHub(), False,
+                                time.monotonic(), io.StringIO())
+    assert res.streamed is False
+    assert res.spoken == ["Uma frase completa."]
+    assert res.failed == "caiu no meio"
+
+
+def test_stream_turn_muted_does_not_speak(monkeypatch):
+    spoken = []
+    monkeypatch.setattr("stream.speak", lambda text, **k: spoken.append(text))
+
+    class StreamClient:
+        def stream(self, task, on_delta, on_idle=None, timeout_s=None):
+            on_delta("Uma resposta qualquer. ")
+            return "Uma resposta qualquer."
+
+    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), FakeHub(), True,
+                                time.monotonic(), io.StringIO())
+    assert res.answer == "Uma resposta qualquer."
+    assert spoken == []
+
+
+def test_voice_loop_falls_back_to_ask_when_stream_fails(monkeypatch):
+    calls = []
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
+    monkeypatch.setattr("loop.speak", lambda text, **k: calls.append(text))
+
+    class BoomClient:
+        def stream(self, *a, **k):
+            raise AgentError("sem sse")
+
+        def ask(self, task, timeout_s=None):
+            return "resposta bloqueante"
+
+    voice_loop(client=BoomClient(), iterations=1, record_seconds=1,
+               config=_stream_cfg(), hub=FakeHub())
+    assert calls == ["resposta bloqueante"]
+
+
+def test_voice_loop_streams_without_calling_ask(monkeypatch):
+    asked = []
+    spoken = []
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
+    monkeypatch.setattr("stream.speak", lambda text, **k: spoken.append(text))
+
+    class StreamClient:
+        def stream(self, task, on_delta, on_idle=None, timeout_s=None):
+            on_delta("Resposta em streaming. ")
+            return "Resposta em streaming."
+
+        def ask(self, *a, **k):
+            asked.append(True)
+            return "x"
+
+    hub = FakeHub()
+    voice_loop(client=StreamClient(), iterations=1, record_seconds=1,
+               config=_stream_cfg(), hub=hub)
+    assert asked == []
+    assert spoken == ["Resposta em streaming."]
+    assert "speaking" in hub.states
 
