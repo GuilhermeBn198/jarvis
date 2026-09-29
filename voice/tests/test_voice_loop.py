@@ -288,6 +288,7 @@ def test_main_voice_parses_iterations_and_stops(monkeypatch):
     monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     monkeypatch.setattr(loop_mod, "StateHub", lambda *a, **k: None)
+    monkeypatch.setattr(loop_mod.sys, "stderr", io.StringIO())
     monkeypatch.setattr(
         loop_mod, "voice_loop",
         lambda c, **k: seen.update(n=k.get("iterations"), hub=k.get("hub")),
@@ -302,6 +303,7 @@ def test_main_rejects_once_zero(monkeypatch):
     monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     monkeypatch.setattr(loop_mod, "StateHub", lambda *a, **k: None)
+    monkeypatch.setattr(loop_mod.sys, "stderr", io.StringIO())
     monkeypatch.setattr(loop_mod, "voice_loop", lambda c, **k: called.append(k))
     assert main(["--voice", "--once", "0"]) == 2
     assert called == []
@@ -311,6 +313,7 @@ def test_main_voice_handles_keyboard_interrupt(monkeypatch):
     monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
     monkeypatch.setattr(loop_mod, "StateHub", lambda *a, **k: None)
+    monkeypatch.setattr(loop_mod.sys, "stderr", io.StringIO())
 
     def boom(c, **k):
         raise KeyboardInterrupt
@@ -540,10 +543,13 @@ def test_main_starts_and_stops_hub(monkeypatch):
         made["hub"] = FakeHubServer()
         return made["hub"]
     monkeypatch.setattr(loop_mod, "StateHub", make_hub)
-    monkeypatch.setattr(loop_mod, "voice_loop", lambda c, **k: None)
+    seen_hub = {}
+    monkeypatch.setattr(loop_mod, "voice_loop",
+                        lambda c, **k: seen_hub.update(hub=k.get("hub")))
     assert main(["--voice", "--once", "1"]) == 0
     assert made["hub"].started is True
     assert made["hub"].stopped is True
+    assert seen_hub["hub"] is made["hub"]
 
 
 def test_main_degrades_without_indicator_when_hub_fails(monkeypatch):
