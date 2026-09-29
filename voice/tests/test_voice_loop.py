@@ -3,7 +3,7 @@ import io
 import pytest
 
 import loop as loop_mod
-from config import Config
+from config import Config, load_config
 from loop import _parse_once, main, voice_loop
 from tts import VoiceError
 
@@ -287,16 +287,22 @@ def test_main_voice_parses_iterations_and_stops(monkeypatch):
     seen = {}
     monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
-    monkeypatch.setattr(loop_mod, "voice_loop", lambda c, iterations=0: seen.update(n=iterations))
+    monkeypatch.setattr(loop_mod, "StateHub", lambda *a, **k: None)
+    monkeypatch.setattr(
+        loop_mod, "voice_loop",
+        lambda c, **k: seen.update(n=k.get("iterations"), hub=k.get("hub")),
+    )
     assert main(["--voice", "--once", "1"]) == 0
     assert seen["n"] == 1
+    assert seen["hub"] is None
 
 
 def test_main_rejects_once_zero(monkeypatch):
     called = []
     monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
-    monkeypatch.setattr(loop_mod, "voice_loop", lambda c, iterations=0: called.append(iterations))
+    monkeypatch.setattr(loop_mod, "StateHub", lambda *a, **k: None)
+    monkeypatch.setattr(loop_mod, "voice_loop", lambda c, **k: called.append(k))
     assert main(["--voice", "--once", "0"]) == 2
     assert called == []
 
@@ -304,7 +310,9 @@ def test_main_rejects_once_zero(monkeypatch):
 def test_main_voice_handles_keyboard_interrupt(monkeypatch):
     monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
-    def boom(c, iterations=0):
+    monkeypatch.setattr(loop_mod, "StateHub", lambda *a, **k: None)
+
+    def boom(c, **k):
         raise KeyboardInterrupt
     monkeypatch.setattr(loop_mod, "voice_loop", boom)
     assert main(["--voice"]) == 0
@@ -499,4 +507,51 @@ def test_voice_loop_vision_abort_ends_error(monkeypatch):
                hub=hub, max_consecutive_errors=1, err=io.StringIO())
     assert hub.states[-1] == "error"
     assert calls == ["record", "stt"]
+
+
+class FakeHubServer:
+    def __init__(self, *a, **k):
+        self.started = False
+        self.stopped = False
+
+    def start(self):
+        self.started = True
+
+    def stop(self):
+        self.stopped = True
+
+
+def test_start_hub_starts_and_returns():
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, state_port=0)
+    hub = loop_mod._start_hub(cfg, io.StringIO())
+    try:
+        assert hub is not None
+        assert hub.subscribers() == 0
+    finally:
+        hub.stop()
+
+
+def test_main_starts_and_stops_hub(monkeypatch):
+    made = {}
+    monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: True)
+    monkeypatch.setattr(loop_mod, "make_client", lambda cfg: "client")
+
+    def make_hub(*a, **k):
+        made["hub"] = FakeHubServer()
+        return made["hub"]
+    monkeypatch.setattr(loop_mod, "StateHub", make_hub)
+    monkeypatch.setattr(loop_mod, "voice_loop", lambda c, **k: None)
+    assert main(["--voice", "--once", "1"]) == 0
+    assert made["hub"].started is True
+    assert made["hub"].stopped is True
+
+
+def test_main_degrades_without_indicator_when_hub_fails(monkeypatch):
+    err = io.StringIO()
+    def boom(*a, **k):
+        raise OSError("porta ocupada")
+    monkeypatch.setattr(loop_mod, "StateHub", boom)
+    conn = loop_mod._start_hub(load_config({}), err)
+    assert conn is None
+    assert "[aviso]" in err.getvalue()
 

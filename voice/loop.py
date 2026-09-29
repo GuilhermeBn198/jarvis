@@ -10,6 +10,7 @@ from config import load_config
 from convlog import log_turn
 from sanitize import speechify
 from serve import ensure_server
+from state import StateHub
 from stt import transcribe
 from tts import VoiceError, speak
 from vision import capture, see
@@ -333,18 +334,34 @@ def resolve_client(cfg, err=None):
     return make_client(cfg)
 
 
+def _start_hub(cfg, err):
+    try:
+        hub = StateHub(cfg.state_port)
+        hub.start()
+        return hub
+    except Exception as exc:
+        err.write(f"[aviso] indicador indisponivel ({exc}); seguindo sem ele\n")
+        err.flush()
+        return None
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
         if "--see" in args:
             i = args.index("--see")
             question = args[i + 1] if i + 1 < len(args) else ""
+            cfg = load_config()
+            hub = _start_hub(cfg, sys.stderr)
             try:
-                see_once(question)
+                see_once(question, config=cfg, hub=hub)
             except VoiceError as exc:
                 sys.stderr.write(f"[erro] {exc}\n")
                 sys.stderr.flush()
                 return 1
+            finally:
+                if hub is not None:
+                    hub.stop()
             return 0
         if "--voice" in args:
             iterations = _parse_once(args)
@@ -353,7 +370,13 @@ def main(argv=None) -> int:
                 sys.stderr.flush()
                 return 2
             cfg = load_config()
-            voice_loop(resolve_client(cfg, sys.stderr), iterations=iterations)
+            hub = _start_hub(cfg, sys.stderr)
+            try:
+                voice_loop(resolve_client(cfg, sys.stderr), iterations=iterations,
+                           config=cfg, hub=hub)
+            finally:
+                if hub is not None:
+                    hub.stop()
             return 0
         if "--do" in args:
             i = args.index("--do")
@@ -361,7 +384,13 @@ def main(argv=None) -> int:
                 sys.stderr.write("[erro] --do exige um prompt\n")
                 sys.stderr.flush()
                 return 2
-            do_once(args[i + 1])
+            cfg = load_config()
+            hub = _start_hub(cfg, sys.stderr)
+            try:
+                do_once(args[i + 1], config=cfg, hub=hub)
+            finally:
+                if hub is not None:
+                    hub.stop()
             return 0
         run_stream(sys.stdin, sys.stdout, resolve_client(load_config(), sys.stderr))
         return 0
