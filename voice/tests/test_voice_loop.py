@@ -798,6 +798,26 @@ def test_voice_loop_falls_back_to_ask_when_stream_fails(monkeypatch):
     assert calls == ["resposta bloqueante"]
 
 
+def test_agent_s_excludes_tts_on_blocking_path(monkeypatch):
+    records = []
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
+    monkeypatch.setattr("loop.speak", lambda text, **k: time.sleep(0.3))
+    monkeypatch.setattr(
+        "loop.log_turn", lambda rec, config=None: records.append(rec)
+    )
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            return "resposta curta"
+
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["agent_s"] < 0.2
+    assert rec["tts_s"] >= 0.25
+
+
 def test_voice_loop_streams_without_calling_ask(monkeypatch):
     asked = []
     spoken = []

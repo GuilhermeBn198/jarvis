@@ -220,9 +220,11 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         tts_failed = False
         aborted = False
         answer = None
+        t_agent1 = None
         t_tts0 = t_agent0
         if cfg.stream_tts and hasattr(client, "stream"):
             res = _stream_turn(client, text, cfg, hub, muted, t_agent0, err)
+            t_agent1 = time.monotonic()
             first_audio = res.first_audio_s
             if res.streamed or res.spoken:
                 answer = res.answer or " ".join(res.spoken)
@@ -236,6 +238,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 error = str(exc)
                 answer = f"erro: {exc}"
                 _emit(hub, "error")
+            t_agent1 = time.monotonic()
             spoken = speechify(answer)
             t_tts0 = time.monotonic()
             try:
@@ -248,7 +251,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 aborted = _voice_error(exc)
                 err.write(f"[fallback texto] {answer}\n")
                 err.flush()
-        t_agent1 = time.monotonic()
+        if t_agent1 is None:
+            t_agent1 = time.monotonic()
         t_tts1 = time.monotonic()
         log_turn(
             {
