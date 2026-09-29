@@ -10,6 +10,7 @@ from agent_client import RunClient, ServeClient
 from config import load_config
 from paths import _windows_to_wsl
 from serve import ensure_server
+from stream import SentenceChunker
 from tts import speak
 from vision import _see_via_run, capture
 
@@ -69,6 +70,27 @@ def main() -> None:
     serve_cold = _measure("serve cold", lambda: serve_client.ask(TASK))
     serve_warm = _measure("serve warm", lambda: serve_client.ask(TASK))
 
+    # Streaming: tempo ate o 1º pedaco (TTS por sentenca) vs resposta completa.
+    stream_first = None
+    stream_total = None
+    try:
+        chunker = SentenceChunker(min_chars=cfg.stream_min_chars)
+        started = time.perf_counter()
+        first = {"t": None}
+
+        def on_delta(d):
+            for _ in chunker.feed(d):
+                if first["t"] is None:
+                    first["t"] = time.perf_counter() - started
+
+        try:
+            serve_client.stream(TASK, on_delta)
+        finally:
+            stream_total = time.perf_counter() - started
+        stream_first = first["t"]
+    except Exception as exc:  # noqa: BLE001 - bench nao deve abortar
+        print(f"[bench] streaming falhou: {exc}")
+
     # Visao: serve (session aquecida) vs run (startup do opencode).
     png = None
     vision_serve = None
@@ -114,6 +136,8 @@ def main() -> None:
     print(f"| Agente (2ª chamada) | run | {_fmt(run_second)} |")
     print(f"| Agente (frio) | serve | {_fmt(serve_cold)} |")
     print(f"| Agente (quente) | serve | {_fmt(serve_warm)} |")
+    print(f"| Streaming: 1º pedaço | serve | {_fmt(stream_first)} |")
+    print(f"| Streaming: resposta completa | serve | {_fmt(stream_total)} |")
     print(f"| Visao | serve | {_fmt(vision_serve)} |")
     print(f"| Visao | run | {_fmt(vision_run)} |")
     print(f"| TTS | sapi | {_fmt(tts_sapi)} |")

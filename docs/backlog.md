@@ -13,7 +13,7 @@ Itens registrados para atacar depois, com contexto.
 **Ideias a investigar (quando atacarmos):**
 - [x] Usar `serve` também no caminho de **visão** — FEITO: **4,8s vs 11,5s** (−58%); `vision.see` usa serve com fallback para `run`.
 - [x] Reduzir o contexto/system prompt do agente `chat` (tools off) — TESTADO: **sem ganho** (1,84 vs 1,85s, n=8) → revertido; o gargalo não são as tools listadas.
-- [ ] Streaming: começar a falar (TTS por sentença) enquanto o texto ainda é gerado (reduz a latência *percebida*; exige consumir o SSE `/event`).
+- [x] Streaming: começar a falar (TTS por sentença) enquanto o texto é gerado — FEITO (spec `docs/superpowers/specs/2026-09-29-jarvis-streaming-tts-design.md`, plano `docs/superpowers/plans/2026-09-29-jarvis-streaming-tts.md`). Medido: 1º pedaço em ~3,9s vs resposta completa ~4,2s.
 - [x] Testar modelos mais rápidos para conversa (ex.: `opencode-go/gpt-6-luna`) — medido igual (~6,6–9,2s); **não** ajuda (gargalo é overhead, não geração).
 - [x] Medir com `bench.py` antes/depois — `bench.py` agora mede agente (run/serve) + TTS + visão.
 
