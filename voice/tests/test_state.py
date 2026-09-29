@@ -1,4 +1,5 @@
 import queue
+import urllib.error
 
 import pytest
 
@@ -65,3 +66,85 @@ def test_states_and_commands_are_exact():
         "speaking", "acting", "error",
     )
     assert COMMANDS == ("mute", "pause", "quit")
+
+
+import json
+import time
+import urllib.request
+
+
+def _read_line(resp):
+    return resp.readline().decode("utf-8")
+
+
+def test_http_state_endpoint():
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/state", timeout=2) as r:
+            assert r.status == 200
+            assert json.loads(r.read())["state"] == "idle"
+        hub.set("acting")
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/state", timeout=2) as r:
+            assert json.loads(r.read())["state"] == "acting"
+    finally:
+        hub.stop()
+
+
+def test_events_sends_snapshot_then_transitions():
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        resp = urllib.request.urlopen(
+            f"http://127.0.0.1:{hub._port}/events", timeout=3
+        )
+        first = _read_line(resp)
+        assert first.startswith("data: ")
+        assert json.loads(first[6:])["state"] == "idle"
+        assert _read_line(resp) == "\n"
+        hub.set("listening")
+        second = _read_line(resp)
+        assert json.loads(second[6:])["state"] == "listening"
+        resp.close()
+        hub.stop()
+        time.sleep(0.05)
+        assert hub.subscribers() == 0
+    finally:
+        hub.stop()
+
+
+def test_post_command_enqueues_and_validates():
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{hub._port}/command",
+            data=json.dumps({"cmd": "mute"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=2) as r:
+            assert r.status == 200
+        assert hub.take_command() == "mute"
+
+        bad = urllib.request.Request(
+            f"http://127.0.0.1:{hub._port}/command",
+            data=json.dumps({"cmd": "explode"}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(bad, timeout=2)
+            assert False, "deveria dar 400"
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
+    finally:
+        hub.stop()
+
+
+def test_start_stop_is_clean():
+    hub = StateHub(port=0)
+    hub.start()
+    hub.start()  # idempotente
+    hub.stop()
+    hub.stop()  # idempotente
