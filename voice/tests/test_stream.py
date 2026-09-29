@@ -51,3 +51,24 @@ def test_flush_emits_pending_below_min():
     c = SentenceChunker(min_chars=50)
     assert c.feed("Oi. ") == []
     assert c.flush() == ["Oi."]
+
+
+def test_two_fences_emit_two_placeholders():
+    c = SentenceChunker(min_chars=1)
+    out = c.feed("A. ```c1``` B. ```c2``` C. ")
+    assert out.count(CODE_OMIT) == 2
+
+
+def test_pending_before_fence_keeps_order():
+    c = SentenceChunker(min_chars=15)
+    out = c.feed("Veja: ```\ncode\n```\nFim. ")
+    assert out == ["Veja:", CODE_OMIT]
+    assert c.flush() == ["Fim."]
+
+
+def test_open_fence_flush_keeps_partial_fence():
+    c = SentenceChunker(min_chars=1)
+    assert c.feed("```") == []
+    assert c.feed("codigo") == []
+    assert c.flush() == [CODE_OMIT]
+    assert c.feed("```fim. ") == ["fim."]

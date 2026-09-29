@@ -23,7 +23,8 @@ class SentenceChunker:
     def flush(self) -> list[str]:
         out: list[str] = []
         if self._in_fence:
-            self._buf = ""
+            self._buf = self._buf[-2:]  # guarda possível fence parcial
+            self._force_pending(out)
             if not self._fence_notified:
                 self._fence_notified = True
                 out.append(CODE_OMIT)
@@ -45,6 +46,11 @@ class SentenceChunker:
         self._pending = ""
         out.append(merged)
 
+    def _force_pending(self, out: list[str]) -> None:
+        if self._pending:
+            out.append(self._pending)
+            self._pending = ""
+
     def _drain(self, out: list[str]) -> None:
         while True:
             if self._in_fence:
@@ -54,6 +60,7 @@ class SentenceChunker:
                     return
                 self._buf = self._buf[idx + 3:]
                 self._in_fence = False
+                self._force_pending(out)
                 if not self._fence_notified:
                     self._fence_notified = True
                     out.append(CODE_OMIT)
@@ -68,6 +75,7 @@ class SentenceChunker:
                 self._emit(self._buf[:fence_idx].strip(), out)
                 self._buf = self._buf[fence_idx + 3:]
                 self._in_fence = True
+                self._fence_notified = False
                 continue
             return
 
