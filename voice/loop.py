@@ -16,6 +16,15 @@ from tts import VoiceError, speak
 from vision import capture, see
 
 
+def gui_lost(require_gui: bool, subscribers: int, last_gui_ts: float,
+             now: float, timeout: float) -> bool:
+    if not require_gui:
+        return False
+    if subscribers > 0:
+        return False
+    return (now - last_gui_ts) > timeout
+
+
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
                config=None, err=None, max_consecutive_errors: int = 3,
                hub=None, orphan_timeout_s: float = 15.0) -> None:
@@ -28,6 +37,9 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
     consecutive_errors = 0
     if hub is not None:
         hub.set("idle")
+    last_gui_ts = time.monotonic()
+    muted = False
+    paused = False
 
     def _voice_error(exc: VoiceError) -> bool:
         nonlocal consecutive_errors
@@ -45,6 +57,26 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
 
     while iterations == 0 or n < iterations:
         n += 1
+        if hub is not None:
+            cmd = hub.take_command()
+            while cmd is not None:
+                if cmd == "quit":
+                    return
+                if cmd == "mute":
+                    muted = not muted
+                elif cmd == "pause":
+                    paused = not paused
+                cmd = hub.take_command()
+            now = time.monotonic()
+            if hub.subscribers() > 0:
+                last_gui_ts = now
+            elif gui_lost(cfg.state_require_gui, 0, last_gui_ts, now, orphan_timeout_s):
+                err.write("[voz] overlay ausente; encerrando\n")
+                err.flush()
+                return
+            if paused:
+                hub.set("idle")
+                continue
         t0 = time.monotonic()
         try:
             if hub is not None:
@@ -112,7 +144,6 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         aborted = False
         tts_failed = False
         t_tts0 = time.monotonic()
-        muted = False
         try:
             if not muted and hub is not None:
                 hub.set("speaking")

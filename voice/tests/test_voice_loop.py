@@ -561,3 +561,93 @@ def test_main_degrades_without_indicator_when_hub_fails(monkeypatch):
     assert conn is None
     assert "[aviso]" in err.getvalue()
 
+
+class CmdHub:
+    def __init__(self, cmds=None, subs=1):
+        self.states = []
+        self._cmds = list(cmds or [])
+        self._subs = subs
+
+    def set(self, state, detail=None):
+        self.states.append(state)
+
+    def take_command(self):
+        return self._cmds.pop(0) if self._cmds else None
+
+    def subscribers(self):
+        return self._subs
+
+
+class ClientOK:
+    def ask(self, task, timeout_s=None):
+        return "resposta"
+
+
+def _patch_voice(monkeypatch, calls):
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "oi")
+    monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
+
+
+def test_gui_lost_helper():
+    assert loop_mod.gui_lost(False, 0, 0.0, 100.0, 15.0) is False
+    assert loop_mod.gui_lost(True, 1, 0.0, 100.0, 15.0) is False
+    assert loop_mod.gui_lost(True, 0, 0.0, 10.0, 15.0) is False
+    assert loop_mod.gui_lost(True, 0, 0.0, 20.0, 15.0) is True
+
+
+def test_pause_command_skips_capture(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+    hub = CmdHub(cmds=["pause"])
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                 input_mode="fixed", ptt=False, state_require_gui=True)
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg, hub=hub)
+    assert "record" not in calls
+
+
+def test_mute_command_skips_tts_but_logs(monkeypatch):
+    calls = []
+    records = []
+    _patch_voice(monkeypatch, calls)
+    monkeypatch.setattr("loop.log_turn", lambda rec, config=None: records.append(rec))
+    hub = CmdHub(cmds=["mute"])
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=CFG, hub=hub)
+    assert "tts" not in calls
+    assert len(records) == 1
+
+
+def test_quit_command_stops_before_capture(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+    hub = CmdHub(cmds=["quit"])
+    voice_loop(client=ClientOK(), iterations=0, record_seconds=1, config=CFG, hub=hub)
+    assert "record" not in calls
+
+
+def test_orphan_exits_when_gui_gone(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+    hub = CmdHub(subs=0)
+    err = io.StringIO()
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                 input_mode="fixed", ptt=False, state_require_gui=True)
+    # 1º tick = last_gui_ts (folga); 2º tick já estoura o timeout, antes de capturar.
+    ticks = iter([0.0, 100.0, 100.0, 100.0])
+    monkeypatch.setattr("loop.time.monotonic", lambda: next(ticks, 100.0))
+    voice_loop(client=ClientOK(), iterations=0, record_seconds=1, config=cfg,
+               hub=hub, err=err, orphan_timeout_s=15.0)
+    assert "record" not in calls
+    assert "overlay ausente" in err.getvalue()
+
+
+def test_orphan_does_not_exit_with_subscriber(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+    hub = CmdHub(subs=1)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                 input_mode="fixed", ptt=False, state_require_gui=True)
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg,
+               hub=hub, orphan_timeout_s=15.0)
+    assert "record" in calls
+
