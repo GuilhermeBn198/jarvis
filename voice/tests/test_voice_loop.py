@@ -17,6 +17,13 @@ def _no_convlog(monkeypatch):
     monkeypatch.setattr("loop.log_turn", lambda *a, **k: None)
 
 
+@pytest.fixture(autouse=True)
+def _isolated_voice_lock(monkeypatch, tmp_path):
+    # Isola a trava de instancia unica: um loop real rodando na maquina (ex.:
+    # subido pelo overlay) nao deve fazer os testes de `main --voice` falharem.
+    monkeypatch.setenv("JARVIS_VOICE_LOCK", str(tmp_path / "voice.lock"))
+
+
 def test_voice_loop_logs_turn_and_speaks_sanitized(monkeypatch):
     records = []
     spoken_texts = []

@@ -82,10 +82,20 @@ def _parse_silence_start(line: str) -> float | None:
 
 
 def record_auto(out_path: str | None = None, config: Config | None = None,
-                max_s: float = 15, wait_s: float = 8.0, silence_s: float = 1.0,
-                noise_db: int = -35, eps: float = EPS) -> str:
+                max_s: float | None = None, wait_s: float | None = None,
+                silence_s: float | None = None, noise_db: int | None = None,
+                eps: float = EPS) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_AUTO_OUT_WAV
+    # Sem parametro explicito, usa os tunables do config (env VOICE_*).
+    if max_s is None:
+        max_s = cfg.max_s
+    if wait_s is None:
+        wait_s = cfg.wait_s
+    if silence_s is None:
+        silence_s = cfg.silence_s
+    if noise_db is None:
+        noise_db = cfg.noise_db
     cmd = [
         cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i", f"audio={cfg.mic_device}",
         "-af", f"silencedetect=noise={noise_db}dB:d={silence_s}",

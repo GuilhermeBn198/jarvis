@@ -33,6 +33,10 @@ DEFAULT_STATE_REQUIRE_GUI = False
 DEFAULT_STREAM_TTS = True
 DEFAULT_STREAM_IDLE_MS = 400
 DEFAULT_STREAM_MIN_CHARS = 15
+DEFAULT_NOISE_DB = -35
+DEFAULT_SILENCE_S = 1.0
+DEFAULT_WAIT_S = 8.0
+DEFAULT_MAX_S = 15.0
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,10 @@ class Config:
     stream_tts: bool = DEFAULT_STREAM_TTS
     stream_idle_ms: int = DEFAULT_STREAM_IDLE_MS
     stream_min_chars: int = DEFAULT_STREAM_MIN_CHARS
+    noise_db: int = DEFAULT_NOISE_DB
+    silence_s: float = DEFAULT_SILENCE_S
+    wait_s: float = DEFAULT_WAIT_S
+    max_s: float = DEFAULT_MAX_S
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -134,6 +142,26 @@ def load_config(env: dict | None = None) -> Config:
         raise ValueError(
             f"VOICE_STREAM_MIN_CHARS deve ser inteiro: {raw_min}"
         ) from exc
+    raw_noise = e.get("VOICE_NOISE_DB", DEFAULT_NOISE_DB)
+    try:
+        noise_db = int(raw_noise)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"VOICE_NOISE_DB deve ser inteiro: {raw_noise}") from exc
+    raw_silence = e.get("VOICE_SILENCE_S", DEFAULT_SILENCE_S)
+    try:
+        silence_s = float(raw_silence)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"VOICE_SILENCE_S deve ser numero: {raw_silence}") from exc
+    raw_wait = e.get("VOICE_WAIT_S", DEFAULT_WAIT_S)
+    try:
+        wait_s = float(raw_wait)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"VOICE_WAIT_S deve ser numero: {raw_wait}") from exc
+    raw_max = e.get("VOICE_MAX_S", DEFAULT_MAX_S)
+    try:
+        max_s = float(raw_max)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"VOICE_MAX_S deve ser numero: {raw_max}") from exc
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -162,4 +190,8 @@ def load_config(env: dict | None = None) -> Config:
         stream_tts=stream_tts,
         stream_idle_ms=stream_idle_ms,
         stream_min_chars=stream_min_chars,
+        noise_db=noise_db,
+        silence_s=silence_s,
+        wait_s=wait_s,
+        max_s=max_s,
     )

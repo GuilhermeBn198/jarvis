@@ -171,3 +171,33 @@ def test_stream_invalid_ints_raise():
     with pytest.raises(ValueError) as exc:
         load_config({"VOICE_STREAM_MIN_CHARS": "x"})
     assert "VOICE_STREAM_MIN_CHARS" in str(exc.value)
+
+
+def test_capture_tunables_defaults():
+    cfg = load_config({})
+    assert cfg.noise_db == -35
+    assert cfg.silence_s == 1.0
+    assert cfg.wait_s == 8.0
+    assert cfg.max_s == 15.0
+
+
+def test_capture_tunables_env_overrides():
+    cfg = load_config({
+        "VOICE_NOISE_DB": "-45",
+        "VOICE_SILENCE_S": "1.5",
+        "VOICE_WAIT_S": "10",
+        "VOICE_MAX_S": "20",
+    })
+    assert cfg.noise_db == -45
+    assert cfg.silence_s == 1.5
+    assert cfg.wait_s == 10.0
+    assert cfg.max_s == 20.0
+
+
+def test_capture_tunables_invalid_raise():
+    with pytest.raises(ValueError) as exc:
+        load_config({"VOICE_NOISE_DB": "x"})
+    assert "VOICE_NOISE_DB" in str(exc.value)
+    with pytest.raises(ValueError) as exc:
+        load_config({"VOICE_SILENCE_S": "x"})
+    assert "VOICE_SILENCE_S" in str(exc.value)
