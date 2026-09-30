@@ -925,3 +925,49 @@ def test_voice_loop_stream_gen_done_s_drives_agent_s(monkeypatch):
     assert rec["agent_s"] < 0.2
     assert rec["tts_s"] >= 0.25
 
+
+def test_voice_loop_require_gui_without_hub_exits(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "loop.record", lambda **k: calls.append("record") or "/tmp/a.wav"
+    )
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
+    monkeypatch.setattr("loop.speak", lambda text, **k: None)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            calls.append("ask")
+            return "x"
+
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, input_mode="fixed",
+                 ptt=False, state_require_gui=True)
+    err = io.StringIO()
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=cfg,
+               hub=None, err=err)
+    assert calls == []
+    assert "headless" in err.getvalue()
+
+
+def test_acquire_singleton_excludes_and_releases(tmp_path):
+    path = str(tmp_path / "voice.lock")
+    fd1, ok1 = loop_mod.acquire_singleton(path)
+    assert ok1 is True
+    fd2, ok2 = loop_mod.acquire_singleton(path)
+    assert ok2 is False
+    loop_mod.release_singleton(fd1)
+    fd3, ok3 = loop_mod.acquire_singleton(path)
+    assert ok3 is True
+    loop_mod.release_singleton(fd3)
+
+
+def test_main_voice_refuses_when_locked(monkeypatch):
+    monkeypatch.setattr(loop_mod, "acquire_singleton", lambda path: (None, False))
+    called = []
+    monkeypatch.setattr(loop_mod, "voice_loop", lambda c, **k: called.append(True))
+    err = io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stderr", err)
+    assert main(["--voice", "--once", "1"]) == 3
+    assert called == []
+    assert "loop de voz rodando" in err.getvalue()
+
+

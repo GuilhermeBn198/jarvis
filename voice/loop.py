@@ -1,3 +1,5 @@
+import fcntl
+import os
 import re
 import subprocess
 import sys
@@ -133,6 +135,15 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
     secs = record_seconds if record_seconds is not None else cfg.record_seconds
     n = 0
     consecutive_errors = 0
+    if cfg.state_require_gui and hub is None:
+        # Sem indicador nao ha como o anti-orfao funcionar; rodar assim seria
+        # um loop headless segurando o microfone (issue #4). Nao roda.
+        err.write(
+            "[erro] overlay exigido (JARVIS_REQUIRE_GUI) mas o indicador nao "
+            "subiu; encerrando para nao rodar headless\n"
+        )
+        err.flush()
+        return
     _emit(hub, "idle")
     last_gui_ts = time.monotonic()
     muted = False
@@ -495,6 +506,40 @@ def _start_hub(cfg, err):
         return None
 
 
+DEFAULT_VOICE_LOCK = "/tmp/jarvis-voice.lock"
+
+
+def acquire_singleton(path: str):
+    """Trava exclusiva (flock) contra dois loops de voz simultaneos.
+
+    Retorna `(fd, ok)`: `ok=False` se outro loop ja tem a trava. Se nao for
+    possivel abrir o arquivo, degrada para `(None, True)` (nao bloqueia).
+    """
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+    except OSError:
+        return None, True
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None, False
+    return fd, True
+
+
+def release_singleton(fd) -> None:
+    if fd is None:
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+
+
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
@@ -520,6 +565,15 @@ def main(argv=None) -> int:
                 sys.stderr.flush()
                 return 2
             cfg = load_config()
+            lock_fd, ok = acquire_singleton(
+                os.environ.get("JARVIS_VOICE_LOCK", DEFAULT_VOICE_LOCK)
+            )
+            if not ok:
+                sys.stderr.write(
+                    "[erro] ja existe um loop de voz rodando (lock); saindo\n"
+                )
+                sys.stderr.flush()
+                return 3
             hub = _start_hub(cfg, sys.stderr)
             try:
                 voice_loop(resolve_client(cfg, sys.stderr), iterations=iterations,
@@ -527,6 +581,7 @@ def main(argv=None) -> int:
             finally:
                 if hub is not None:
                     hub.stop()
+                release_singleton(lock_fd)
             return 0
         if "--do" in args:
             i = args.index("--do")
