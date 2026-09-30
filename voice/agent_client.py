@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import select
 import socket
 import subprocess
 import time
@@ -232,14 +233,26 @@ class ServeClient:
         except (OSError, ValueError) as exc:
             raise AgentError(f"falha ao falar com o servidor em {url} ({exc})") from exc
 
-    def _consume_events(self, stream, session_id, on_delta, on_idle, timeout):
+    def _consume_events(self, stream, session_id, on_delta, on_idle, timeout,
+                        idle_s=None):
         deadline = time.monotonic() + timeout
         parts: dict[str, str] = {}
         roles: dict[str, str] = {}
         done = False
+        fd = self._selectable_fd(stream) if idle_s is not None else None
         while not done:
             if time.monotonic() >= deadline:
                 raise AgentError("timeout ao aguardar a resposta")
+            if fd is not None:
+                try:
+                    ready, _, _ = select.select([fd], [], [], idle_s)
+                except (OSError, ValueError):
+                    fd = None
+                    ready = [fd]
+                if not ready:
+                    if on_idle is not None:
+                        on_idle()
+                    continue
             try:
                 raw = stream.readline()
             except (socket.timeout, TimeoutError):
@@ -293,6 +306,19 @@ class ServeClient:
             raise AgentError("agente nao retornou resposta")
         return text
 
+    @staticmethod
+    def _selectable_fd(stream):
+        """fd utilizavel para select, ou None se o stream nao expoe um.
+
+        `io.BytesIO` (testes) levanta `io.UnsupportedOperation` em `fileno()`;
+        nesse caso o idle nao tem como ser detectado e caimos no `readline`.
+        """
+        try:
+            fd = stream.fileno()
+        except (OSError, ValueError, AttributeError):
+            return None
+        return fd if isinstance(fd, int) and fd >= 0 else None
+
     def stream(self, task, on_delta, on_idle=None, timeout_s=None) -> str:
         task = (task or "").strip()
         if not task:
@@ -319,7 +345,8 @@ class ServeClient:
                     f"/session/{session_id}/prompt_async", payload, timeout
                 )
             return self._consume_events(
-                events, session_id, on_delta, on_idle, timeout
+                events, session_id, on_delta, on_idle, timeout,
+                idle_s=self._cfg.stream_idle_ms / 1000.0,
             )
         finally:
             try:

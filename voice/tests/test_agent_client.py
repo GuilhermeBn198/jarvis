@@ -1,6 +1,7 @@
 import subprocess
 import io
 import json
+import socket
 import urllib.error
 import pytest
 from config import Config
@@ -498,6 +499,40 @@ def test_consume_events_skips_user_prompt_echo():
     text = client._consume_events(stream, "S", deltas.append, None, 10)
     assert deltas == ["resposta"]
     assert text == "resposta"
+
+
+def test_consume_events_idle_fires_on_pause():
+    """Sem evento em idle_s, on_idle e chamado antes do session.idle."""
+    client = ServeClient(_stream_cfg())
+    left, right = socket.socketpair()
+    try:
+        stream = right.makefile("rb")
+        sid = "S"
+        left.sendall(
+            ("data: " + json.dumps(_part("p1", "resposta")) + "\n").encode()
+        )
+        idles = []
+        sent = {"idle": False}
+
+        def on_idle():
+            idles.append(True)
+            if not sent["idle"]:
+                sent["idle"] = True
+                left.sendall(
+                    ("data: " + json.dumps(
+                        {"type": "session.idle",
+                         "properties": {"sessionID": sid}}
+                    ) + "\n").encode()
+                )
+
+        text = client._consume_events(
+            stream, sid, lambda d: None, on_idle, 10, idle_s=0.05
+        )
+        assert idles, "on_idle deveria disparar durante a pausa"
+        assert text == "resposta"
+    finally:
+        left.close()
+        right.close()
 
 
 def test_stream_posts_async_and_returns_text(monkeypatch):
