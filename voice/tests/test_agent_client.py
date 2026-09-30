@@ -501,38 +501,72 @@ def test_consume_events_skips_user_prompt_echo():
     assert text == "resposta"
 
 
-def test_consume_events_idle_fires_on_pause():
-    """Sem evento em idle_s, on_idle e chamado antes do session.idle."""
+class _TimeoutThenLines:
+    """Stream falso: 1a leitura levanta socket.timeout, depois entrega linhas.
+
+    Expoe um fd real (socketpair vazio) para reproduzir a regressao: com o
+    gate por `select` no fd, o loop giraria em `on_idle` sem chamar
+    `readline` e nunca consumiria as linhas ja disponiveis.
+    """
+
+    def __init__(self, lines):
+        self._lines = list(lines)
+        self._first = True
+        self._peer, self._sock = socket.socketpair()
+
+    def fileno(self):
+        return self._sock.fileno()
+
+    def readline(self):
+        if self._first:
+            self._first = False
+            raise socket.timeout("silencio")
+        if self._lines:
+            return self._lines.pop(0)
+        return b""
+
+    def close(self):
+        self._peer.close()
+        self._sock.close()
+
+
+def test_consume_events_idle_timeout_then_lines():
+    """socket.timeout em readline chama on_idle e o loop segue (nao gira)."""
     client = ServeClient(_stream_cfg())
-    left, right = socket.socketpair()
+    lines = [
+        ("data: " + json.dumps(_part("p1", "resposta")) + "\n").encode(),
+        ("data: " + json.dumps(
+            {"type": "session.idle", "properties": {"sessionID": "S"}}
+        ) + "\n").encode(),
+    ]
+    stream = _TimeoutThenLines(lines)
+    idles = []
     try:
-        stream = right.makefile("rb")
-        sid = "S"
-        left.sendall(
-            ("data: " + json.dumps(_part("p1", "resposta")) + "\n").encode()
-        )
-        idles = []
-        sent = {"idle": False}
-
-        def on_idle():
-            idles.append(True)
-            if not sent["idle"]:
-                sent["idle"] = True
-                left.sendall(
-                    ("data: " + json.dumps(
-                        {"type": "session.idle",
-                         "properties": {"sessionID": sid}}
-                    ) + "\n").encode()
-                )
-
         text = client._consume_events(
-            stream, sid, lambda d: None, on_idle, 10, idle_s=0.05
+            stream, "S", lambda d: None, lambda: idles.append(True),
+            10, idle_s=0.05,
         )
-        assert idles, "on_idle deveria disparar durante a pausa"
-        assert text == "resposta"
     finally:
-        left.close()
-        right.close()
+        stream.close()
+    assert idles, "on_idle deveria disparar no timeout de leitura"
+    assert text == "resposta"
+
+
+def test_consume_events_coalesced_lines_are_consumed():
+    """Conteudo + session.idle disponiveis de uma vez: consome e retorna."""
+    client = ServeClient(_stream_cfg())
+    stream = io.BytesIO(
+        ("data: " + json.dumps(_part("p1", "junto")) + "\n\n"
+         "data: " + json.dumps(
+             {"type": "session.idle", "properties": {"sessionID": "S"}}
+         ) + "\n\n").encode()
+    )
+    deltas = []
+    text = client._consume_events(
+        stream, "S", deltas.append, None, 10, idle_s=0.05
+    )
+    assert text == "junto"
+    assert deltas == ["junto"]
 
 
 def test_consume_events_session_error_raises():

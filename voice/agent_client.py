@@ -1,9 +1,10 @@
 import base64
 import json
 import os
-import select
+import queue
 import socket
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -27,6 +28,60 @@ def _model_payload(model_id: str) -> dict:
 def strip_opencode_noise(text: str) -> str:
     """Remove ANSI e o cabecalho do TUI (`> build · model`) da saida do opencode."""
     return drop_leading_tui(strip_ansi(text))
+
+
+def _pump_lines(resp, out: "queue.Queue") -> None:
+    """Le `resp.readline()` bloqueando e enfileira cada linha (thread leitora).
+
+    Leitura bloqueante e a unica forma segura de nao perder eventos ja
+    bufferizados: `select` no fd nao enxerga o buffer do `BufferedReader`, e um
+    `socket.timeout` no meio de um `readline` descarta bytes parciais e
+    dessincroniza o decoder de chunks do `http.client`.
+    """
+    try:
+        while True:
+            line = resp.readline()
+            if not line:
+                break
+            out.put(line)
+    except BaseException as exc:  # socket.timeout/OSError ao fechar, etc.
+        out.put(exc)
+    finally:
+        out.put(None)
+
+
+class _QueuedLineStream:
+    """Linhas do SSE servidas por uma thread; silencio vira `socket.timeout`.
+
+    `readline()` espera ate `idle_s` na fila. Se nada chegou nesse intervalo,
+    levanta `socket.timeout` -- que `_consume_events` traduz em `on_idle`.
+    """
+
+    def __init__(self, resp, idle_s: float):
+        self._resp = resp
+        self._idle_s = idle_s
+        self._q: "queue.Queue" = queue.Queue()
+        self._thread = threading.Thread(
+            target=_pump_lines, args=(resp, self._q), daemon=True
+        )
+        self._thread.start()
+
+    def readline(self) -> bytes:
+        try:
+            item = self._q.get(timeout=self._idle_s)
+        except queue.Empty:
+            raise socket.timeout("idle na leitura do stream")
+        if item is None:
+            return b""
+        if isinstance(item, BaseException):
+            raise item
+        return item
+
+    def close(self) -> None:
+        try:
+            self._resp.close()
+        except OSError:
+            pass
 
 
 class AgentError(RuntimeError):
@@ -235,24 +290,21 @@ class ServeClient:
 
     def _consume_events(self, stream, session_id, on_delta, on_idle, timeout,
                         idle_s=None):
+        # `idle_s` e aceito por compatibilidade de assinatura; o idle de fato e
+        # sinalizado pelo `socket.timeout` que o stream levanta quando fica
+        # `idle_s` sem linhas (ver `_QueuedLineStream`, usado por `stream`).
+        # Nao usamos `select` no fd: `HTTPResponse.readline` le por um
+        # `BufferedReader` (read-ahead de 8 KB), entao `select` pode dizer "nao
+        # pronto" com eventos ainda no buffer Python -- e o loop giraria em
+        # `on_idle` sem nunca consumi-los (regressao: `session.idle` final
+        # perdido, fallback para o `ask()` blocking apos o timeout duro).
         deadline = time.monotonic() + timeout
         parts: dict[str, str] = {}
         roles: dict[str, str] = {}
         done = False
-        fd = self._selectable_fd(stream) if idle_s is not None else None
         while not done:
             if time.monotonic() >= deadline:
                 raise AgentError("timeout ao aguardar a resposta")
-            if fd is not None:
-                try:
-                    ready, _, _ = select.select([fd], [], [], idle_s)
-                except (OSError, ValueError):
-                    fd = None
-                    ready = [fd]
-                if not ready:
-                    if on_idle is not None:
-                        on_idle()
-                    continue
             try:
                 raw = stream.readline()
             except (socket.timeout, TimeoutError):
@@ -311,19 +363,6 @@ class ServeClient:
             raise AgentError("agente nao retornou resposta")
         return text
 
-    @staticmethod
-    def _selectable_fd(stream):
-        """fd utilizavel para select, ou None se o stream nao expoe um.
-
-        `io.BytesIO` (testes) levanta `io.UnsupportedOperation` em `fileno()`;
-        nesse caso o idle nao tem como ser detectado e caimos no `readline`.
-        """
-        try:
-            fd = stream.fileno()
-        except (OSError, ValueError, AttributeError):
-            return None
-        return fd if isinstance(fd, int) and fd >= 0 else None
-
     def stream(self, task, on_delta, on_idle=None, timeout_s=None) -> str:
         task = (task or "").strip()
         if not task:
@@ -335,6 +374,11 @@ class ServeClient:
             events = urllib.request.urlopen(url, timeout=timeout)
         except (OSError, ValueError) as exc:
             raise AgentError(f"falha ao assinar /event ({exc})") from exc
+        # O `idle` e detectado por timeout de fila (uma thread le o stream
+        # bloqueando e enfileira as linhas), nao por `select` no fd nem por
+        # `settimeout` no socket: ambos podem descartar eventos ja bufferizados.
+        idle_s = self._cfg.stream_idle_ms / 1000.0
+        stream = _QueuedLineStream(events, idle_s)
         try:
             payload = {"parts": [{"type": "text", "text": task}]}
             if self._cfg.agent:
@@ -350,14 +394,11 @@ class ServeClient:
                     f"/session/{session_id}/prompt_async", payload, timeout
                 )
             return self._consume_events(
-                events, session_id, on_delta, on_idle, timeout,
-                idle_s=self._cfg.stream_idle_ms / 1000.0,
+                stream, session_id, on_delta, on_idle, timeout,
+                idle_s=idle_s,
             )
         finally:
-            try:
-                events.close()
-            except OSError:
-                pass
+            stream.close()
 
 
 def make_client(cfg: Config):
