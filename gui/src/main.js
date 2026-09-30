@@ -58,6 +58,29 @@ async function resolveBase() {
 
 resolveBase().then(connect);
 
+// "Sempre ligado": ao abrir, se o cerebro estiver offline, sobe o loop no WSL.
+// So inicia se estiver offline -- nunca mata um loop existente (e a trava de
+// instancia unica no loop impede duplicatas de qualquer forma).
+const AUTOSTART_BRAIN = true;
+
+async function ensureBrain() {
+  try {
+    const r = await fetch(`${base}/state`);
+    if (r.ok) return;
+  } catch (e) {
+    /* offline: tenta subir abaixo */
+  }
+  try {
+    await window.__TAURI__.core.invoke("start_brain");
+  } catch (e) {
+    /* fora do Tauri ou falha ao spawnar: ignora */
+  }
+}
+
+if (AUTOSTART_BRAIN) {
+  setTimeout(ensureBrain, 1200);
+}
+
 orb.addEventListener("mouseenter", () => label.classList.add("show"));
 orb.addEventListener("mouseleave", () => label.classList.remove("show"));
 orb.addEventListener("click", () => menu.classList.toggle("hidden"));
