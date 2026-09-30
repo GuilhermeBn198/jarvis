@@ -152,6 +152,12 @@ O launcher `./jarvis` ativa o venv de `voice/` sozinho (não precisa de `source 
 cd voice && . .venv/bin/activate && python loop.py --voice
 ```
 
+**Calibrar o microfone** (se ele dispara com ruído ou não ouve você):
+```bash
+./jarvis --mic-level     # mede o ruído de fundo (~5s) e sugere VOICE_NOISE_DB
+```
+Em silêncio, veja o `media` (dB) e use `VOICE_NOISE_DB` ≈ media + 8 (mais negativo = mais sensível).
+
 **Modos de entrada** (`VOICE_INPUT`):
 - `auto` (default) — grava quando você **fala** (VAD), para após ~1s de silêncio.
 - `ptt` — push-to-talk (Enter inicia / Enter para).
