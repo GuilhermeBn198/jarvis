@@ -2,11 +2,15 @@ import subprocess
 import io
 import json
 import socket
+import threading
+import time
+import types
 import urllib.error
 import pytest
 from config import Config
 from agent_client import (
     RunClient, ServeClient, AgentError, make_client, SESSION_TIMEOUT_S,
+    _QueuedLineStream,
 )
 
 CFG = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="run",
@@ -601,4 +605,59 @@ def test_stream_posts_async_and_returns_text(monkeypatch):
     assert posted["payload"]["agent"] == "chat"
     assert text == "resposta"
     assert deltas == ["resposta"]
+
+
+class _FakeDeadlockResp:
+    """Resposta falsa cujo `readline` fica preso no lock do buffer.
+
+    Expoe `.fp.raw._sock` (como o `HTTPResponse` real), `readline` que delega
+    ao `makefile` e `close` que fecha o buffer. Com o socketpair vazio, a
+    thread leitora fica genuinamente bloqueada dentro de `readline`.
+    """
+
+    def __init__(self, sock):
+        self._sock = sock
+        self._file = sock.makefile("rb")
+        self.fp = types.SimpleNamespace(
+            raw=types.SimpleNamespace(_sock=sock)
+        )
+
+    def readline(self):
+        return self._file.readline()
+
+    def close(self):
+        self._file.close()
+
+
+def test_close_does_not_block_on_buffer_lock():
+    """Regressao: `close()` nao pode travar no lock do buffer da thread leitora.
+
+    Antes do fix, `close()` chamava `resp.close()` com a thread leitora presa em
+    `readline()`, bloqueando ate o timeout do socket (300s em prod). O fix faz
+    `shutdown` no socket antes, entao `close()` retorna em milissegundos.
+    """
+    peer, sock = socket.socketpair()
+    fake = _FakeDeadlockResp(sock)
+    stream = _QueuedLineStream(fake, idle_s=0.05)
+    time.sleep(0.2)  # garante a thread leitora bloqueada em readline()
+
+    done = threading.Event()
+    result = {}
+
+    def _timed_close():
+        t0 = time.monotonic()
+        stream.close()
+        result["elapsed"] = time.monotonic() - t0
+        done.set()
+
+    closer = threading.Thread(target=_timed_close, daemon=True)
+    closer.start()
+    try:
+        assert done.wait(timeout=1.0), (
+            "close() travou no lock do buffer (deadlock)"
+        )
+        assert result["elapsed"] < 1.0
+        stream.close()  # idempotente
+    finally:
+        peer.close()
 

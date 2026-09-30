@@ -60,15 +60,27 @@ class _QueuedLineStream:
     def __init__(self, resp, idle_s: float):
         self._resp = resp
         self._idle_s = idle_s
-        self._q: "queue.Queue" = queue.Queue()
+        # Capturado agora: `resp.fp` pode ser limpo pelo `HTTPResponse.close()`,
+        # entao `close()` precisa guardar o socket cru para poder desbloquear a
+        # thread leitora antes de fechar o buffer.
+        self._sock = getattr(
+            getattr(getattr(resp, "fp", None), "raw", None), "_sock", None
+        )
+        # Fila LIMITADA: restaurar backpressure de TCP. Com fila ilimitada, um
+        # consumidor lento deixaria a thread leitora drenar o socket inteiro na
+        # memoria; limitada, ela bloqueia em `put` e o kernel segura o remetente.
+        self._q: "queue.Queue" = queue.Queue(maxsize=1000)
         self._thread = threading.Thread(
             target=_pump_lines, args=(resp, self._q), daemon=True
         )
         self._thread.start()
 
     def readline(self) -> bytes:
+        # `idle_s <= 0` significa "sem idle": sem timeout (nao pode busy-loop) e
+        # `on_idle` nunca dispara, pois `queue.get` nunca levanta `Empty`.
+        timeout = self._idle_s if self._idle_s > 0 else None
         try:
-            item = self._q.get(timeout=self._idle_s)
+            item = self._q.get(timeout=timeout)
         except queue.Empty:
             raise socket.timeout("idle na leitura do stream")
         if item is None:
@@ -78,10 +90,21 @@ class _QueuedLineStream:
         return item
 
     def close(self) -> None:
+        # Desbloquear a thread leitora ANTES de fechar: em CPython 3.10,
+        # `HTTPResponse.close()` -> `fp.close()` com outra thread presa em
+        # `fp.readline()` espera o timeout do socket (300s em prod) -- e como
+        # `stream()` chama `close()` no `finally`, cada turno travaria. O
+        # `shutdown` faz o `readline` retornar na hora.
+        if self._sock is not None:
+            try:
+                self._sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
         try:
             self._resp.close()
         except OSError:
             pass
+        self._thread.join(timeout=1.0)
 
 
 class AgentError(RuntimeError):
