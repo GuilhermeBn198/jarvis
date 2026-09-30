@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Launcher do cerebro do jarvis (roda no WSL).
+#
+# Uso:
+#   ./jarvis --voice            # loop de voz continuo
+#   ./jarvis --voice --once 1   # um turno (teste)
+#   ./jarvis --see "pergunta"   # visao de tela
+#   ./jarvis --do "acao"        # acao no PC
+#   echo "oi" | ./jarvis        # bridge de texto
+#
+# Ativa o venv de voice/ automaticamente (sem precisar de `source .venv/bin/activate`).
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DIR/voice"
+
+if [ ! -d .venv ]; then
+  echo "jarvis: venv ausente em $DIR/voice/.venv" >&2
+  echo "  crie com: python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt" >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+. .venv/bin/activate
+exec python loop.py "$@"
