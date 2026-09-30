@@ -390,3 +390,50 @@ def test_record_auto_should_stop_raises_quitrequested(monkeypatch):
     with pytest.raises(QuitRequested):
         record_auto(out_path="/tmp/x.wav", config=CFG, should_stop=lambda: True)
     assert seen["proc"].killed is True
+
+
+def test_parse_audio_devices_filters_audio_and_dedups():
+    from capture import parse_audio_devices
+    stderr = (
+        '[dshow @ 0x1] "Microphone (FIFINE Microphone)" (audio)\n'
+        '[dshow @ 0x1]   Alternative name "@device_cm_{X}\\wave_{Y}"\n'
+        '[dshow @ 0x1] "Microphone (Realtek(R) Audio)" (audio)\n'
+        '[dshow @ 0x1] "Webcam C920" (video, audio)\n'
+        '[dshow @ 0x1] "Microphone (FIFINE Microphone)" (audio)\n'
+        '[dshow @ 0x1] "Integrated Camera" (video)\n'
+    )
+    assert parse_audio_devices(stderr) == [
+        "Microphone (FIFINE Microphone)",
+        "Microphone (Realtek(R) Audio)",
+        "Webcam C920",
+    ]
+    assert parse_audio_devices("") == []
+
+
+def test_list_audio_devices_runs_ffmpeg_and_parses(monkeypatch):
+    from capture import list_audio_devices
+    seen = {}
+
+    class Proc:
+        returncode = 1
+        stderr = '[dshow @ 0x1] "Mic A" (audio)\n[dshow @ 0x1] "Cam" (video)\n'
+
+    def fake_run(cmd, **kw):
+        seen["cmd"] = cmd
+        return Proc()
+
+    monkeypatch.setattr("capture.subprocess.run", fake_run)
+    assert list_audio_devices(config=CFG) == ["Mic A"]
+    joined = " ".join(seen["cmd"])
+    assert "-list_devices true" in joined
+    assert "-f dshow" in joined
+
+
+def test_list_audio_devices_missing_ffmpeg_raises(monkeypatch):
+    from capture import list_audio_devices
+    monkeypatch.setattr(
+        "capture.subprocess.run",
+        lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError()),
+    )
+    with pytest.raises(VoiceError, match="FFMPEG_EXE=/ff/ffmpeg.exe"):
+        list_audio_devices(config=CFG)

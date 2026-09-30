@@ -8,7 +8,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
-from capture import QuitRequested, measure_level, record, record_auto, record_ptt
+from capture import (
+    QuitRequested,
+    list_audio_devices,
+    measure_level,
+    record,
+    record_auto,
+    record_ptt,
+)
 from config import load_config
 from convlog import log_turn
 from sanitize import speechify
@@ -601,6 +608,21 @@ def release_singleton(fd) -> None:
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
+        if "--list-mics" in args:
+            cfg = load_config()
+            try:
+                devices = list_audio_devices(config=cfg)
+            except VoiceError as exc:
+                sys.stderr.write(f"[erro] {exc}\n")
+                sys.stderr.flush()
+                return 1
+            if not devices:
+                sys.stdout.write("nenhum microfone de audio encontrado\n")
+            for name in devices:
+                marker = " *" if name == cfg.mic_device else ""
+                sys.stdout.write(f"- {name}{marker}\n")
+            sys.stdout.flush()
+            return 0
         if "--mic-level" in args:
             cfg = load_config()
             try:

@@ -182,6 +182,34 @@ async function anchorBottomRight(w, h) {
   }
 }
 
+async function loadDevices() {
+  const sel = document.getElementById("s-mic");
+  let data = { devices: [], current: null };
+  try {
+    data = await (await fetch(`${base}/devices`)).json();
+  } catch (e) {
+    /* servidor fora do ar */
+  }
+  const opts = (data.devices || []).slice();
+  const current = data.current || "";
+  if (current && !opts.includes(current)) opts.unshift(current);
+  sel.innerHTML = "";
+  if (!opts.length) {
+    const o = document.createElement("option");
+    o.value = "";
+    o.textContent = "(nenhum microfone encontrado)";
+    sel.appendChild(o);
+    return;
+  }
+  for (const name of opts) {
+    const o = document.createElement("option");
+    o.value = name;
+    o.textContent = name;
+    if (name === current) o.selected = true;
+    sel.appendChild(o);
+  }
+}
+
 async function loadSettings() {
   let s = {};
   try {
@@ -201,6 +229,7 @@ async function openSettings() {
   menu.classList.add("hidden");
   settingsPanel.classList.remove("hidden");
   await anchorBottomRight(...PANEL_SIZE);
+  await loadDevices();
   await loadSettings();
 }
 
@@ -252,6 +281,8 @@ async function saveSettings(restart) {
     min_speech_s: numOrNull("s-minspeech"),
     stream_tts: document.getElementById("s-stream").checked,
   };
+  const mic = document.getElementById("s-mic").value;
+  if (mic) body.mic_device = mic;
   for (const k of Object.keys(body)) {
     if (body[k] === null) delete body[k];
   }
@@ -269,6 +300,7 @@ async function saveSettings(restart) {
 
 document.getElementById("settings-close").addEventListener("click", closeSettings);
 document.getElementById("measure").addEventListener("click", measureMic);
+document.getElementById("s-mic-reload").addEventListener("click", loadDevices);
 document
   .getElementById("settings-save")
   .addEventListener("click", () => saveSettings(false));

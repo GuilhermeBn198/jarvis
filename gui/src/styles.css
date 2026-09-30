@@ -153,6 +153,16 @@ html, body {
   font: 11px system-ui;
 }
 
+.settings select {
+  background: #0f131b;
+  border: 1px solid #2a2f3a;
+  border-radius: 4px;
+  color: #e2e8f0;
+  padding: 3px 6px;
+  font: 11px system-ui;
+  width: 100%;
+}
+
 .settings button {
   background: #1b1e27;
   border: 1px solid #2a2f3a;

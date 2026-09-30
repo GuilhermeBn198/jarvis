@@ -1,4 +1,5 @@
 import queue
+import re
 import subprocess
 import threading
 import time
@@ -256,3 +257,45 @@ def measure_level(seconds: float = 5, config: Config | None = None) -> dict:
             f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}"
         )
     return parse_volume(proc.stderr)
+
+
+_DEVICE_RE = re.compile(r'"([^"]+)"\s*\(([^)]*)\)')
+
+
+def parse_audio_devices(stderr: str) -> list[str]:
+    """Extrai os nomes dos devices de **audio** da saida do `-list_devices`.
+
+    Linhas do ffmpeg: `[dshow @ x] "Microphone (FIFINE)" (audio)` e, para
+    devices mistos, `"Webcam" (video, audio)`.
+    """
+    found: list[str] = []
+    for line in (stderr or "").splitlines():
+        match = _DEVICE_RE.search(line)
+        if not match:
+            continue
+        name, kinds = match.group(1), match.group(2)
+        if "audio" in kinds and name not in found:
+            found.append(name)
+    return found
+
+
+def list_audio_devices(config: Config | None = None) -> list[str]:
+    """Lista os microfones (dshow) do Windows sem abrir o device.
+
+    `-i dummy` faz o ffmpeg falhar de proposito depois de enumerar; por isso o
+    returncode e ignorado e so o stderr interessa.
+    """
+    cfg = config or load_config()
+    cmd = [
+        cfg.ffmpeg_exe, "-hide_banner", "-list_devices", "true",
+        "-f", "dshow", "-i", "dummy",
+    ]
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, errors="replace", timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise VoiceError(
+            f"falha ao listar microfones (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
+        ) from exc
+    return parse_audio_devices(proc.stderr)

@@ -154,11 +154,12 @@ cd voice && . .venv/bin/activate && python loop.py --voice
 
 **Calibrar o microfone** (se ele dispara com ruído ou não ouve você):
 ```bash
-./jarvis --mic-level     # mede o ruído de fundo (~5s) e sugere VOICE_NOISE_DB
+./jarvis --list-mics      # lista os microfones (dshow) e marca o ativo (*)
+./jarvis --mic-level      # mede o ruído de fundo (~5s) e sugere VOICE_NOISE_DB
 ```
-Em silêncio, veja o `media` (dB) e use `VOICE_NOISE_DB` ≈ media + 8 (mais negativo = mais sensível).
+Em silêncio, veja o `media` (dB) e use `VOICE_NOISE_DB` ≈ media + 8 (mais negativo = mais sensível). **Se `media` vier perto de −90 dB, o mic está mudo/sem ganho** — troque de device (abaixo) ou ajuste o volume/mute no Windows.
 
-Também dá para calibrar e ajustar **pelo overlay** (menu → **Configurações** → *Medir microfone*). Os ajustes ficam em `~/.config/jarvis/settings.json` (o env tem precedência) e valem ao **reiniciar o cérebro**.
+No **overlay** (menu → **Configurações**) você escolhe o **Microfone ativo** (lista os devices), usa *Medir microfone* e salva. Os ajustes ficam em `~/.config/jarvis/settings.json` (o env tem precedência) e valem ao **reiniciar o cérebro**.
 
 **Modos de entrada** (`VOICE_INPUT`):
 - `auto` (default) — grava quando você **fala** (VAD), para após ~1s de silêncio.
@@ -187,7 +188,7 @@ echo "responda apenas: ok" | ./jarvis
 
 Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`, ou o exe em `C:\Users\bguil\jarvis\jarvis-overlay.exe`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair. Ao abrir, se o cérebro estiver offline, o overlay **sobe o loop sozinho**. **Sair** encerra o cérebro no WSL (o overlay mata o processo; se escapar, `pkill -f loop.py` no WSL).
 
-O menu **Configurações** abre um painel para calibrar o microfone (*Medir microfone*), ajustar sensibilidade/tempos de captura e ligar/desligar o streaming de TTS.
+O menu **Configurações** abre um painel para escolher o **Microfone ativo**, calibrar (*Medir microfone*), ajustar sensibilidade/tempos de captura e ligar/desligar o streaming de TTS.
 
 **Diagnóstico:** o overlay redireciona stdout/stderr do cérebro para `%LOCALAPPDATA%\jarvis\brain.log` — é lá que aparecem `[voz] nada transcrito`, `[erro] ...` etc.
 
@@ -225,7 +226,7 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 | `WHISPER_MODEL` | `base` | modelo do `faster-whisper` |
 | `TTS_BACKEND` | `piper` | TTS (`piper`/`sapi`) |
 | `PIPER_EXE`, `PIPER_MODEL`, `FFPLAY_EXE`, `PIPER_OUT_WAV` | caminhos Windows | TTS piper |
-| `FFMPEG_EXE`, `MIC_DEVICE` | caminho Windows / device | captura de áudio |
+| `FFMPEG_EXE`, `MIC_DEVICE` | caminho Windows / device | captura de áudio (o `MIC_DEVICE` também vem de `settings.json`) |
 | `VOICE_NOISE_DB` | `-35` | limiar (dB) do `silencedetect`: abaixo disso é silêncio. **Menos negativo = menos sensível** (ideal: ~6–10 dB acima do ruído de fundo) |
 | `VOICE_SILENCE_S` | `1.0` | silêncio (s) necessário para encerrar a fala |
 | `VOICE_WAIT_S` | `8.0` | espera máxima pela 1ª fala (sem fala, desiste) |

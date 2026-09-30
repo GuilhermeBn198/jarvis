@@ -1079,3 +1079,28 @@ def test_measure_command_error_is_stored(monkeypatch):
     voice_loop(client=ClientOK(), iterations=2, record_seconds=1, config=CFG, hub=hub)
     assert hub.result["ok"] is False
     assert "sem mic" in hub.result["error"]
+
+
+def test_main_list_mics_prints_and_marks_current(monkeypatch):
+    monkeypatch.setattr(loop_mod, "list_audio_devices", lambda config=None: ["Mic A", "Mic B"])
+    monkeypatch.setattr(
+        loop_mod, "load_config",
+        lambda *a, **k: Config(opencode_bin="/x/o", timeout_s=10, mic_device="Mic B"),
+    )
+    out = io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stdout", out)
+    assert main(["--list-mics"]) == 0
+    txt = out.getvalue()
+    assert "- Mic A" in txt
+    assert "- Mic B *" in txt
+
+
+def test_main_list_mics_error_returns_1(monkeypatch):
+    monkeypatch.setattr(
+        loop_mod, "list_audio_devices",
+        lambda config=None: (_ for _ in ()).throw(VoiceError("sem ffmpeg")),
+    )
+    err = io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stderr", err)
+    assert main(["--list-mics"]) == 1
+    assert "sem ffmpeg" in err.getvalue()

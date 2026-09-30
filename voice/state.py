@@ -49,6 +49,17 @@ def _make_handler(hub):
             elif self.path == "/mic-level":
                 result = hub.measure_result()
                 self._json(200, result if result is not None else {"pending": True})
+            elif self.path == "/devices":
+                try:
+                    from capture import list_audio_devices
+                    from config import load_config
+
+                    self._json(200, {
+                        "devices": list_audio_devices(),
+                        "current": load_config().mic_device,
+                    })
+                except Exception as exc:  # fronteira HTTP: nunca derruba o hub
+                    self._json(200, {"devices": [], "current": None, "error": str(exc)})
             elif self.path == "/events":
                 self._events()
             else:

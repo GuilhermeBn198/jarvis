@@ -6,7 +6,8 @@ DEFAULT_SETTINGS_PATH = os.path.expanduser("~/.config/jarvis/settings.json")
 # Chaves que o painel de configuracao do overlay pode editar.
 NUMERIC_KEYS = ("noise_db", "silence_s", "wait_s", "max_s", "min_speech_s")
 BOOL_KEYS = ("stream_tts",)
-SETTINGS_KEYS = NUMERIC_KEYS + BOOL_KEYS
+STRING_KEYS = ("mic_device",)
+SETTINGS_KEYS = NUMERIC_KEYS + BOOL_KEYS + STRING_KEYS
 
 
 def _path(path: str | None) -> str:
@@ -31,6 +32,8 @@ def _coerce(key: str, value):
         if isinstance(value, bool):
             return value
         return str(value).strip().lower() in ("1", "true", "yes", "on")
+    if key in STRING_KEYS:
+        return str(value).strip()
     if key == "noise_db":
         return int(value)
     return float(value)
