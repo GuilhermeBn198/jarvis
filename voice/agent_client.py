@@ -44,6 +44,8 @@ def _pump_lines(resp, out: "queue.Queue") -> None:
             if not line:
                 break
             out.put(line)
+    except ValueError:  # leitura apos close: fim normal, nao erro
+        pass
     except BaseException as exc:  # socket.timeout/OSError ao fechar, etc.
         out.put(exc)
     finally:
@@ -104,7 +106,18 @@ class _QueuedLineStream:
             self._resp.close()
         except OSError:
             pass
-        self._thread.join(timeout=1.0)
+        # Com a fila LIMITADA, o pump pode estar preso em `put` (nao em
+        # `readline`), que o `shutdown` nao desbloqueia. Drenar enquanto espera
+        # deixa o `put` prosseguir e a thread terminar, em vez de gastar o
+        # timeout e vazar a thread.
+        deadline = time.monotonic() + 1.0
+        while self._thread.is_alive() and time.monotonic() < deadline:
+            while True:
+                try:
+                    self._q.get_nowait()
+                except queue.Empty:
+                    break
+            self._thread.join(timeout=0.05)
 
 
 class AgentError(RuntimeError):
