@@ -535,6 +535,19 @@ def test_consume_events_idle_fires_on_pause():
         right.close()
 
 
+def test_consume_events_session_error_raises():
+    """session.error com texto parcial nao pode passar por sucesso."""
+    client = ServeClient(_stream_cfg())
+    deltas = []
+    stream = _sse(
+        _part("p1", "parcial"),
+        {"type": "session.error", "properties": {"sessionID": "S"}},
+    )
+    with pytest.raises(AgentError):
+        client._consume_events(stream, "S", deltas.append, None, 10)
+    assert deltas == ["parcial"]
+
+
 def test_stream_posts_async_and_returns_text(monkeypatch):
     client = ServeClient(_stream_cfg())
     monkeypatch.setattr(client, "_ensure_session", lambda timeout: "S")

@@ -296,7 +296,12 @@ class ServeClient:
                 parts[pid] = new
                 if delta:
                     on_delta(delta)
-            elif etype in ("session.idle", "session.error"):
+            elif etype == "session.error":
+                sid = props.get("sessionID")
+                if sid and sid != session_id:
+                    continue
+                raise AgentError("o agente retornou um erro (session.error)")
+            elif etype == "session.idle":
                 sid = props.get("sessionID")
                 if sid and sid != session_id:
                     continue

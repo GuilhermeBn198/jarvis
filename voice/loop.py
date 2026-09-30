@@ -51,6 +51,7 @@ class StreamResult:
     first_audio_s: float | None
     streamed: bool
     failed: str | None
+    voice_error: Exception | None = None
 
 
 def _first_audio(speaker, t0):
@@ -66,6 +67,7 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
     spoken: list[str] = []
     failed: str | None = None
     answer: str | None = None
+    voice_error: Exception | None = None
     spoke_started = False
 
     def emit(chunks):
@@ -88,19 +90,22 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
             timeout_s=cfg.timeout_s,
         )
         emit(chunker.flush())
-    except (AgentError, VoiceError) as exc:
+    except Exception as exc:  # fronteira: streaming NUNCA pode derrubar a voz
         failed = str(exc)
     finally:
         if speaker is not None:
             speaker.close()
             speaker.join()
-            if speaker.error is not None and failed is None:
-                failed = str(speaker.error)
+            if speaker.error is not None:
+                voice_error = speaker.error
+                if failed is None:
+                    failed = str(speaker.error)
     if failed is not None:
         err.write(f"[voz] streaming falhou ({failed})\n")
         err.flush()
     streamed = failed is None and answer is not None
-    return StreamResult(answer, spoken, _first_audio(speaker, t0), streamed, failed)
+    return StreamResult(answer, spoken, _first_audio(speaker, t0), streamed, failed,
+                        voice_error=voice_error)
 
 
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
@@ -226,6 +231,9 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             res = _stream_turn(client, text, cfg, hub, muted, t_agent0, err)
             t_agent1 = time.monotonic()
             first_audio = res.first_audio_s
+            if res.voice_error is not None:
+                tts_failed = True
+                aborted = _voice_error(res.voice_error)
             if res.streamed or res.spoken:
                 answer = res.answer or " ".join(res.spoken)
                 spoken = " ".join(res.spoken)

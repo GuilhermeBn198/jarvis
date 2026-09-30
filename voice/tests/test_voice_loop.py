@@ -763,6 +763,65 @@ def test_stream_turn_failure_after_speech_keeps_spoken(monkeypatch):
     assert res.failed == "caiu no meio"
 
 
+def test_stream_turn_contains_unexpected_exception(monkeypatch):
+    class BoomClient:
+        def stream(self, *a, **k):
+            raise ValueError("bug inesperado")
+
+    res = loop_mod._stream_turn(BoomClient(), "oi", _stream_cfg(), FakeHub(), False,
+                                time.monotonic(), io.StringIO())
+    assert res.streamed is False
+    assert res.spoken == []
+    assert res.answer is None
+    assert res.failed is not None
+    assert "bug inesperado" in res.failed
+
+
+def test_voice_loop_falls_back_to_ask_when_stream_raises_unexpected(monkeypatch):
+    calls = []
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
+    monkeypatch.setattr("loop.speak", lambda text, **k: calls.append(text))
+
+    class BoomClient:
+        def stream(self, *a, **k):
+            raise ValueError("bug inesperado")
+
+        def ask(self, task, timeout_s=None):
+            return "resposta bloqueante"
+
+    voice_loop(client=BoomClient(), iterations=1, record_seconds=1,
+               config=_stream_cfg(), hub=FakeHub())
+    assert calls == ["resposta bloqueante"]
+
+
+def test_voice_loop_aborts_on_streaming_voice_error(monkeypatch):
+    hub = FakeHub()
+    calls = []
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
+
+    def boom(text, **k):
+        calls.append("speak")
+        raise VoiceError("SAPI indisponivel")
+    monkeypatch.setattr("stream.speak", boom)
+
+    class StreamClient:
+        def stream(self, task, on_delta, on_idle=None, timeout_s=None):
+            on_delta("Uma frase completa. ")
+            return "Uma frase completa."
+
+        def ask(self, *a, **k):
+            calls.append("ask")
+            return "x"
+
+    voice_loop(client=StreamClient(), iterations=0, record_seconds=1,
+               config=_stream_cfg(), hub=hub, max_consecutive_errors=1,
+               err=io.StringIO())
+    assert calls == ["record", "speak"]
+    assert hub.states[-1] == "error"
+
+
 def test_stream_turn_muted_does_not_speak(monkeypatch):
     spoken = []
     monkeypatch.setattr("stream.speak", lambda text, **k: spoken.append(text))
