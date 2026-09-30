@@ -179,3 +179,50 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
             except Exception:
                 pass
     return _windows_to_wsl(out) if heard_speech else ""
+
+
+def _first_float(line: str):
+    for tok in line.replace(":", " ").split():
+        try:
+            return float(tok)
+        except ValueError:
+            continue
+    return None
+
+
+def parse_volume(stderr: str) -> dict:
+    """Extrai `mean_volume`/`max_volume` (dBFS) da saida do `volumedetect`."""
+    out: dict = {"mean_db": None, "max_db": None}
+    for line in (stderr or "").splitlines():
+        if "mean_volume:" in line:
+            out["mean_db"] = _first_float(line)
+        elif "max_volume:" in line:
+            out["max_db"] = _first_float(line)
+    return out
+
+
+def measure_level(seconds: float = 5, config: Config | None = None) -> dict:
+    """Mede o nivel do microfone (dBFS) por `seconds` via ffmpeg volumedetect.
+
+    Use para calibrar `VOICE_NOISE_DB`: em silencio, o `mean_db` e o ruido de
+    fundo; um bom limiar fica ~6-10 dB acima dele.
+    """
+    cfg = config or load_config()
+    cmd = [
+        cfg.ffmpeg_exe, "-f", "dshow", "-i", f"audio={cfg.mic_device}",
+        "-t", str(seconds), "-af", "volumedetect", "-f", "null", "-",
+    ]
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, errors="replace",
+            timeout=int(seconds) + 30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise VoiceError(
+            f"falha ao medir o microfone (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
+        ) from exc
+    if proc.returncode != 0:
+        raise VoiceError(
+            f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}"
+        )
+    return parse_volume(proc.stderr)

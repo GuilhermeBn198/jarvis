@@ -978,3 +978,27 @@ def test_main_voice_refuses_when_locked(monkeypatch):
     assert "loop de voz rodando" in err.getvalue()
 
 
+
+
+def test_main_mic_level_suggests_threshold(monkeypatch):
+    monkeypatch.setattr(
+        loop_mod, "measure_level",
+        lambda config=None: {"mean_db": -42.0, "max_db": -18.0},
+    )
+    out = io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stdout", out)
+    assert main(["--mic-level"]) == 0
+    txt = out.getvalue()
+    assert "media=-42.0" in txt
+    assert "-34" in txt  # -42 + 8
+
+
+def test_main_mic_level_error_returns_1(monkeypatch):
+    monkeypatch.setattr(
+        loop_mod, "measure_level",
+        lambda config=None: (_ for _ in ()).throw(VoiceError("sem mic")),
+    )
+    err = io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stderr", err)
+    assert main(["--mic-level"]) == 1
+    assert "sem mic" in err.getvalue()

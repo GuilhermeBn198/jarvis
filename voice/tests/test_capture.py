@@ -302,3 +302,39 @@ def test_record_auto_missing_ffmpeg_raises(monkeypatch):
     )
     with pytest.raises(VoiceError, match="FFMPEG_EXE=/ff/ffmpeg.exe"):
         record_auto(out_path="/tmp/x.wav", config=CFG)
+
+
+def test_parse_volume_extracts_mean_and_max():
+    from capture import parse_volume
+    stderr = (
+        "[Parsed_volumedetect_0 @ 0x1] mean_volume: -42.3 dB\n"
+        "[Parsed_volumedetect_0 @ 0x1] max_volume: -18.7 dB\n"
+    )
+    assert parse_volume(stderr) == {"mean_db": -42.3, "max_db": -18.7}
+    assert parse_volume("nada aqui") == {"mean_db": None, "max_db": None}
+
+
+def test_measure_level_parses_ffmpeg_output(monkeypatch):
+    from capture import measure_level
+
+    class Proc:
+        returncode = 0
+        stderr = "mean_volume: -50.0 dB\nmax_volume: -20.0 dB\n"
+
+    monkeypatch.setattr("capture.subprocess.run", lambda *a, **k: Proc())
+    assert measure_level(seconds=1, config=CFG) == {"mean_db": -50.0, "max_db": -20.0}
+
+
+def test_measure_level_error_raises(monkeypatch):
+    from capture import measure_level
+
+    class Proc:
+        returncode = 1
+        stderr = "boom"
+
+    monkeypatch.setattr("capture.subprocess.run", lambda *a, **k: Proc())
+    try:
+        measure_level(seconds=1, config=CFG)
+        assert False, "deveria levantar"
+    except VoiceError:
+        pass

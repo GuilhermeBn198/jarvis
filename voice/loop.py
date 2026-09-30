@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
-from capture import record, record_auto, record_ptt
+from capture import measure_level, record, record_auto, record_ptt
 from config import load_config
 from convlog import log_turn
 from sanitize import speechify
@@ -543,6 +543,27 @@ def release_singleton(fd) -> None:
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
+        if "--mic-level" in args:
+            cfg = load_config()
+            try:
+                lvl = measure_level(config=cfg)
+            except VoiceError as exc:
+                sys.stderr.write(f"[erro] {exc}\n")
+                sys.stderr.flush()
+                return 1
+            mean = lvl.get("mean_db")
+            mx = lvl.get("max_db")
+            sys.stdout.write(
+                f"nivel do microfone: media={mean} dB, pico={mx} dB\n"
+            )
+            if mean is not None:
+                sug = int(round(mean + 8))
+                sys.stdout.write(
+                    f"VOICE_NOISE_DB sugerido: {sug} "
+                    f"(ruido de fundo ~{mean} dB + 8)\n"
+                )
+            sys.stdout.flush()
+            return 0
         if "--see" in args:
             i = args.index("--see")
             question = args[i + 1] if i + 1 < len(args) else ""
