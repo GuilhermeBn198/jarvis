@@ -214,6 +214,11 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 | `TTS_BACKEND` | `piper` | TTS (`piper`/`sapi`) |
 | `PIPER_EXE`, `PIPER_MODEL`, `FFPLAY_EXE`, `PIPER_OUT_WAV` | caminhos Windows | TTS piper |
 | `FFMPEG_EXE`, `MIC_DEVICE` | caminho Windows / device | captura de áudio |
+| `VOICE_NOISE_DB` | `-35` | limiar (dB) do `silencedetect`: abaixo disso é silêncio. **Menos negativo = menos sensível** (ideal: ~6–10 dB acima do ruído de fundo) |
+| `VOICE_SILENCE_S` | `1.0` | silêncio (s) necessário para encerrar a fala |
+| `VOICE_WAIT_S` | `8.0` | espera máxima pela 1ª fala (sem fala, desiste) |
+| `VOICE_MAX_S` | `15.0` | teto absoluto da gravação por turno |
+| `JARVIS_VOICE_LOCK` | `/tmp/jarvis-voice.lock` | trava de instância única do `--voice` |
 | `VISION_MODEL` | `opencode-go/deepseek-v4-flash-vision-exp` | modelo de visão |
 | `VISION_TRIGGER` | `olha` | palavra que dispara a visão na voz |
 | `VOICE_STREAM_TTS` | `true` | streaming de TTS por sentença |
