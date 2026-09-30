@@ -142,10 +142,14 @@ cargo run            # abre o orbe (fundo transparente, sempre-no-topo)
 ### Loop de voz
 
 ```bash
-cd voice
-. .venv/bin/activate
-python loop.py --voice            # loop contínuo (Ctrl+C para sair)
-python loop.py --voice --once 1   # um turno (teste)
+./jarvis --voice            # loop contínuo (Ctrl+C para sair)
+./jarvis --voice --once 1   # um turno (teste)
+```
+
+O launcher `./jarvis` ativa o venv de `voice/` sozinho (não precisa de `source .venv/bin/activate`). Equivalente manual:
+
+```bash
+cd voice && . .venv/bin/activate && python loop.py --voice
 ```
 
 **Modos de entrada** (`VOICE_INPUT`):
@@ -156,24 +160,37 @@ python loop.py --voice --once 1   # um turno (teste)
 ### Ver a tela
 
 ```bash
-python loop.py --see "o que está na tela?"      # ou, na voz: "olha, ..."
+./jarvis --see "o que está na tela?"      # ou, na voz: "olha, ..."
 ```
 
 ### Agir no PC
 
 ```bash
-python loop.py --do "abra o navegador e pesquise por X"
+./jarvis --do "abra o navegador e pesquise por X"
 ```
 
 ### Bridge de texto
 
 ```bash
-echo "responda apenas: ok" | python loop.py
+echo "responda apenas: ok" | ./jarvis
 ```
 
 ### Overlay
 
-Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair.
+Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`, ou o exe em `C:\Users\bguil\jarvis\jarvis-overlay.exe`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair. Ao abrir, se o cérebro estiver offline, o overlay **sobe o loop sozinho**.
+
+**Sempre ligado:** crie um atalho do exe na pasta **Startup** do Windows (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`) para abrir no login.
+
+**Configuração do overlay:** o arquivo `jarvis-config.json` **ao lado do exe** pode sobrescrever o comando do cérebro e a distro do WSL:
+
+```json
+{
+  "loop_cmd": "JARVIS_REQUIRE_GUI=1 /home/guilherme/github/jarvis/jarvis --voice",
+  "distro": null
+}
+```
+(veja `gui/jarvis-config.example.json`). `JARVIS_LOOP_CMD` também pode fixar o comando no build do Rust.
+
 
 > Para o modo "sempre ligado" com anti-órfão, suba o loop com `JARVIS_REQUIRE_GUI=1` (o overlay já faz isso ao "Iniciar cérebro"): se o overlay sumir, o loop encerra em ~15s.
 
@@ -214,7 +231,7 @@ Detalhes e a lista completa: `voice/README.md`.
 
 - **Latência**: um turno conversacional via `serve`+`piper` fica na casa de poucos segundos. O **streaming de TTS** foi implementado, mas o ganho medido foi **modesto** (~7–20%) porque o tempo até o primeiro token domina e o modelo/API costuma entregar a resposta em poucos blocos grandes. `first_audio_s`/`stream` ficam no `convlog` para acompanhar.
 - **Caminhos do Windows hardcoded** nos defaults (`ffmpeg`, `piper`, `shot.png`, etc.) — precisam ser ajustados por env em outra máquina.
-- **Microfone "preso"** (issue [#4](https://github.com/GuilhermeBn198/jarvis/issues/4)): a captura `dshow` pode segurar o dispositivo; um loop órfão/headless pode manter o mic indisponível para outros apps (ex.: Discord). Mitigação em andamento (anti-órfão robusto, limpeza do `ffmpeg`, modo compartilhado).
+- **Microfone "preso"** (issue [#4](https://github.com/GuilhermeBn198/jarvis/issues/4)): a captura `dshow` pode segurar o dispositivo, deixando o mic indisponível para outros apps (ex.: Discord). Mitigado por: não rodar headless sem overlay (`JARVIS_REQUIRE_GUI`), trava de instância única (`JARVIS_VOICE_LOCK`) e limpeza do `ffmpeg`. **Se o mic sumir em outros apps:** em *Configurações de Som → Microfone → Propriedades → Avançado*, **desmarque** "Permitir que os aplicativos tenham controle exclusivo" e, se preciso, reinicie o dispositivo/PC.
 - **Sem wake word**: hoje a entrada é VAD/PTT — ruído pode disparar.
 - **Sem barge-in**: não dá para interromper a fala do Jarvis falando por cima.
 - **Streaming só na conversa**: visão (`--see`) e ações (`--do`) usam o caminho bloqueante.
@@ -247,6 +264,7 @@ Backlog detalhado: `docs/backlog.md`.
 
 ```
 jarvis/
+├── jarvis                 # launcher do cérebro (WSL): ativa o venv e roda o loop
 ├── voice/                 # cérebro (Python, roda no WSL)
 │   ├── loop.py            # loop de voz, --see, --do, bridge de texto
 │   ├── agent_client.py    # RunClient / ServeClient (+ streaming SSE)
