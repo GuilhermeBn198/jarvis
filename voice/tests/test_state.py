@@ -279,3 +279,37 @@ def test_mic_level_endpoint_pending_then_result():
             assert json.loads(r.read())["mean_db"] == -40.0
     finally:
         hub.stop()
+
+
+def test_devices_endpoint_lists(monkeypatch):
+    import capture
+    monkeypatch.setattr(capture, "list_audio_devices", lambda config=None: ["Mic A", "Mic B"])
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{hub._port}/devices", timeout=2
+        ) as r:
+            body = json.loads(r.read())
+            assert body["devices"] == ["Mic A", "Mic B"]
+            assert "current" in body
+    finally:
+        hub.stop()
+
+
+def test_devices_endpoint_error_is_safe(monkeypatch):
+    import capture
+    def boom(config=None):
+        raise RuntimeError("sem ffmpeg")
+    monkeypatch.setattr(capture, "list_audio_devices", boom)
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{hub._port}/devices", timeout=2
+        ) as r:
+            body = json.loads(r.read())
+            assert body["devices"] == []
+            assert "sem ffmpeg" in body["error"]
+    finally:
+        hub.stop()

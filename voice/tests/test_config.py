@@ -217,3 +217,9 @@ def test_env_overrides_settings():
                       settings={"noise_db": -25, "stream_tts": False})
     assert cfg.noise_db == -40
     assert cfg.stream_tts is True
+
+
+def test_settings_supply_mic_device():
+    cfg = load_config({}, settings={"mic_device": "Mic X"})
+    assert cfg.mic_device == "Mic X"
+    assert load_config({"MIC_DEVICE": "Mic Y"}, settings={"mic_device": "Mic X"}).mic_device == "Mic Y"

@@ -187,7 +187,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         timeout_s=timeout_s,
         powershell_exe=e.get("POWERSHELL_EXE", DEFAULT_POWERSHELL_EXE),
         ffmpeg_exe=e.get("FFMPEG_EXE", DEFAULT_FFMPEG_EXE),
-        mic_device=e.get("MIC_DEVICE", DEFAULT_MIC_DEVICE),
+        mic_device=e.get("MIC_DEVICE", settings.get("mic_device", DEFAULT_MIC_DEVICE)),
         whisper_model=e.get("WHISPER_MODEL", DEFAULT_WHISPER_MODEL),
         record_seconds=record_seconds,
         language=e.get("VOICE_LANGUAGE", DEFAULT_LANGUAGE),

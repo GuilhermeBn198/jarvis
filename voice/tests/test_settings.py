@@ -50,3 +50,10 @@ def test_settings_keys_are_the_panel_surface():
     assert "noise_db" in SETTINGS_KEYS
     assert "stream_tts" in SETTINGS_KEYS
     assert DEFAULT_SETTINGS_PATH.endswith("jarvis/settings.json")
+
+
+def test_save_settings_persists_mic_device(tmp_path):
+    p = str(tmp_path / "s.json")
+    out = save_settings({"mic_device": "  Mic Legal  "}, path=p)
+    assert out["mic_device"] == "Mic Legal"
+    assert "mic_device" in SETTINGS_KEYS
