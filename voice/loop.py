@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
-from capture import measure_level, record, record_auto, record_ptt
+from capture import QuitRequested, measure_level, record, record_auto, record_ptt
 from config import load_config
 from convlog import log_turn
 from sanitize import speechify
@@ -125,6 +125,26 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
                         gen_done_s, voice_error)
 
 
+def _measure_mic(cfg, hub, err) -> None:
+    """Mede o microfone (para calibrar VOICE_NOISE_DB) e publica o resultado."""
+    _emit(hub, "idle", "medindo microfone")
+    try:
+        lvl = measure_level(config=cfg)
+        result = dict(lvl)
+        mean = lvl.get("mean_db")
+        if mean is not None:
+            result["suggested_noise_db"] = int(round(mean + 8))
+        result["ok"] = True
+    except VoiceError as exc:
+        result = {"ok": False, "error": str(exc)}
+    if hub is not None:
+        try:
+            hub.set_measure_result(result)
+        except Exception:
+            pass
+    _emit(hub, "idle")
+
+
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
                config=None, err=None, max_consecutive_errors: int = 3,
                hub=None, orphan_timeout_s: float = 15.0) -> None:
@@ -149,6 +169,36 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
     muted = False
     paused = False
     was_paused = False
+    measure_requested = False
+
+    def _should_stop() -> bool:
+        """Checa comandos DURANTE a gravacao; True se pediram `quit`.
+
+        Drena a fila (tratando mute/pause/measure) para que o botao Sair tenha
+        efeito em ~0.2s, em vez de esperar o fim do `record_auto`.
+        """
+        nonlocal muted, paused, measure_requested
+        if hub is None:
+            return False
+        try:
+            cmd = hub.take_command()
+        except Exception:
+            return False
+        stop = False
+        while cmd is not None:
+            if cmd == "quit":
+                stop = True
+            elif cmd == "mute":
+                muted = not muted
+            elif cmd == "pause":
+                paused = not paused
+            elif cmd == "measure":
+                measure_requested = True
+            try:
+                cmd = hub.take_command()
+            except Exception:
+                cmd = None
+        return stop
 
     def _voice_error(exc: VoiceError) -> bool:
         nonlocal consecutive_errors
@@ -178,6 +228,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                     muted = not muted
                 elif cmd == "pause":
                     paused = not paused
+                elif cmd == "measure":
+                    measure_requested = True
                 try:
                     cmd = hub.take_command()
                 except Exception:
@@ -200,11 +252,15 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 time.sleep(0.25)
                 continue
             was_paused = False
+            if measure_requested:
+                measure_requested = False
+                _measure_mic(cfg, hub, err)
+                continue
         t0 = time.monotonic()
         try:
             _emit(hub, "listening")
             if cfg.input_mode == "auto":
-                wav = record_auto(config=cfg)
+                wav = record_auto(config=cfg, should_stop=_should_stop)
                 if not wav:
                     err.write("[voz] nada detectado\n")
                     err.flush()
@@ -218,6 +274,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             t_rec = time.monotonic()
             _emit(hub, "transcribing")
             text = transcribe(wav, config=cfg)
+        except QuitRequested:
+            return
         except VoiceError as exc:
             _emit(hub, "error")
             if _voice_error(exc):

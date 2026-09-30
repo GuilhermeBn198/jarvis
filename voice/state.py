@@ -6,10 +6,12 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from settings import load_settings, save_settings
+
 SSE_POLL_S = 0.1
 
 STATES = ("idle", "listening", "transcribing", "thinking", "speaking", "acting", "error")
-COMMANDS = ("mute", "pause", "quit")
+COMMANDS = ("mute", "pause", "quit", "measure")
 HEARTBEAT_S = 10.0
 
 
@@ -42,6 +44,11 @@ def _make_handler(hub):
         def do_GET(self):
             if self.path == "/state":
                 self._json(200, hub.snapshot())
+            elif self.path == "/settings":
+                self._json(200, load_settings())
+            elif self.path == "/mic-level":
+                result = hub.measure_result()
+                self._json(200, result if result is not None else {"pending": True})
             elif self.path == "/events":
                 self._events()
             else:
@@ -90,17 +97,31 @@ def _make_handler(hub):
             finally:
                 hub.unsubscribe(q)
 
-        def do_POST(self):
-            if self.path != "/command":
-                self._json(404, {"error": "not found"})
-                return
+        def _read_json(self):
             length = int(self.headers.get("Content-Length", 0) or 0)
             raw = self.rfile.read(length) if length else b"{}"
             try:
-                cmd = json.loads(raw.decode("utf-8")).get("cmd")
+                obj = json.loads(raw.decode("utf-8"))
             except (ValueError, UnicodeDecodeError):
+                return None
+            return obj if isinstance(obj, dict) else None
+
+        def do_POST(self):
+            if self.path == "/settings":
+                obj = self._read_json()
+                if obj is None:
+                    self._json(400, {"error": "json invalido"})
+                    return
+                self._json(200, save_settings(obj))
+                return
+            if self.path != "/command":
+                self._json(404, {"error": "not found"})
+                return
+            obj = self._read_json()
+            if obj is None:
                 self._json(400, {"error": "json invalido"})
                 return
+            cmd = obj.get("cmd")
             if cmd not in COMMANDS:
                 self._json(400, {"error": f"comando invalido: {cmd}"})
                 return
@@ -119,6 +140,7 @@ class StateHub:
         self._detail: str | None = None
         self._subscribers: list[queue.Queue] = []
         self._commands: queue.Queue = queue.Queue()
+        self._measure_result: dict | None = None
         self._server = None
         self._thread: threading.Thread | None = None
 
@@ -162,6 +184,14 @@ class StateHub:
         if cmd not in COMMANDS:
             raise ValueError(f"comando invalido: {cmd}")
         self._commands.put(cmd)
+
+    def set_measure_result(self, result: dict) -> None:
+        with self._lock:
+            self._measure_result = result
+
+    def measure_result(self) -> dict | None:
+        with self._lock:
+            return self._measure_result
 
     def start(self) -> None:
         if self._server is not None:

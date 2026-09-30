@@ -130,10 +130,148 @@ menu.addEventListener("click", async (ev) => {
   const cmd = btn.dataset.cmd;
   if (cmd === "quit") {
     await command("quit");
+    try {
+      // Rede de seguranca: mata o processo do cerebro no WSL mesmo se o
+      // comando `quit` nao chegar (hub fora do ar, gravacao em curso, etc.).
+      await window.__TAURI__.core.invoke("stop_brain");
+    } catch (e) {
+      /* fora do Tauri: ignora */
+    }
     window.__TAURI__.window.getCurrentWindow().close();
   } else if (cmd === "brain") {
     await restartBrain();
+  } else if (cmd === "settings") {
+    openSettings();
   } else {
     await command(cmd);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Painel de configuracoes (sensibilidade do mic, tunables de captura, TTS)
+// ---------------------------------------------------------------------------
+
+const settingsPanel = document.getElementById("settings");
+const measureOut = document.getElementById("measure-out");
+const ORB_SIZE = [120, 120];
+const PANEL_SIZE = [280, 340];
+
+function numOrNull(id) {
+  const v = document.getElementById(id).value.trim();
+  if (v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Redimensiona mantendo o canto inferior-direito fixo (o orbe nao "pula").
+async function anchorBottomRight(w, h) {
+  try {
+    const win = window.__TAURI__.window.getCurrentWindow();
+    const dpi = window.__TAURI__.dpi;
+    const scale = await win.scaleFactor();
+    const pos = await win.outerPosition();
+    const size = await win.innerSize();
+    const tw = Math.round(w * scale);
+    const th = Math.round(h * scale);
+    await win.setSize(new dpi.PhysicalSize(tw, th));
+    await win.setPosition(
+      new dpi.PhysicalPosition(pos.x + size.width - tw, pos.y + size.height - th),
+    );
+  } catch (e) {
+    /* fora do Tauri ou sem permissao: segue sem redimensionar */
+  }
+}
+
+async function loadSettings() {
+  let s = {};
+  try {
+    s = await (await fetch(`${base}/settings`)).json();
+  } catch (e) {
+    /* servidor fora do ar: mostra defaults vazios */
+  }
+  document.getElementById("s-noise").value = s.noise_db ?? "";
+  document.getElementById("s-silence").value = s.silence_s ?? "";
+  document.getElementById("s-wait").value = s.wait_s ?? "";
+  document.getElementById("s-max").value = s.max_s ?? "";
+  document.getElementById("s-minspeech").value = s.min_speech_s ?? "";
+  document.getElementById("s-stream").checked = s.stream_tts !== false;
+}
+
+async function openSettings() {
+  menu.classList.add("hidden");
+  settingsPanel.classList.remove("hidden");
+  await anchorBottomRight(...PANEL_SIZE);
+  await loadSettings();
+}
+
+async function closeSettings() {
+  settingsPanel.classList.add("hidden");
+  await anchorBottomRight(...ORB_SIZE);
+}
+
+async function measureMic() {
+  measureOut.textContent = "medindo (~5s, fale nada)...";
+  try {
+    await fetch(`${base}/command`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cmd: "measure" }),
+    });
+  } catch (e) {
+    measureOut.textContent = "cérebro indisponível";
+    return;
+  }
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 300));
+    try {
+      const j = await (await fetch(`${base}/mic-level`)).json();
+      if (j.pending) continue;
+      if (j.ok === false) {
+        measureOut.textContent = `erro: ${j.error}`;
+        return;
+      }
+      measureOut.textContent =
+        `média ${j.mean_db} dB · pico ${j.max_db} dB → sugerido ${j.suggested_noise_db}`;
+      if (j.suggested_noise_db != null) {
+        document.getElementById("s-noise").value = j.suggested_noise_db;
+      }
+      return;
+    } catch (e) {
+      /* tenta de novo */
+    }
+  }
+  measureOut.textContent = "sem resposta do cérebro";
+}
+
+async function saveSettings(restart) {
+  const body = {
+    noise_db: numOrNull("s-noise"),
+    silence_s: numOrNull("s-silence"),
+    wait_s: numOrNull("s-wait"),
+    max_s: numOrNull("s-max"),
+    min_speech_s: numOrNull("s-minspeech"),
+    stream_tts: document.getElementById("s-stream").checked,
+  };
+  for (const k of Object.keys(body)) {
+    if (body[k] === null) delete body[k];
+  }
+  try {
+    await fetch(`${base}/settings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    /* ignora */
+  }
+  if (restart) await restartBrain();
+}
+
+document.getElementById("settings-close").addEventListener("click", closeSettings);
+document.getElementById("measure").addEventListener("click", measureMic);
+document
+  .getElementById("settings-save")
+  .addEventListener("click", () => saveSettings(false));
+document
+  .getElementById("settings-restart")
+  .addEventListener("click", () => saveSettings(true));

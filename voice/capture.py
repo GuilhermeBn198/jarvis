@@ -17,6 +17,10 @@ DEFAULT_AUTO_OUT_WAV = r"C:\Users\bguil\tools\jarvis_rec_auto.wav"
 EPS = 0.3
 
 
+class QuitRequested(Exception):
+    """Pedido de encerramento (comando `quit`) detectado durante a gravacao."""
+
+
 def record(seconds: float, out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_OUT_WAV
@@ -81,9 +85,18 @@ def _parse_silence_start(line: str) -> float | None:
         return None
 
 
+def _parse_silence_end(line: str) -> float | None:
+    try:
+        tail = line.split("silence_end:", 1)[1]
+        return float(tail.strip().split()[0])
+    except (IndexError, ValueError):
+        return None
+
+
 def record_auto(out_path: str | None = None, config: Config | None = None,
                 max_s: float | None = None, wait_s: float | None = None,
                 silence_s: float | None = None, noise_db: int | None = None,
+                min_speech_s: float | None = None, should_stop=None,
                 eps: float = EPS) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_AUTO_OUT_WAV
@@ -96,6 +109,8 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
         silence_s = cfg.silence_s
     if noise_db is None:
         noise_db = cfg.noise_db
+    if min_speech_s is None:
+        min_speech_s = cfg.min_speech_s
     cmd = [
         cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i", f"audio={cfg.mic_device}",
         "-af", f"silencedetect=noise={noise_db}dB:d={silence_s}",
@@ -135,9 +150,13 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
             pass
 
     heard_speech = False
+    speech_start: float | None = None
     t0 = time.monotonic()
     try:
         while True:
+            if should_stop is not None and should_stop():
+                # Encerramento pedido (ex.: botao Sair): nao espera o max_s.
+                raise QuitRequested()
             if time.monotonic() - t0 > max_s:
                 if heard_speech:
                     _stop(wait=True)
@@ -151,19 +170,30 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
             if line is None:
                 break
             if "silence_end" in line:
+                # Fim de um silencio = inicio de som. Guarda o instante para
+                # medir a duracao do segmento nao-silencioso.
+                t = _parse_silence_end(line)
+                speech_start = t if t is not None else 0.0
                 heard_speech = True
             elif "silence_start" in line:
                 t = _parse_silence_start(line)
-                if heard_speech:
-                    # Fala terminou (silencio apos inicio conhecido).
-                    _stop(wait=True)
-                    break
-                if t is not None and t > eps:
+                if t is None:
+                    continue
+                if speech_start is not None:
+                    # Duracao da fala = inicio do som -> inicio do silencio.
+                    if (t - speech_start) >= min_speech_s:
+                        _stop(wait=True)
+                        break
+                    # Segmento curto demais: provavel ruido; volta a esperar.
+                    speech_start = None
+                    heard_speech = False
+                elif t > eps:
                     # Audio nao-silencioso desde o inicio ate t: houve fala
                     # imediata (sem leading silence, sem silence_end).
-                    heard_speech = True
-                    _stop(wait=True)
-                    break
+                    if t >= min_speech_s:
+                        heard_speech = True
+                        _stop(wait=True)
+                        break
                 # t <= eps: pausa inicial; continua aguardando.
             if not heard_speech and time.monotonic() - t0 > wait_s:
                 break

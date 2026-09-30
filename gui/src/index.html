@@ -13,8 +13,38 @@
     <div id="menu" class="menu hidden">
       <button data-cmd="mute">Mudo</button>
       <button data-cmd="pause">Pausar</button>
+      <button data-cmd="settings">Configurações ▸</button>
       <button id="brain" data-cmd="brain">Reiniciar cérebro</button>
       <button data-cmd="quit">Sair</button>
+    </div>
+    <div id="settings" class="settings hidden">
+      <div class="settings-head">
+        <span>Configurações</span>
+        <button id="settings-close" title="fechar">×</button>
+      </div>
+      <label>Sensibilidade · VOICE_NOISE_DB
+        <input id="s-noise" type="number" step="1" />
+      </label>
+      <button id="measure">Medir microfone</button>
+      <div id="measure-out" class="measure-out"></div>
+      <label>Silêncio p/ parar (s)
+        <input id="s-silence" type="number" step="0.1" />
+      </label>
+      <label>Espera máx. de fala (s)
+        <input id="s-wait" type="number" step="0.5" />
+      </label>
+      <label>Gravação máx. (s)
+        <input id="s-max" type="number" step="1" />
+      </label>
+      <label>Duração mín. de fala (s)
+        <input id="s-minspeech" type="number" step="0.1" />
+      </label>
+      <label class="row"><input id="s-stream" type="checkbox" /> Streaming de TTS</label>
+      <div class="settings-actions">
+        <button id="settings-save">Salvar</button>
+        <button id="settings-restart">Salvar e reiniciar</button>
+      </div>
+      <div class="settings-hint">Aplicado ao reiniciar o cérebro.</div>
     </div>
     <script src="main.js"></script>
   </body>

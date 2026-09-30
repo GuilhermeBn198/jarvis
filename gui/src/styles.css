@@ -96,3 +96,77 @@ html, body {
 }
 
 .menu button:hover { background: #1b1e27; }
+
+.settings {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  width: 224px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #0b0e14f2;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  padding: 10px;
+  color: #c7cedb;
+  font: 11px system-ui;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.settings.hidden { display: none; }
+
+.settings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.settings-head button {
+  background: transparent;
+  border: 0;
+  color: #94a3b8;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings label.row {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings input[type="number"] {
+  background: #0f131b;
+  border: 1px solid #2a2f3a;
+  border-radius: 4px;
+  color: #e2e8f0;
+  padding: 3px 6px;
+  font: 11px system-ui;
+}
+
+.settings button {
+  background: #1b1e27;
+  border: 1px solid #2a2f3a;
+  border-radius: 5px;
+  color: #c7cedb;
+  font: 11px system-ui;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.settings button:hover { background: #232733; }
+
+.settings-actions { display: flex; gap: 6px; }
+.settings-actions button { flex: 1; }
+
+.measure-out { color: #8ba0b8; min-height: 13px; line-height: 1.3; }
+.settings-hint { color: #5b6675; }

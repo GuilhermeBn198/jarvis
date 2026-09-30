@@ -158,6 +158,8 @@ cd voice && . .venv/bin/activate && python loop.py --voice
 ```
 Em silêncio, veja o `media` (dB) e use `VOICE_NOISE_DB` ≈ media + 8 (mais negativo = mais sensível).
 
+Também dá para calibrar e ajustar **pelo overlay** (menu → **Configurações** → *Medir microfone*). Os ajustes ficam em `~/.config/jarvis/settings.json` (o env tem precedência) e valem ao **reiniciar o cérebro**.
+
 **Modos de entrada** (`VOICE_INPUT`):
 - `auto` (default) — grava quando você **fala** (VAD), para após ~1s de silêncio.
 - `ptt` — push-to-talk (Enter inicia / Enter para).
@@ -183,7 +185,11 @@ echo "responda apenas: ok" | ./jarvis
 
 ### Overlay
 
-Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`, ou o exe em `C:\Users\bguil\jarvis\jarvis-overlay.exe`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair. Ao abrir, se o cérebro estiver offline, o overlay **sobe o loop sozinho**.
+Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`, ou o exe em `C:\Users\bguil\jarvis\jarvis-overlay.exe`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair. Ao abrir, se o cérebro estiver offline, o overlay **sobe o loop sozinho**. **Sair** encerra o cérebro no WSL (o overlay mata o processo; se escapar, `pkill -f loop.py` no WSL).
+
+O menu **Configurações** abre um painel para calibrar o microfone (*Medir microfone*), ajustar sensibilidade/tempos de captura e ligar/desligar o streaming de TTS.
+
+**Diagnóstico:** o overlay redireciona stdout/stderr do cérebro para `%LOCALAPPDATA%\jarvis\brain.log` — é lá que aparecem `[voz] nada transcrito`, `[erro] ...` etc.
 
 **Sempre ligado:** crie um atalho do exe na pasta **Startup** do Windows (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`) para abrir no login.
 
@@ -224,6 +230,7 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 | `VOICE_SILENCE_S` | `1.0` | silêncio (s) necessário para encerrar a fala |
 | `VOICE_WAIT_S` | `8.0` | espera máxima pela 1ª fala (sem fala, desiste) |
 | `VOICE_MAX_S` | `15.0` | teto absoluto da gravação por turno |
+| `VOICE_MIN_SPEECH_S` | `0.4` | duração mínima (s) de um trecho não-silencioso para valer como fala (rejeita ruído curto) |
 | `JARVIS_VOICE_LOCK` | `/tmp/jarvis-voice.lock` | trava de instância única do `--voice` |
 | `VISION_MODEL` | `opencode-go/deepseek-v4-flash-vision-exp` | modelo de visão |
 | `VISION_TRIGGER` | `olha` | palavra que dispara a visão na voz |

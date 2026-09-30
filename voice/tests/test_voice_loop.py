@@ -1002,3 +1002,80 @@ def test_main_mic_level_error_returns_1(monkeypatch):
     monkeypatch.setattr(loop_mod.sys, "stderr", err)
     assert main(["--mic-level"]) == 1
     assert "sem mic" in err.getvalue()
+
+
+class LateQuitHub:
+    """Devolve `quit` apenas na 2a chamada (durante a gravacao), nao no topo."""
+    def __init__(self):
+        self.states = []
+        self.calls = 0
+
+    def set(self, state, detail=None):
+        self.states.append(state)
+
+    def subscribers(self):
+        return 1
+
+    def take_command(self):
+        self.calls += 1
+        return "quit" if self.calls == 2 else None
+
+
+def test_voice_loop_passes_should_stop_to_record_auto(monkeypatch):
+    seen = {}
+    monkeypatch.setattr("loop.record_auto", lambda **k: seen.update(k) or "")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
+    voice_loop(client=ClientOK(), iterations=1, config=AUTO_CFG, hub=CmdHub())
+    assert callable(seen.get("should_stop"))
+
+
+def test_quit_during_recording_returns_immediately(monkeypatch):
+    from capture import QuitRequested
+    calls = []
+    def fake_record_auto(**k):
+        calls.append("record_auto")
+        stop = k.get("should_stop")
+        if stop is not None and stop():
+            raise QuitRequested()
+        return "/tmp/a.wav"
+    monkeypatch.setattr("loop.record_auto", fake_record_auto)
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "oi")
+    monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
+    voice_loop(client=ClientOK(), iterations=0, config=AUTO_CFG, hub=LateQuitHub())
+    assert calls == ["record_auto"]
+
+
+class MeasureHub(CmdHub):
+    def __init__(self, cmds):
+        super().__init__(cmds=cmds)
+        self.result = None
+
+    def set_measure_result(self, result):
+        self.result = result
+
+
+def test_measure_command_measures_and_stores(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "loop.measure_level",
+        lambda config=None: {"mean_db": -40.0, "max_db": -18.0},
+    )
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
+    hub = MeasureHub(cmds=["measure"])
+    voice_loop(client=ClientOK(), iterations=2, record_seconds=1, config=CFG, hub=hub)
+    assert hub.result["mean_db"] == -40.0
+    assert hub.result["suggested_noise_db"] == -32
+    assert calls == ["record"]  # mediu na 1a iteracao, gravou na 2a
+
+
+def test_measure_command_error_is_stored(monkeypatch):
+    def boom(config=None):
+        raise VoiceError("sem mic")
+    monkeypatch.setattr("loop.measure_level", boom)
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
+    hub = MeasureHub(cmds=["measure"])
+    voice_loop(client=ClientOK(), iterations=2, record_seconds=1, config=CFG, hub=hub)
+    assert hub.result["ok"] is False
+    assert "sem mic" in hub.result["error"]

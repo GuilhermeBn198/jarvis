@@ -338,3 +338,55 @@ def test_measure_level_error_raises(monkeypatch):
         assert False, "deveria levantar"
     except VoiceError:
         pass
+
+
+def test_record_auto_rejects_short_noise_then_accepts_speech(monkeypatch):
+    seen = {}
+    lines = [
+        "[silencedetect @ 0x1] silence_end: 0.10\n",
+        "[silencedetect @ 0x1] silence_start: 0.30\n",   # ruido de 0.20s: ignora
+        "[silencedetect @ 0x1] silence_end: 1.00\n",
+        "[silencedetect @ 0x1] silence_start: 3.00\n",   # fala de 2.0s: aceita
+    ]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines, block=True)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    try:
+        result = record_auto(out_path="/tmp/x.wav", config=CFG)
+    finally:
+        seen["proc"].stderr.release.set()
+    assert result == "/tmp/x.wav"
+    assert seen["proc"].stdin.data == "q"
+
+
+def test_record_auto_short_noise_only_returns_empty(monkeypatch):
+    seen = {}
+    lines = [
+        "[silencedetect @ 0x1] silence_end: 0.10\n",
+        "[silencedetect @ 0x1] silence_start: 0.30\n",
+    ]
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, lines, block=True)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    try:
+        result = record_auto(out_path="/tmp/x.wav", config=CFG, wait_s=0.3)
+    finally:
+        seen["proc"].stderr.release.set()
+    assert result == ""
+
+
+def test_record_auto_should_stop_raises_quitrequested(monkeypatch):
+    from capture import QuitRequested
+    seen = {}
+    def fake_popen(cmd, **kw):
+        proc = FakeAutoProc(cmd, [], block=True)
+        seen["proc"] = proc
+        return proc
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    with pytest.raises(QuitRequested):
+        record_auto(out_path="/tmp/x.wav", config=CFG, should_stop=lambda: True)
+    assert seen["proc"].killed is True

@@ -2,6 +2,8 @@ import os
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from settings import load_settings
+
 DEFAULT_OPENCODE_BIN = os.path.expanduser("~/.opencode/bin/opencode")
 DEFAULT_TIMEOUT_S = 300
 DEFAULT_POWERSHELL_EXE = "powershell.exe"
@@ -37,6 +39,7 @@ DEFAULT_NOISE_DB = -35
 DEFAULT_SILENCE_S = 1.0
 DEFAULT_WAIT_S = 8.0
 DEFAULT_MAX_S = 15.0
+DEFAULT_MIN_SPEECH_S = 0.4
 
 
 @dataclass(frozen=True)
@@ -72,6 +75,7 @@ class Config:
     silence_s: float = DEFAULT_SILENCE_S
     wait_s: float = DEFAULT_WAIT_S
     max_s: float = DEFAULT_MAX_S
+    min_speech_s: float = DEFAULT_MIN_SPEECH_S
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -81,8 +85,13 @@ def serve_port(server_url: str, default: int = 4096) -> int:
         return default
 
 
-def load_config(env: dict | None = None) -> Config:
+def load_config(env: dict | None = None, settings: dict | None = None) -> Config:
     e = os.environ if env is None else env
+    if settings is None:
+        # Runtime (env real): o arquivo de settings entra como default; as
+        # variaveis de ambiente tem precedencia. Testes passam um env dict e
+        # ficam herméticos (settings vazio).
+        settings = load_settings() if env is None else {}
     raw_timeout = e.get("VOICE_TIMEOUT_S", DEFAULT_TIMEOUT_S)
     try:
         timeout_s = int(raw_timeout)
@@ -127,7 +136,9 @@ def load_config(env: dict | None = None) -> Config:
     state_require_gui = str(
         e.get("JARVIS_REQUIRE_GUI", "0")
     ).strip().lower() in ("1", "true", "yes", "on")
-    stream_tts = str(e.get("VOICE_STREAM_TTS", "1")).strip().lower() in (
+    stream_tts = str(
+        e.get("VOICE_STREAM_TTS", settings.get("stream_tts", "1"))
+    ).strip().lower() in (
         "1", "true", "yes", "on",
     )
     raw_idle = e.get("VOICE_STREAM_IDLE_MS", DEFAULT_STREAM_IDLE_MS)
@@ -142,26 +153,35 @@ def load_config(env: dict | None = None) -> Config:
         raise ValueError(
             f"VOICE_STREAM_MIN_CHARS deve ser inteiro: {raw_min}"
         ) from exc
-    raw_noise = e.get("VOICE_NOISE_DB", DEFAULT_NOISE_DB)
+    raw_noise = e.get("VOICE_NOISE_DB", settings.get("noise_db", DEFAULT_NOISE_DB))
     try:
         noise_db = int(raw_noise)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"VOICE_NOISE_DB deve ser inteiro: {raw_noise}") from exc
-    raw_silence = e.get("VOICE_SILENCE_S", DEFAULT_SILENCE_S)
+    raw_silence = e.get("VOICE_SILENCE_S", settings.get("silence_s", DEFAULT_SILENCE_S))
     try:
         silence_s = float(raw_silence)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"VOICE_SILENCE_S deve ser numero: {raw_silence}") from exc
-    raw_wait = e.get("VOICE_WAIT_S", DEFAULT_WAIT_S)
+    raw_wait = e.get("VOICE_WAIT_S", settings.get("wait_s", DEFAULT_WAIT_S))
     try:
         wait_s = float(raw_wait)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"VOICE_WAIT_S deve ser numero: {raw_wait}") from exc
-    raw_max = e.get("VOICE_MAX_S", DEFAULT_MAX_S)
+    raw_max = e.get("VOICE_MAX_S", settings.get("max_s", DEFAULT_MAX_S))
     try:
         max_s = float(raw_max)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"VOICE_MAX_S deve ser numero: {raw_max}") from exc
+    raw_min_speech = e.get(
+        "VOICE_MIN_SPEECH_S", settings.get("min_speech_s", DEFAULT_MIN_SPEECH_S)
+    )
+    try:
+        min_speech_s = float(raw_min_speech)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"VOICE_MIN_SPEECH_S deve ser numero: {raw_min_speech}"
+        ) from exc
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -194,4 +214,5 @@ def load_config(env: dict | None = None) -> Config:
         silence_s=silence_s,
         wait_s=wait_s,
         max_s=max_s,
+        min_speech_s=min_speech_s,
     )

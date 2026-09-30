@@ -69,7 +69,7 @@ def test_states_and_commands_are_exact():
         "idle", "listening", "transcribing", "thinking",
         "speaking", "acting", "error",
     )
-    assert COMMANDS == ("mute", "pause", "quit")
+    assert COMMANDS == ("mute", "pause", "quit", "measure")
 
 
 import json
@@ -221,5 +221,61 @@ def test_server_uses_http_1_1():
         assert resp.version == 11
         resp.read()
         conn.close()
+    finally:
+        hub.stop()
+
+
+def test_measure_is_a_valid_command():
+    hub = StateHub(port=0)
+    hub.push_command("measure")
+    assert hub.take_command() == "measure"
+    assert hub.measure_result() is None
+
+
+def test_get_settings_endpoint_empty(tmp_path, monkeypatch):
+    monkeypatch.setenv("JARVIS_SETTINGS", str(tmp_path / "s.json"))
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{hub._port}/settings", timeout=2
+        ) as r:
+            assert json.loads(r.read()) == {}
+    finally:
+        hub.stop()
+
+
+def test_post_settings_endpoint_persists(tmp_path, monkeypatch):
+    p = tmp_path / "s.json"
+    monkeypatch.setenv("JARVIS_SETTINGS", str(p))
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{hub._port}/settings",
+            data=json.dumps({"noise_db": -28}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=2) as r:
+            assert json.loads(r.read())["noise_db"] == -28
+        assert json.loads(p.read_text(encoding="utf-8"))["noise_db"] == -28
+    finally:
+        hub.stop()
+
+
+def test_mic_level_endpoint_pending_then_result():
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{hub._port}/mic-level", timeout=2
+        ) as r:
+            assert json.loads(r.read()) == {"pending": True}
+        hub.set_measure_result({"mean_db": -40.0, "ok": True})
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{hub._port}/mic-level", timeout=2
+        ) as r:
+            assert json.loads(r.read())["mean_db"] == -40.0
     finally:
         hub.stop()

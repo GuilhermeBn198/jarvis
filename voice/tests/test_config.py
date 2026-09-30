@@ -201,3 +201,19 @@ def test_capture_tunables_invalid_raise():
     with pytest.raises(ValueError) as exc:
         load_config({"VOICE_SILENCE_S": "x"})
     assert "VOICE_SILENCE_S" in str(exc.value)
+
+
+def test_settings_supply_capture_defaults():
+    cfg = load_config({}, settings={"noise_db": -25, "silence_s": 1.5,
+                                    "min_speech_s": 0.6, "stream_tts": False})
+    assert cfg.noise_db == -25
+    assert cfg.silence_s == 1.5
+    assert cfg.min_speech_s == 0.6
+    assert cfg.stream_tts is False
+
+
+def test_env_overrides_settings():
+    cfg = load_config({"VOICE_NOISE_DB": "-40", "VOICE_STREAM_TTS": "1"},
+                      settings={"noise_db": -25, "stream_tts": False})
+    assert cfg.noise_db == -40
+    assert cfg.stream_tts is True
