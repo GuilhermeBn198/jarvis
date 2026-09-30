@@ -51,6 +51,7 @@ class StreamResult:
     first_audio_s: float | None
     streamed: bool
     failed: str | None
+    gen_done_s: float | None = None
     voice_error: Exception | None = None
 
 
@@ -65,9 +66,11 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
     chunker = SentenceChunker(min_chars=cfg.stream_min_chars)
     speaker = Speaker(cfg) if not muted else None
     spoken: list[str] = []
+    raw_parts: list[str] = []
     failed: str | None = None
     answer: str | None = None
     voice_error: Exception | None = None
+    gen_done_s: float | None = None
     spoke_started = False
 
     def emit(chunks):
@@ -82,14 +85,21 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
                         _emit(hub, "speaking")
                     speaker.say(spoken_text)
 
+    def on_delta(delta):
+        raw_parts.append(delta)
+        emit(chunker.feed(delta))
+
     try:
         answer = client.stream(
             text,
-            lambda d: emit(chunker.feed(d)),
+            on_delta,
             lambda: emit(chunker.flush()),
             timeout_s=cfg.timeout_s,
         )
         emit(chunker.flush())
+        # Geracao terminou: medido ANTES de speaker.close()/join(), para que
+        # agent_s nao inclua o playback do TTS.
+        gen_done_s = round(time.monotonic() - t0, 3)
     except Exception as exc:  # fronteira: streaming NUNCA pode derrubar a voz
         failed = str(exc)
     finally:
@@ -103,9 +113,14 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
     if failed is not None:
         err.write(f"[voz] streaming falhou ({failed})\n")
         err.flush()
+    raw_text = "".join(raw_parts)
+    # Em falha no meio do stream, `answer` e None: preserva a resposta crua
+    # parcial para o log. Se nada foi gerado, permanece None e o voice_loop
+    # cai no ask() bloqueante (nao ha re-pergunta indevida).
+    answer = answer or raw_text or None
     streamed = failed is None and answer is not None
     return StreamResult(answer, spoken, _first_audio(speaker, t0), streamed, failed,
-                        voice_error=voice_error)
+                        gen_done_s, voice_error)
 
 
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
@@ -229,7 +244,14 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         t_tts0 = t_agent0
         if cfg.stream_tts and hasattr(client, "stream"):
             res = _stream_turn(client, text, cfg, hub, muted, t_agent0, err)
-            t_agent1 = time.monotonic()
+            if res.gen_done_s is not None:
+                t_agent1 = t_agent0 + res.gen_done_s
+                # O TTS do streaming toca em paralelo a geracao; tts_s mede o
+                # playback residual a partir do fim da geracao (pode sobrepor
+                # ao agent_s, que agora conta so a geracao).
+                t_tts0 = t_agent1
+            else:
+                t_agent1 = time.monotonic()
             first_audio = res.first_audio_s
             if res.voice_error is not None:
                 tts_failed = True

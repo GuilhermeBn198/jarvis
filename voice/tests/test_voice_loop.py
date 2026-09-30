@@ -712,6 +712,7 @@ def test_stream_turn_speaks_chunks_in_order(monkeypatch):
     res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), hub, False,
                                 time.monotonic(), io.StringIO())
     assert res.streamed is True
+    assert res.gen_done_s is not None
     assert res.spoken == ["Olá, tudo bem?", "Como posso ajudar você hoje?"]
     assert spoken == res.spoken
     assert "speaking" in hub.states
@@ -761,6 +762,7 @@ def test_stream_turn_failure_after_speech_keeps_spoken(monkeypatch):
     assert res.streamed is False
     assert res.spoken == ["Uma frase completa."]
     assert res.failed == "caiu no meio"
+    assert res.answer == "Uma frase completa. "
 
 
 def test_stream_turn_contains_unexpected_exception(monkeypatch):
@@ -899,4 +901,27 @@ def test_voice_loop_streams_without_calling_ask(monkeypatch):
     assert asked == []
     assert spoken == ["Resposta em streaming."]
     assert "speaking" in hub.states
+
+
+def test_voice_loop_stream_gen_done_s_drives_agent_s(monkeypatch):
+    records = []
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
+    monkeypatch.setattr("stream.speak", lambda text, **k: time.sleep(0.3))
+    monkeypatch.setattr(
+        "loop.log_turn", lambda rec, config=None: records.append(rec)
+    )
+
+    class StreamClient:
+        def stream(self, task, on_delta, on_idle=None, timeout_s=None):
+            on_delta("Uma frase completa. ")
+            return "Uma frase completa."
+
+    voice_loop(client=StreamClient(), iterations=1, record_seconds=1,
+               config=_stream_cfg(), hub=FakeHub())
+    assert len(records) == 1
+    rec = records[0]
+    assert rec["stream"] is True
+    assert rec["agent_s"] < 0.2
+    assert rec["tts_s"] >= 0.25
 
