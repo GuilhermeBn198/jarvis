@@ -5,6 +5,11 @@ from urllib.parse import urlparse
 from settings import load_settings
 
 DEFAULT_OPENCODE_BIN = os.path.expanduser("~/.opencode/bin/opencode")
+# Raiz do projeto (voice/ fica um nivel abaixo): o `opencode` precisa rodar daqui
+# para carregar `.opencode/plugins` (act_*, see_screen) e o SafetyGate.
+DEFAULT_PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
 DEFAULT_TIMEOUT_S = 300
 DEFAULT_POWERSHELL_EXE = "powershell.exe"
 DEFAULT_FFMPEG_EXE = (
@@ -47,6 +52,7 @@ DEFAULT_HEARTBEAT = False
 class Config:
     opencode_bin: str
     timeout_s: int
+    project_root: str = DEFAULT_PROJECT_ROOT
     powershell_exe: str = DEFAULT_POWERSHELL_EXE
     ffmpeg_exe: str = DEFAULT_FFMPEG_EXE
     mic_device: str = DEFAULT_MIC_DEVICE
@@ -190,6 +196,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
+        project_root=e.get("JARVIS_PROJECT_ROOT", DEFAULT_PROJECT_ROOT),
         powershell_exe=e.get("POWERSHELL_EXE", DEFAULT_POWERSHELL_EXE),
         ffmpeg_exe=e.get("FFMPEG_EXE", DEFAULT_FFMPEG_EXE),
         mic_device=e.get("MIC_DEVICE", settings.get("mic_device", DEFAULT_MIC_DEVICE)),

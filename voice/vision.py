@@ -30,15 +30,16 @@ def capture(out_path: str | None = None, config: Config | None = None) -> str:
 def _see_via_run(cfg: Config, prompt: str, png_path: str) -> str:
     """Fallback de visao via `opencode run` (startup caro: ~29s).
 
-    NAO usar --pure e usar o agente TOOL-LESS `chat`.
+    NAO usar --pure e usar o agente TOOL-LESS `vision`.
     """
     cmd = [
-        cfg.opencode_bin, "run", "--agent", "chat", prompt,
+        cfg.opencode_bin, "run", "--agent", "vision", prompt,
         "-m", cfg.vision_model, "-f", png_path,
     ]
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace", timeout=cfg.timeout_s
+            cmd, capture_output=True, text=True, errors="replace",
+            timeout=cfg.timeout_s, cwd=cfg.project_root,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha na consulta de visao: {exc}") from exc
@@ -57,7 +58,7 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
     prompt = (prompt or "").strip() or "Descreva o que esta na tela."
     # Via de regra usamos o `serve` (session ja aquecida): o startup do
     # `opencode run` domina a latencia de visao (~29s run vs ~6.5s serve).
-    # O agente continua sendo o TOOL-LESS `chat`: o conteudo da tela e
+    # O agente e SEMPRE o `vision`, que NAO tem tools: o conteudo da tela e
     # nao-conflavel e nao pode rodar tools/plugins (SafetyGate, act_*).
     # wait_s curto: um spawn que nunca fica saudavel nao pode atrasar o
     # fallback `run` em ~20s.

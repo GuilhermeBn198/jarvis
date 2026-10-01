@@ -40,9 +40,8 @@ const ASK: Array<[RegExp, string]> = [
 ];
 
 // `act` cobre as tools de acao no PC (act_type/act_key/act_open/act_click).
-// O padrao carrega o texto/alvo/x,y; os DENY/CREDENTIAL/isDangerousRm acima já
-// rodaram, entao texto benigno é allow.
-const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act"]);
+// `see` cobre a tool see_screen (so le a tela; o conteudo NAO roda tools).
+const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act", "see"]);
 const ALLOW_CMD = [
   /^\s*git\s+(status|diff|log|show)(\s|$)/,
   /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,

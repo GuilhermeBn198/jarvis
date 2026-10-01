@@ -27,7 +27,7 @@ def test_ask_returns_stdout(monkeypatch):
     monkeypatch.setattr(subprocess, "run", fake_run)
     out = RunClient(CFG).ask("faca algo")
     assert out == "resposta"
-    assert seen["cmd"] == ["/x/opencode", "run", "--pure", "faca algo"]
+    assert seen["cmd"] == ["/x/opencode", "run", "faca algo"]
 
 def test_empty_task_raises():
     with pytest.raises(AgentError):
@@ -55,7 +55,7 @@ def test_run_client_passes_agent_when_configured(monkeypatch):
     cfg = Config(opencode_bin="/x/opencode", timeout_s=10,
                  agent_backend="run", agent="chat")
     RunClient(cfg).ask("x")
-    assert seen["cmd"] == ["/x/opencode", "run", "--agent", "chat", "--pure", "x"]
+    assert seen["cmd"] == ["/x/opencode", "run", "--agent", "chat", "x"]
 
 
 def test_no_agent_flag_when_unset(monkeypatch):
@@ -330,12 +330,12 @@ def test_serve_see_reuses_session_and_passes_agent(monkeypatch, tmp_path):
     client = ServeClient(cfg)
     assert client.see("a", str(png)) == "a"
     assert client.see("b", str(png)) == "b"
-    assert seen[1][1]["agent"] == "chat"
+    assert seen[1][1]["agent"] == "vision"
     assert "model" not in seen[1][1]
     assert sum(1 for u, _, _ in seen if u.endswith("/session")) == 1
 
 
-def test_serve_see_forces_tool_less_chat_agent(monkeypatch, tmp_path):
+def test_serve_see_forces_tool_less_vision_agent(monkeypatch, tmp_path):
     seen = []
     png = tmp_path / "shot.png"
     png.write_bytes(b"x")
@@ -345,7 +345,7 @@ def test_serve_see_forces_tool_less_chat_agent(monkeypatch, tmp_path):
     cfg = Config(opencode_bin="/x/opencode", timeout_s=10, agent_backend="serve",
                  server_url="http://127.0.0.1:4096", agent=None)
     assert ServeClient(cfg).see("o que tem?", str(png)) == "ok"
-    assert seen[1][1]["agent"] == "chat"
+    assert seen[1][1]["agent"] == "vision"
 
 
 def test_serve_see_agent_override(monkeypatch, tmp_path):
@@ -382,8 +382,8 @@ def test_serve_see_recovers_dead_session_once(monkeypatch, tmp_path):
         "http://127.0.0.1:4096/session/sess-2/message",
     ]
     assert client._session_id == "sess-2"
-    assert seen[1][1]["agent"] == "chat"
-    assert seen[3][1]["agent"] == "chat"
+    assert seen[1][1]["agent"] == "vision"
+    assert seen[3][1]["agent"] == "vision"
 
 
 def test_serve_see_empty_prompt_raises_without_http(monkeypatch, tmp_path):
@@ -661,3 +661,14 @@ def test_close_does_not_block_on_buffer_lock():
     finally:
         peer.close()
 
+
+
+def test_run_ask_uses_project_root_cwd(monkeypatch):
+    seen = {}
+    def fake_run(cmd, **kw):
+        seen["kw"] = kw
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo")
+    RunClient(cfg).ask("x")
+    assert seen["kw"]["cwd"] == "/repo"

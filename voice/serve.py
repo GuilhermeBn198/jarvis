@@ -38,6 +38,7 @@ def _spawn(cfg: Config) -> bool:
             stdin=subprocess.DEVNULL,
             stdout=sink,
             stderr=sink,
+            cwd=cfg.project_root,
             start_new_session=True,
         )
         return True

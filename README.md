@@ -169,14 +169,19 @@ No **overlay** (menu → **Configurações**) você escolhe o **Microfone ativo*
 ### Ver a tela
 
 ```bash
-./jarvis --see "o que está na tela?"      # ou, na voz: "olha, ..."
+./jarvis --see "o que está na tela?"      # fala + mostra (gatilho de voz: "olha, ...")
+./jarvis --see-text "o que está na tela?" # só imprime a descrição (usado pela tool see_screen)
 ```
+
+Na voz, **linguagem natural**: o agente `chat` tem a tool **`see_screen`** — basta pedir ("dá uma olhada na minha tela") que o modelo decide chamá-la. O conteúdo da tela vai para o agente **`vision`** (sem ferramentas) — nunca executa tools.
 
 ### Agir no PC
 
 ```bash
-./jarvis --do "abra o navegador e pesquise por X"
+./jarvis --do "abra o navegador e pesquise por X"    # agente act, caminho bloqueante
 ```
+
+Na voz, **linguagem natural**: o agente `chat` agora tem as tools **`act_type`/`act_key`/`act_open`/`act_click`** — basta pedir ("abre o navegador") que o modelo decide. Tudo passa pelo **SafetyGate** (`ask`/`deny` viram bloqueio para `act_*`).
 
 ### Bridge de texto
 
@@ -218,6 +223,7 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 | `AGENT_BACKEND` | `serve` | backend do agente (`serve` rápido, `run` fallback) |
 | `OPENCODE_SERVER_URL` | `http://127.0.0.1:4096` | URL/base do `opencode serve` |
 | `OPENCODE_BIN` | `~/.opencode/bin/opencode` | binário do agente |
+| `JARVIS_PROJECT_ROOT` | raiz do repo (auto) | cwd do `opencode` (precisa ser a raiz p/ carregar `.opencode/plugins`: `act_*`, `see_screen`, SafetyGate) |
 | `VOICE_AGENT` | `chat` | agente do opencode para a conversa |
 | `VOICE_TIMEOUT_S` | `300` | timeout do agente por turno |
 | `VOICE_INPUT` | `auto` | modo de entrada (`auto`/`ptt`/`fixed`) |

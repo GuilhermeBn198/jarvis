@@ -116,3 +116,12 @@ def test_ensure_server_never_raises(monkeypatch):
         raise RuntimeError("kaboom")
     monkeypatch.setattr(serve, "is_healthy", boom)
     assert serve.ensure_server(CFG) is False
+
+
+def test_spawn_sets_project_root_cwd(monkeypatch):
+    import serve as s
+    seen = {}
+    monkeypatch.setattr(s.subprocess, "Popen",
+                        lambda cmd, **kw: seen.update(kw=kw) or object())
+    s._spawn(Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo"))
+    assert seen["kw"]["cwd"] == "/repo"

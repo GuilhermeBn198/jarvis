@@ -231,3 +231,11 @@ def test_heartbeat_env():
     for truthy in ("1", "true", "yes", "on"):
         assert load_config({"JARVIS_HEARTBEAT": truthy}).heartbeat is True
     assert load_config({"JARVIS_HEARTBEAT": "0"}).heartbeat is False
+
+
+def test_project_root_defaults_to_repo_root():
+    from config import DEFAULT_PROJECT_ROOT
+    cfg = load_config({})
+    assert cfg.project_root == DEFAULT_PROJECT_ROOT
+    assert cfg.project_root.endswith("jarvis")
+    assert load_config({"JARVIS_PROJECT_ROOT": "/repo"}).project_root == "/repo"

@@ -46,3 +46,14 @@ def test_do_restores_idle_when_opencode_missing(monkeypatch):
     loop.do_once("abra algo", out=io.StringIO(), err=io.StringIO(), config=CFG, hub=hub)
     assert hub.states[0] == "acting"
     assert hub.states[-1] == "idle"
+
+
+def test_do_once_runs_opencode_in_project_root(monkeypatch):
+    seen = {}
+    def fake_run(cmd, **kw):
+        seen["kw"] = kw
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo")
+    loop.do_once("oi", out=io.StringIO(), err=io.StringIO(), config=cfg)
+    assert seen["kw"]["cwd"] == "/repo"

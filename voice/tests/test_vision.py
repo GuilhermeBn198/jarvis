@@ -153,3 +153,14 @@ def test_see_falls_back_to_run_when_server_down(monkeypatch):
     out = vision.see("o que tem?", "/mnt/c/x/shot.png", config=CFG)
     assert out == "tela via run"
     assert seen["cmd"][1] == "run"
+
+
+def test_see_via_run_uses_project_root_cwd(monkeypatch):
+    seen = {}
+    def fake_run(cmd, **kw):
+        seen["kw"] = kw
+        return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo")
+    vision._see_via_run(cfg, "q", "/tmp/x.png")
+    assert seen["kw"]["cwd"] == "/repo"

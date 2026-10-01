@@ -141,18 +141,17 @@ class RunClient:
         cmd = [self._cfg.opencode_bin, "run"]
         if self._cfg.agent:
             cmd += ["--agent", self._cfg.agent]
-        # `--pure` desabilita os plugins do projeto (incl. o SafetyGate e as
-        # tools act_*). So e seguro com um agente SEM tools (ex.: `chat`), que
-        # e o default da voz; assim o custo de carregar plugins e evitado sem
-        # abrir um buraco de execucao. NUNCA use `--pure` com agente com tools.
-        cmd += ["--pure", task]
+        # NAO usar `--pure`: ele desabilita os plugins do projeto (incl. o
+        # SafetyGate e as tools act_*/see_screen). O agente `chat` tem tools,
+        # entao carregar os plugins e obrigatorio para que elas funcionem.
+        cmd += [task]
         try:
             proc = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                cwd=self._cwd,
+                cwd=self._cwd or self._cfg.project_root,
             )
         except FileNotFoundError as exc:
             raise AgentError(
@@ -241,7 +240,7 @@ class ServeClient:
         prompt: str,
         png_path: str,
         model_id: str | None = None,
-        agent: str = "chat",
+        agent: str = "vision",
     ) -> str:
         """Manda uma imagem (PNG) + prompt para o agente via serve.
 
@@ -249,10 +248,9 @@ class ServeClient:
         (data URL base64). Sem o startup do `opencode run` a visao cai de
         ~29s para ~6.5s (ver .superpowers/sdd/latency-opt-report.md).
 
-        O agente e SEMPRE o tool-less `chat`: o conteudo da tela e
+        O agente e SEMPRE o `vision` (SEM tools): o conteudo da tela e
         nao-conflavel e nunca pode rodar tools/plugins (SafetyGate, act_*).
-        Nao usar `cfg.agent` (que pode estar vazio e cair no default do
-        servidor, possivelmente COM tools).
+        Nao usar `cfg.agent` (que tem tools `act_*`/`see_screen`).
         """
         prompt = (prompt or "").strip()
         if not prompt:

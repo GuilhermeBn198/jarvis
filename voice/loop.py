@@ -532,6 +532,7 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
             text=True,
             errors="replace",
             timeout=cfg.timeout_s,
+            cwd=cfg.project_root,
         )
     except FileNotFoundError:
         err.write(
@@ -706,6 +707,20 @@ def main(argv=None) -> int:
                     f"VOICE_NOISE_DB sugerido: {sug} "
                     f"(ruido de fundo ~{mean} dB + 8)\n"
                 )
+            sys.stdout.flush()
+            return 0
+        if "--see-text" in args:
+            i = args.index("--see-text")
+            question = args[i + 1] if i + 1 < len(args) else ""
+            cfg = load_config()
+            try:
+                png = capture(config=cfg)
+                answer = see(question, png, config=cfg)
+            except VoiceError as exc:
+                sys.stderr.write(f"[erro] {exc}\n")
+                sys.stderr.flush()
+                return 1
+            sys.stdout.write((answer or "").strip() + "\n")
             sys.stdout.flush()
             return 0
         if "--see" in args:

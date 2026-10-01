@@ -6,6 +6,7 @@ import loop
 import loop as loop_mod
 from config import Config
 from sanitize import speechify
+from tts import VoiceError
 
 CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="fixed", ptt=False)
 
@@ -73,3 +74,26 @@ def test_voice_loop_routes_vision_trigger(monkeypatch):
     loop.voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert ("see", "o que tem na tela") in calls
     assert "ask" not in calls
+
+
+def test_main_see_text_prints_without_tts(monkeypatch):
+    monkeypatch.setattr(loop_mod, "capture", lambda **k: "/mnt/c/x.png")
+    monkeypatch.setattr(loop_mod, "see", lambda q, png, **k: "uma tela")
+    spoke = []
+    monkeypatch.setattr(loop_mod, "speak", lambda t, **k: spoke.append(t))
+    out = io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stdout", out)
+    assert loop_mod.main(["--see-text", "o que tem?"]) == 0
+    assert out.getvalue().strip() == "uma tela"
+    assert spoke == []
+
+
+def test_main_see_text_error_returns_1(monkeypatch):
+    monkeypatch.setattr(
+        loop_mod, "capture",
+        lambda **k: (_ for _ in ()).throw(VoiceError("sem tela")),
+    )
+    err = io.StringIO()
+    monkeypatch.setattr(loop_mod.sys, "stderr", err)
+    assert loop_mod.main(["--see-text", "x"]) == 1
+    assert "sem tela" in err.getvalue()
