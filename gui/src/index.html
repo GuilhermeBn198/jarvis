@@ -43,6 +43,19 @@
       <label>Duração mín. de fala (s)
         <input id="s-minspeech" type="number" step="0.1" />
       </label>
+      <label>Modo de entrada
+        <select id="s-input">
+          <option value="auto">auto (por voz)</option>
+          <option value="ptt">ptt (push-to-talk)</option>
+          <option value="fixed">fixed (janela fixa)</option>
+        </select>
+      </label>
+      <label>Voz (TTS)
+        <select id="s-tts">
+          <option value="piper">piper</option>
+          <option value="sapi">sapi</option>
+        </select>
+      </label>
       <label class="row"><input id="s-stream" type="checkbox" /> Streaming de TTS</label>
       <div class="settings-actions">
         <button id="settings-save">Salvar</button>

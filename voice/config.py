@@ -115,7 +115,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         raise ValueError(
             f"AGENT_BACKEND deve ser 'run' ou 'serve': {agent_backend}"
         )
-    tts_backend = e.get("TTS_BACKEND", DEFAULT_TTS_BACKEND)
+    tts_backend = e.get("TTS_BACKEND", settings.get("tts_backend", DEFAULT_TTS_BACKEND))
     if tts_backend not in ("sapi", "piper"):
         raise ValueError(
             f"TTS_BACKEND deve ser 'sapi' ou 'piper': {tts_backend}"
@@ -128,7 +128,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         if "VOICE_PTT" in e:
             input_mode = "ptt" if legacy_ptt else "fixed"
         else:
-            input_mode = DEFAULT_INPUT_MODE
+            input_mode = settings.get("input_mode", DEFAULT_INPUT_MODE)
     else:
         input_mode = str(raw_input).strip().lower()
         if input_mode not in INPUT_MODES:

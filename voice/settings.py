@@ -7,7 +7,12 @@ DEFAULT_SETTINGS_PATH = os.path.expanduser("~/.config/jarvis/settings.json")
 NUMERIC_KEYS = ("noise_db", "silence_s", "wait_s", "max_s", "min_speech_s")
 BOOL_KEYS = ("stream_tts",)
 STRING_KEYS = ("mic_device",)
-SETTINGS_KEYS = NUMERIC_KEYS + BOOL_KEYS + STRING_KEYS
+# Chaves de escolha: valor precisa estar na lista (senao e descartado).
+CHOICE_KEYS = {
+    "input_mode": ("auto", "ptt", "fixed"),
+    "tts_backend": ("piper", "sapi"),
+}
+SETTINGS_KEYS = NUMERIC_KEYS + BOOL_KEYS + STRING_KEYS + tuple(CHOICE_KEYS)
 
 
 def _path(path: str | None) -> str:
@@ -15,7 +20,11 @@ def _path(path: str | None) -> str:
 
 
 def load_settings(path: str | None = None) -> dict:
-    """Le o arquivo de settings; devolve {} se ausente/invalido."""
+    """Le o arquivo de settings; devolve {} se ausente/invalido.
+
+    Valores invalidos (tipo errado ou escolha fora da lista) sao descartados
+    para que um arquivo editado a mao nunca derrube o `load_config`.
+    """
     p = _path(path)
     try:
         with open(p, "r", encoding="utf-8") as fh:
@@ -24,7 +33,15 @@ def load_settings(path: str | None = None) -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
-    return {k: data[k] for k in SETTINGS_KEYS if k in data}
+    out: dict = {}
+    for key in SETTINGS_KEYS:
+        if key not in data:
+            continue
+        try:
+            out[key] = _coerce(key, data[key])
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 def _coerce(key: str, value):
@@ -32,6 +49,11 @@ def _coerce(key: str, value):
         if isinstance(value, bool):
             return value
         return str(value).strip().lower() in ("1", "true", "yes", "on")
+    if key in CHOICE_KEYS:
+        chosen = str(value).strip().lower()
+        if chosen not in CHOICE_KEYS[key]:
+            raise ValueError(f"{key} deve estar em {CHOICE_KEYS[key]}: {value}")
+        return chosen
     if key in STRING_KEYS:
         return str(value).strip()
     if key == "noise_db":

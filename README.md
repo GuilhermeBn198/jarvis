@@ -193,7 +193,7 @@ echo "responda apenas: ok" | ./jarvis
 
 Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`, ou o exe em `C:\Users\bguil\jarvis\jarvis-overlay.exe`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair. Ao abrir, se o cérebro estiver offline, o overlay **sobe o loop sozinho**. **Sair** encerra o cérebro no WSL (o overlay mata o processo; se escapar, `pkill -f loop.py` no WSL).
 
-O menu **Configurações** abre um painel para escolher o **Microfone ativo**, calibrar (*Medir microfone*), ajustar sensibilidade/tempos de captura e ligar/desligar o streaming de TTS.
+O menu **Configurações** abre um painel para escolher o **Microfone ativo**, calibrar (*Medir microfone*), ajustar sensibilidade/tempos de captura, **modo de entrada** (`auto`/`ptt`/`fixed`), **voz** (`piper`/`sapi`) e ligar/desligar o streaming de TTS.
 
 **Diagnóstico:** o overlay redireciona stdout/stderr do cérebro para `%LOCALAPPDATA%\jarvis\brain.log` — é lá que aparecem `[voz] nada transcrito`, `[erro] ...` etc.
 

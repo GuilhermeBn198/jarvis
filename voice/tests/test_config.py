@@ -239,3 +239,17 @@ def test_project_root_defaults_to_repo_root():
     assert cfg.project_root == DEFAULT_PROJECT_ROOT
     assert cfg.project_root.endswith("jarvis")
     assert load_config({"JARVIS_PROJECT_ROOT": "/repo"}).project_root == "/repo"
+
+
+def test_settings_supply_input_mode_and_tts():
+    cfg = load_config({}, settings={"input_mode": "ptt", "tts_backend": "sapi"})
+    assert cfg.input_mode == "ptt"
+    assert cfg.ptt is True
+    assert cfg.tts_backend == "sapi"
+
+
+def test_env_overrides_settings_choices():
+    cfg = load_config({"VOICE_INPUT": "fixed", "TTS_BACKEND": "piper"},
+                      settings={"input_mode": "ptt", "tts_backend": "sapi"})
+    assert cfg.input_mode == "fixed"
+    assert cfg.tts_backend == "piper"

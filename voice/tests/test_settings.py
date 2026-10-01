@@ -57,3 +57,24 @@ def test_save_settings_persists_mic_device(tmp_path):
     out = save_settings({"mic_device": "  Mic Legal  "}, path=p)
     assert out["mic_device"] == "Mic Legal"
     assert "mic_device" in SETTINGS_KEYS
+
+
+def test_save_settings_choice_keys_validated(tmp_path):
+    p = str(tmp_path / "s.json")
+    out = save_settings({"input_mode": "PTT", "tts_backend": "sapi"}, path=p)
+    assert out["input_mode"] == "ptt"
+    assert out["tts_backend"] == "sapi"
+
+
+def test_save_settings_drops_invalid_choice(tmp_path):
+    p = str(tmp_path / "s.json")
+    out = save_settings({"input_mode": "nope", "tts_backend": "piper"}, path=p)
+    assert "input_mode" not in out
+    assert out["tts_backend"] == "piper"
+
+
+def test_load_settings_drops_invalid_choice(tmp_path):
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps({"input_mode": "nope", "tts_backend": "sapi"}),
+                 encoding="utf-8")
+    assert load_settings(str(p)) == {"tts_backend": "sapi"}
