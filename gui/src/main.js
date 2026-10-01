@@ -27,6 +27,8 @@ function apply(snap) {
     const pause = document.getElementById("menu-pause");
     if (mute) mute.textContent = snap.muted ? "Desmutar" : "Mudo";
     if (pause) pause.textContent = snap.paused ? "Retomar" : "Pausar";
+    orb.dataset.muted = snap.muted ? "true" : "false";
+    orb.dataset.paused = snap.paused ? "true" : "false";
   }
   const title = "jarvis:" + state;
   document.title = title;

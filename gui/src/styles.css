@@ -46,6 +46,25 @@ html, body {
   border: 2px solid color-mix(in srgb, var(--c) 40%, transparent);
 }
 
+/* Indicador de MUDO: faixa vermelha cortando o orbe (persistente). */
+.orb::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 4px;
+  border-radius: 2px;
+  background: #ef4444;
+  box-shadow: 0 0 3px #000000aa;
+  transform: translate(-50%, -50%) rotate(-45deg) scale(0);
+  transition: transform 0.15s ease;
+  z-index: 1;
+}
+
+.orb[data-muted="true"]::before { transform: translate(-50%, -50%) rotate(-45deg) scale(1); }
+.orb[data-paused="true"] { filter: grayscale(0.5) brightness(0.7); }
+
 .orb[data-state="idle"] { --c: #64748b; animation: breathe 4.5s ease-in-out infinite; }
 .orb[data-state="listening"] { --c: #22d3ee; animation: pulse 1.4s ease-in-out infinite; }
 .orb[data-state="listening"]::after { animation: ripple 1.6s ease-out infinite; }
