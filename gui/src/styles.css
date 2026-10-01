@@ -89,12 +89,13 @@ html, body {
 }
 
 .label.show { display: block; }
+.label { z-index: 3; }
 
 .menu {
   position: fixed;
   right: 18px;
-  bottom: 96px;
-  z-index: 2;
+  bottom: 112px;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -123,6 +124,7 @@ html, body {
   position: fixed;
   right: 8px;
   bottom: 8px;
+  z-index: 3;
   width: 224px;
   display: flex;
   flex-direction: column;

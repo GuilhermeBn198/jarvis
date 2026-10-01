@@ -206,7 +206,7 @@ menu.addEventListener("click", async (ev) => {
 const settingsPanel = document.getElementById("settings");
 const measureOut = document.getElementById("measure-out");
 const ORB_SIZE = [120, 120];
-const MENU_SIZE = [210, 280];
+const MENU_SIZE = [210, 310];
 const PANEL_SIZE = [280, 470];
 
 function numOrNull(id) {
