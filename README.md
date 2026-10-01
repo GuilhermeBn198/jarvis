@@ -233,6 +233,7 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 | `VOICE_MAX_S` | `15.0` | teto absoluto da gravação por turno |
 | `VOICE_MIN_SPEECH_S` | `0.4` | duração mínima (s) de um trecho não-silencioso para valer como fala (rejeita ruído curto) |
 | `JARVIS_VOICE_LOCK` | `/tmp/jarvis-voice.lock` | trava de instância única do `--voice` |
+| `JARVIS_HEARTBEAT` | `false` | loga `[hb]` por estágio + `[watchdog]` se o loop travar (vai pro `brain.log`) |
 | `VISION_MODEL` | `opencode-go/deepseek-v4-flash-vision-exp` | modelo de visão |
 | `VISION_TRIGGER` | `olha` | palavra que dispara a visão na voz |
 | `VOICE_STREAM_TTS` | `true` | streaming de TTS por sentença |

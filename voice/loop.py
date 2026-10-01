@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -152,6 +153,54 @@ def _measure_mic(cfg, hub, err) -> None:
     _emit(hub, "idle")
 
 
+class Heartbeat:
+    """Escreve um batimento por estagio e avisa se o loop travar.
+
+    Vai pro stderr (que o overlay redireciona pro brain.log) e ajuda a achar
+    onde o loop parou. Ligado por `JARVIS_HEARTBEAT=1`.
+    """
+
+    def __init__(self, err, watchdog_s: float = 30.0, interval_s: float = 5.0):
+        self._err = err
+        self._watchdog_s = watchdog_s
+        self._interval_s = interval_s
+        self._lock = threading.Lock()
+        self._last = time.monotonic()
+        self._stage = "inicio"
+        self._stop = threading.Event()
+
+    def _write(self, msg: str) -> None:
+        try:
+            stamp = datetime.now().strftime("%H:%M:%S")
+            self._err.write(f"[hb] {stamp} {msg}\n")
+            self._err.flush()
+        except Exception:
+            pass
+
+    def beat(self, stage: str) -> None:
+        with self._lock:
+            self._last = time.monotonic()
+            self._stage = stage
+        self._write(stage)
+
+    def start(self) -> None:
+        def _watchdog() -> None:
+            while not self._stop.wait(self._interval_s):
+                with self._lock:
+                    idle = time.monotonic() - self._last
+                    stage = self._stage
+                if idle >= self._watchdog_s:
+                    self._write(
+                        f"[watchdog] sem progresso por {idle:.0f}s "
+                        f"(ultimo estagio: {stage})"
+                    )
+
+        threading.Thread(target=_watchdog, daemon=True).start()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+
 def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
                config=None, err=None, max_consecutive_errors: int = 3,
                hub=None, orphan_timeout_s: float = 15.0) -> None:
@@ -207,6 +256,14 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 cmd = None
         return stop
 
+    hb = Heartbeat(err) if cfg.heartbeat else None
+    if hb is not None:
+        hb.start()
+
+    def _hb(stage: str) -> None:
+        if hb is not None:
+            hb.beat(stage)
+
     def _voice_error(exc: VoiceError) -> bool:
         nonlocal consecutive_errors
         err.write(f"[erro] voz: {exc}\n")
@@ -223,6 +280,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
 
     while iterations == 0 or n < iterations:
         n += 1
+        _hb(f"iter={n} inicio")
         if hub is not None:
             try:
                 cmd = hub.take_command()
@@ -266,6 +324,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         t0 = time.monotonic()
         try:
             _emit(hub, "listening")
+            _hb("gravando")
             if cfg.input_mode == "auto":
                 wav = record_auto(config=cfg, should_stop=_should_stop)
                 if not wav:
@@ -280,6 +339,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 wav = record(seconds=secs, config=cfg)
             t_rec = time.monotonic()
             _emit(hub, "transcribing")
+            _hb("transcrevendo")
             text = transcribe(wav, config=cfg)
         except QuitRequested:
             return
@@ -290,6 +350,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             _emit(hub, "idle")
             continue
         t_stt = time.monotonic()
+        _hb(f"transcrito: {text[:40]!r}" if text else "nada transcrito")
         if not text:
             err.write("[voz] nada transcrito\n")
             err.flush()
@@ -297,6 +358,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             _emit(hub, "idle")
             continue
         if is_vision_request(text, cfg.vision_trigger):
+            _hb("visao")
             try:
                 see_once(strip_trigger(text, cfg.vision_trigger), err=err, config=cfg, hub=hub)
             except VoiceError as exc:
@@ -311,6 +373,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         error = None
         t_agent0 = time.monotonic()
         _emit(hub, "thinking")
+        _hb("agente")
         first_audio = None
         streamed = False
         tts_failed = False
@@ -360,6 +423,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         if t_agent1 is None:
             t_agent1 = time.monotonic()
         t_tts1 = time.monotonic()
+        _hb("turno concluido")
         log_turn(
             {
                 "ts": datetime.now(timezone.utc).isoformat(),

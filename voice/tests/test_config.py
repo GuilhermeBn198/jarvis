@@ -223,3 +223,11 @@ def test_settings_supply_mic_device():
     cfg = load_config({}, settings={"mic_device": "Mic X"})
     assert cfg.mic_device == "Mic X"
     assert load_config({"MIC_DEVICE": "Mic Y"}, settings={"mic_device": "Mic X"}).mic_device == "Mic Y"
+
+
+def test_heartbeat_env():
+    from config import DEFAULT_HEARTBEAT
+    assert load_config({}).heartbeat is DEFAULT_HEARTBEAT is False
+    for truthy in ("1", "true", "yes", "on"):
+        assert load_config({"JARVIS_HEARTBEAT": truthy}).heartbeat is True
+    assert load_config({"JARVIS_HEARTBEAT": "0"}).heartbeat is False

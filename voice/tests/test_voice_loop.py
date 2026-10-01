@@ -1104,3 +1104,27 @@ def test_main_list_mics_error_returns_1(monkeypatch):
     monkeypatch.setattr(loop_mod.sys, "stderr", err)
     assert main(["--list-mics"]) == 1
     assert "sem ffmpeg" in err.getvalue()
+
+
+def test_heartbeat_logs_stages_and_watchdog():
+    err = io.StringIO()
+    hb = loop_mod.Heartbeat(err, watchdog_s=0.0, interval_s=0.05)
+    hb.beat("gravando")
+    hb.start()
+    time.sleep(0.25)
+    hb.stop()
+    out = err.getvalue()
+    assert "[hb]" in out
+    assert "gravando" in out
+    assert "[watchdog] sem progresso" in out
+
+
+def test_heartbeat_off_by_default(monkeypatch):
+    calls = []
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
+    monkeypatch.setattr("loop.speak", lambda t, **k: None)
+    err = io.StringIO()
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, input_mode="fixed", ptt=False)
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg, err=err)
+    assert "[hb]" not in err.getvalue()

@@ -40,6 +40,7 @@ DEFAULT_SILENCE_S = 1.0
 DEFAULT_WAIT_S = 8.0
 DEFAULT_MAX_S = 15.0
 DEFAULT_MIN_SPEECH_S = 0.4
+DEFAULT_HEARTBEAT = False
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,7 @@ class Config:
     wait_s: float = DEFAULT_WAIT_S
     max_s: float = DEFAULT_MAX_S
     min_speech_s: float = DEFAULT_MIN_SPEECH_S
+    heartbeat: bool = DEFAULT_HEARTBEAT
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -182,6 +184,9 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         raise ValueError(
             f"VOICE_MIN_SPEECH_S deve ser numero: {raw_min_speech}"
         ) from exc
+    heartbeat = str(e.get("JARVIS_HEARTBEAT", "0")).strip().lower() in (
+        "1", "true", "yes", "on",
+    )
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -215,4 +220,5 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         wait_s=wait_s,
         max_s=max_s,
         min_speech_s=min_speech_s,
+        heartbeat=heartbeat,
     )
