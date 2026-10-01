@@ -96,7 +96,30 @@ orb.addEventListener("mouseenter", () => {
   }
 });
 orb.addEventListener("mouseleave", () => label.classList.remove("show"));
-orb.addEventListener("click", () => toggleMenu());
+
+// Clique-e-segura no orbe = arrastar a janela; clique curto = abre/fecha o menu.
+let orbDown = null;
+orb.addEventListener("mousedown", (ev) => {
+  if (ev.button !== 0) return;
+  orbDown = { x: ev.clientX, y: ev.clientY, moved: false };
+  ev.preventDefault();
+});
+window.addEventListener("mousemove", async (ev) => {
+  if (!orbDown || orbDown.moved) return;
+  if (Math.abs(ev.clientX - orbDown.x) > 4 || Math.abs(ev.clientY - orbDown.y) > 4) {
+    orbDown.moved = true;
+    try {
+      await window.__TAURI__.window.getCurrentWindow().startDragging();
+    } catch (e) {
+      /* fora do Tauri: ignora */
+    }
+  }
+});
+window.addEventListener("mouseup", () => {
+  const wasClick = orbDown && !orbDown.moved;
+  orbDown = null;
+  if (wasClick) toggleMenu();
+});
 
 async function command(cmd) {
   try {

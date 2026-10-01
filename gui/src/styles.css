@@ -13,17 +13,6 @@ html, body {
   z-index: 0;
 }
 
-.handle {
-  position: fixed;
-  top: 2px;
-  right: 34px;
-  z-index: 1;
-  color: #475569;
-  font: 12px system-ui;
-  cursor: grab;
-  padding: 2px 6px;
-}
-
 .orb {
   position: fixed;
   right: 22px;
@@ -32,7 +21,7 @@ html, body {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  cursor: pointer;
+  cursor: grab;
   --c: #64748b;
   background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--c) 75%, white), var(--c));
   box-shadow: 0 0 14px color-mix(in srgb, var(--c) 60%, transparent);
@@ -45,6 +34,8 @@ html, body {
   border-radius: 50%;
   border: 2px solid color-mix(in srgb, var(--c) 40%, transparent);
 }
+
+.orb:active { cursor: grabbing; }
 
 /* Indicador de MUDO: faixa vermelha cortando o orbe (persistente). */
 .orb::before {
