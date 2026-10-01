@@ -313,3 +313,25 @@ def test_devices_endpoint_error_is_safe(monkeypatch):
             assert "sem ffmpeg" in body["error"]
     finally:
         hub.stop()
+
+
+def test_snapshot_includes_flags_and_set_flags_broadcasts():
+    hub = StateHub(port=0)
+    q = hub.subscribe()
+    assert hub.snapshot()["muted"] is False
+    assert hub.snapshot()["paused"] is False
+    hub.set_flags(muted=True, paused=True)
+    payload = json.loads(q.get_nowait())
+    assert payload["muted"] is True
+    assert payload["paused"] is True
+    assert hub.snapshot()["paused"] is True
+
+
+def test_set_keeps_flags_in_payload():
+    hub = StateHub(port=0)
+    hub.set_flags(muted=True)
+    q = hub.subscribe()
+    hub.set("speaking")
+    payload = json.loads(q.get_nowait())
+    assert payload["state"] == "speaking"
+    assert payload["muted"] is True

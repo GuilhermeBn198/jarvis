@@ -1128,3 +1128,30 @@ def test_heartbeat_off_by_default(monkeypatch):
     cfg = Config(opencode_bin="/x/o", timeout_s=10, input_mode="fixed", ptt=False)
     voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg, err=err)
     assert "[hb]" not in err.getvalue()
+
+
+class FlagsHub(CmdHub):
+    def __init__(self, cmds):
+        super().__init__(cmds=cmds)
+        self.flags = []
+
+    def set_flags(self, muted=None, paused=None):
+        self.flags.append((muted, paused))
+
+
+def test_pause_publishes_flags(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+    hub = FlagsHub(cmds=["pause"])
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                 input_mode="fixed", ptt=False, state_require_gui=False)
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg, hub=hub)
+    assert hub.flags[-1] == (False, True)
+
+
+def test_mute_publishes_flags(monkeypatch):
+    calls = []
+    _patch_voice(monkeypatch, calls)
+    hub = FlagsHub(cmds=["mute"])
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=CFG, hub=hub)
+    assert hub.flags[-1] == (True, False)

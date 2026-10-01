@@ -227,6 +227,14 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
     was_paused = False
     measure_requested = False
 
+    def _publish_flags() -> None:
+        if hub is None:
+            return
+        try:
+            hub.set_flags(muted=muted, paused=paused)
+        except Exception:
+            pass
+
     def _should_stop() -> bool:
         """Checa comandos DURANTE a gravacao; True se pediram `quit`.
 
@@ -246,8 +254,10 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 stop = True
             elif cmd == "mute":
                 muted = not muted
+                _publish_flags()
             elif cmd == "pause":
                 paused = not paused
+                _publish_flags()
             elif cmd == "measure":
                 measure_requested = True
             try:
@@ -291,8 +301,10 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                     return
                 if cmd == "mute":
                     muted = not muted
+                    _publish_flags()
                 elif cmd == "pause":
                     paused = not paused
+                    _publish_flags()
                 elif cmd == "measure":
                     measure_requested = True
                 try:

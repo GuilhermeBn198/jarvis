@@ -149,15 +149,27 @@ class StateHub:
         self._lock = threading.Lock()
         self._state = "idle"
         self._detail: str | None = None
+        self._muted = False
+        self._paused = False
         self._subscribers: list[queue.Queue] = []
         self._commands: queue.Queue = queue.Queue()
         self._measure_result: dict | None = None
         self._server = None
         self._thread: threading.Thread | None = None
 
+    def _payload(self) -> dict:
+        # Chamado com o lock ja adquirido.
+        return {
+            "state": self._state,
+            "detail": self._detail,
+            "muted": self._muted,
+            "paused": self._paused,
+            "ts": time.time(),
+        }
+
     def snapshot(self) -> dict:
         with self._lock:
-            return {"state": self._state, "detail": self._detail, "ts": time.time()}
+            return self._payload()
 
     def set(self, state: str, detail: str | None = None) -> None:
         if state not in STATES:
@@ -166,7 +178,18 @@ class StateHub:
             self._state = state
             self._detail = detail
             subs = list(self._subscribers)
-        payload = json.dumps({"state": state, "detail": detail, "ts": time.time()})
+            payload = json.dumps(self._payload())
+        for q in subs:
+            q.put(payload)
+
+    def set_flags(self, muted: bool | None = None, paused: bool | None = None) -> None:
+        with self._lock:
+            if muted is not None:
+                self._muted = bool(muted)
+            if paused is not None:
+                self._paused = bool(paused)
+            subs = list(self._subscribers)
+            payload = json.dumps(self._payload())
         for q in subs:
             q.put(payload)
 

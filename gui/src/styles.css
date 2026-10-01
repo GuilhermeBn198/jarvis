@@ -65,8 +65,8 @@ html, body {
 
 .label {
   position: fixed;
-  right: 88px;
-  bottom: 38px;
+  right: 12px;
+  bottom: 94px;
   z-index: 2;
   display: none;
   color: #c7cedb;
@@ -75,6 +75,7 @@ html, body {
   border: 1px solid #2a2f3a;
   border-radius: 6px;
   padding: 3px 8px;
+  white-space: nowrap;
 }
 
 .label.show { display: block; }
@@ -122,8 +123,7 @@ html, body {
   padding: 10px;
   color: #c7cedb;
   font: 11px system-ui;
-  max-height: 300px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .settings.hidden { display: none; }
@@ -145,13 +145,14 @@ html, body {
 
 .settings label {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
 }
 
 .settings label.row {
-  flex-direction: row;
-  align-items: center;
+  justify-content: flex-start;
   gap: 6px;
 }
 
@@ -162,6 +163,7 @@ html, body {
   color: #e2e8f0;
   padding: 3px 6px;
   font: 11px system-ui;
+  width: 60px;
 }
 
 .settings select {
@@ -171,7 +173,9 @@ html, body {
   color: #e2e8f0;
   padding: 3px 6px;
   font: 11px system-ui;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  max-width: 150px;
 }
 
 .settings button {

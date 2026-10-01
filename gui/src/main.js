@@ -16,11 +16,18 @@ const label = document.getElementById("label");
 const menu = document.getElementById("menu");
 const brain = document.getElementById("brain");
 
-function apply(state) {
+function apply(snap) {
+  const state = typeof snap === "string" ? snap : (snap && snap.state) || "idle";
   orb.dataset.state = state;
   const text = LABELS[state] || state;
   label.textContent = text;
   brain.textContent = state === "offline" ? "Iniciar cérebro" : "Reiniciar cérebro";
+  if (snap && typeof snap === "object") {
+    const mute = document.getElementById("menu-mute");
+    const pause = document.getElementById("menu-pause");
+    if (mute) mute.textContent = snap.muted ? "Desmutar" : "Mudo";
+    if (pause) pause.textContent = snap.paused ? "Retomar" : "Pausar";
+  }
   const title = "jarvis:" + state;
   document.title = title;
   try {
@@ -38,7 +45,7 @@ function connect() {
   const es = new EventSource(`${base}/events`);
   es.onmessage = (ev) => {
     try {
-      apply(JSON.parse(ev.data).state);
+      apply(JSON.parse(ev.data));
     } catch (e) {
       /* ignora payload inválido */
     }
@@ -81,7 +88,11 @@ if (AUTOSTART_BRAIN) {
   setTimeout(ensureBrain, 1200);
 }
 
-orb.addEventListener("mouseenter", () => label.classList.add("show"));
+orb.addEventListener("mouseenter", () => {
+  if (menu.classList.contains("hidden") && settingsPanel.classList.contains("hidden")) {
+    label.classList.add("show");
+  }
+});
 orb.addEventListener("mouseleave", () => label.classList.remove("show"));
 orb.addEventListener("click", () => toggleMenu());
 
@@ -101,6 +112,7 @@ async function command(cmd) {
 async function toggleMenu() {
   if (menu.classList.contains("hidden")) {
     settingsPanel.classList.add("hidden");
+    label.classList.remove("show");
     menu.classList.remove("hidden");
     await anchorBottomRight(...MENU_SIZE);
   } else {
@@ -170,7 +182,7 @@ const settingsPanel = document.getElementById("settings");
 const measureOut = document.getElementById("measure-out");
 const ORB_SIZE = [120, 120];
 const MENU_SIZE = [210, 280];
-const PANEL_SIZE = [280, 340];
+const PANEL_SIZE = [280, 470];
 
 function numOrNull(id) {
   const v = document.getElementById(id).value.trim();
