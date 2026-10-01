@@ -58,3 +58,4 @@ Itens registrados para atacar depois, com contexto.
 - Overlay (Windows): `cd gui/src-tauri && cargo run` (Tauri 2, frontend estático embutido, **sem Node**; requer Rust + MSVC Build Tools + WebView2). O menu tem "Iniciar/Reiniciar cérebro" (sobe o loop via `wsl.exe`).
 
 **Fases:** v1 = **overlay/orbe + SSE** → FEITO (spec `docs/superpowers/specs/2026-09-28-jarvis-state-indicator-design.md`, plano `docs/superpowers/plans/2026-09-28-jarvis-state-indicator.md`; GUI em `gui/`) → v2 = reativo ao áudio → v3 = avatar animado.
+TODO - Ver contexto dos programas abertos no Windows: listar janelas ativas e capturar o conteudo de cada uma, nao so a janela em foco. Ja da para listar via Get-Process MainWindowTitle. Falta capturar o conteudo e expor como ferramenta do agente.
