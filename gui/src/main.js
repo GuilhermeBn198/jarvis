@@ -83,7 +83,7 @@ if (AUTOSTART_BRAIN) {
 
 orb.addEventListener("mouseenter", () => label.classList.add("show"));
 orb.addEventListener("mouseleave", () => label.classList.remove("show"));
-orb.addEventListener("click", () => menu.classList.toggle("hidden"));
+orb.addEventListener("click", () => toggleMenu());
 
 async function command(cmd) {
   try {
@@ -95,7 +95,22 @@ async function command(cmd) {
   } catch (e) {
     /* servidor fora do ar */
   }
+  await closeMenu();
+}
+
+async function toggleMenu() {
+  if (menu.classList.contains("hidden")) {
+    settingsPanel.classList.add("hidden");
+    menu.classList.remove("hidden");
+    await anchorBottomRight(...MENU_SIZE);
+  } else {
+    await closeMenu();
+  }
+}
+
+async function closeMenu() {
   menu.classList.add("hidden");
+  await anchorBottomRight(...ORB_SIZE);
 }
 
 async function restartBrain() {
@@ -120,7 +135,7 @@ async function restartBrain() {
       apply(orb.dataset.state || "offline");
     }, 1500);
   } finally {
-    menu.classList.add("hidden");
+    await closeMenu();
   }
 }
 
@@ -154,6 +169,7 @@ menu.addEventListener("click", async (ev) => {
 const settingsPanel = document.getElementById("settings");
 const measureOut = document.getElementById("measure-out");
 const ORB_SIZE = [120, 120];
+const MENU_SIZE = [210, 280];
 const PANEL_SIZE = [280, 340];
 
 function numOrNull(id) {
@@ -234,7 +250,6 @@ async function openSettings() {
   await loadDevices();
   await loadSettings();
 }
-
 async function closeSettings() {
   settingsPanel.classList.add("hidden");
   await anchorBottomRight(...ORB_SIZE);

@@ -6,10 +6,18 @@ html, body {
   -webkit-user-select: none;
 }
 
+/* Camada de arrasto: cobre a janela inteira; orb/menu ficam por cima. */
+.drag {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
 .handle {
   position: fixed;
   top: 2px;
   right: 34px;
+  z-index: 1;
   color: #475569;
   font: 12px system-ui;
   cursor: grab;
@@ -18,21 +26,22 @@ html, body {
 
 .orb {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1;
   width: 64px;
   height: 64px;
   border-radius: 50%;
   cursor: pointer;
   --c: #64748b;
   background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--c) 75%, white), var(--c));
-  box-shadow: 0 0 22px color-mix(in srgb, var(--c) 65%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--c) 60%, transparent);
 }
 
 .orb::after {
   content: "";
   position: absolute;
-  inset: -8px;
+  inset: -4px;
   border-radius: 50%;
   border: 2px solid color-mix(in srgb, var(--c) 40%, transparent);
 }
@@ -48,16 +57,17 @@ html, body {
 .orb[data-state="offline"] { --c: #475569; }
 
 @keyframes breathe { 0%,100% { transform: scale(1); opacity: .72 } 50% { transform: scale(1.06); opacity: 1 } }
-@keyframes pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.14) } }
-@keyframes ripple { 0% { transform: scale(.9); opacity: .8 } 100% { transform: scale(1.7); opacity: 0 } }
+@keyframes pulse { 0%,100% { transform: scale(1) } 50% { transform: scale(1.08) } }
+@keyframes ripple { 0% { transform: scale(.9); opacity: .8 } 100% { transform: scale(1.3); opacity: 0 } }
 @keyframes spin { 0% { transform: rotate(0) scale(1.04) } 100% { transform: rotate(360deg) scale(1.04) } }
-@keyframes speak { 0%,100% { transform: scaleY(1) } 50% { transform: scaleY(1.18) scaleX(.92) } }
+@keyframes speak { 0%,100% { transform: scaleY(1) } 50% { transform: scaleY(1.12) scaleX(.94) } }
 @keyframes flash { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
 
 .label {
   position: fixed;
   right: 88px;
   bottom: 38px;
+  z-index: 2;
   display: none;
   color: #c7cedb;
   font: 12px system-ui;
@@ -72,7 +82,8 @@ html, body {
 .menu {
   position: fixed;
   right: 18px;
-  bottom: 92px;
+  bottom: 96px;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 2px;
