@@ -76,7 +76,7 @@ test("parseActResult le marcadores", () => {
 
 test("mode foreground explicito forca foreground mesmo com window", () => {
   assert.equal(chooseActScript("act_type", { text: "oi", mode: "foreground", window: "Notepad" }), "");
-  assert.equal(chooseActScript("act_key", { keys: "^s", mode: "foreground" }), "");
+  assert.equal(chooseActScript("act_key", { keys: "^s", mode: "foreground", window: "Notepad" }), "");
 });
 
 test("hwnd sozinho entra em background", () => {
