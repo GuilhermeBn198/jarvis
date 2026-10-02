@@ -63,3 +63,68 @@ export function parseWinList(stdout: string): WinInfo[] {
   }
   return out;
 }
+
+export type ActStatus = "confirmed" | "unconfirmed" | "ambiguous" | "error";
+export type ActResult = { status: ActStatus; detail: string };
+
+const UIA_SETUP = `
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+`;
+
+// Escapa um valor para string 'single-quoted' do PowerShell.
+function psQuote(v: string): string {
+  return v.replace(/'/g, "''");
+}
+
+function resolveBlock(window: string, hwnd: number): string {
+  return `
+$target = Resolve-JarvisTarget '${psQuote(window)}' ${hwnd}
+$cands = @($target)
+if ($cands.Count -eq 0) { Write-Output 'JARVIS_RESULT=error|nenhuma janela corresponde'; exit 0 }
+if ($cands.Count -gt 1) {
+  $list = ($cands | ForEach-Object { "$($_.hwnd):$($_.title)" }) -join ' ; '
+  Write-Output ('JARVIS_RESULT=ambiguous|' + $list); exit 0
+}
+$h = [IntPtr]$cands[0].hwnd
+`;
+}
+
+export function buildBackgroundTypeScript(a: { text: string; window?: string; hwnd?: number }): string {
+  const text = psQuote(String(a.text ?? ""));
+  return `${WIN32_SNIPPET}${UIA_SETUP}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
+$text = '${text}'
+$edit = $null
+$ok = $false
+try {
+  $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
+  $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)
+  $edit = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+  if ($edit) {
+    $vp = $edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+    $vp.SetValue($text)
+    $ok = $true
+  }
+} catch { $ok = $false }
+if (-not $ok) {
+  foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($h, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
+}
+$got = ''
+try { if ($edit) { $got = [string]$edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value } } catch {}
+if (-not $got) {
+  $sb = New-Object System.Text.StringBuilder 8192
+  [void][W.Win]::GetWindowTextW($h, $sb, 8192)
+  $got = $sb.ToString()
+}
+if ($got -and $got.Contains($text)) { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
+else { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
+`;
+}
+
+export function parseActResult(stdout: string): ActResult {
+  for (const line of stdout.split(/\r?\n/)) {
+    const m = line.trim().match(/^JARVIS_RESULT=(confirmed|unconfirmed|ambiguous|error)\|(.*)$/);
+    if (m) return { status: m[1] as ActStatus, detail: m[2] };
+  }
+  return { status: "error", detail: (stdout || "").trim().slice(0, 300) || "sem saida" };
+}
