@@ -23,7 +23,7 @@ export async function askHook(
 export function actionFromToolCall(
   tool: string,
   args: unknown,
-): { type: string; pattern?: string } {
+): { type: string; pattern?: string | string[] } {
   const a = (args ?? {}) as Record<string, unknown>;
   if (tool === "bash") {
     return { type: "bash", pattern: typeof a.command === "string" ? a.command : undefined };
@@ -32,13 +32,23 @@ export function actionFromToolCall(
     const p = a.filePath ?? a.path;
     return { type: tool, pattern: typeof p === "string" ? p : undefined };
   }
-  if (tool === "act_type") return { type: "act", pattern: String(a.text ?? "") };
-  if (tool === "act_key") return { type: "act", pattern: String(a.keys ?? "") };
+  if (tool === "act_type") {
+    return { type: "act", pattern: patternParts([a.text, a.window, a.hwnd]) };
+  }
+  if (tool === "act_key") {
+    return { type: "act", pattern: patternParts([a.keys, a.window, a.hwnd]) };
+  }
   if (tool === "act_open") return { type: "act", pattern: String(a.target ?? "") };
   if (tool === "act_click") return { type: "act", pattern: `${a.x},${a.y}` };
   if (tool === "see_screen") return { type: "see" };
   if (tool === "win_list") return { type: "winlist" };
   return { type: tool };
+}
+
+function patternParts(parts: unknown[]): string[] {
+  return parts
+    .filter((p) => p !== undefined && p !== null && String(p) !== "")
+    .map((p) => String(p));
 }
 
 // Gancho `tool.execute.before`: bloqueia (throw) quando o motor decide deny.

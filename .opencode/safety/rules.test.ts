@@ -184,3 +184,29 @@ test("win_list -> allow (leitura)", () => {
   const a = actionFromToolCall("win_list", {});
   assert.equal(decide({ ...a }).status, "allow");
 });
+
+test("act_type background benigno -> allow", () => {
+  const a = actionFromToolCall("act_type", { text: "ola", mode: "background", window: "Notepad" });
+  assert.equal(decide({ ...a }).status, "allow");
+});
+test("act_type background destrutivo -> deny (conteudo ainda avaliado)", () => {
+  const a = actionFromToolCall("act_type", { text: "format C:", mode: "background", window: "cmd" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+
+test("act_type inclui janela-alvo (window/hwnd) no padrao como string[]", () => {
+  const a = actionFromToolCall("act_type", { text: "ola", window: "Notepad", hwnd: 42 });
+  assert.deepEqual(a.pattern, ["ola", "Notepad", "42"]);
+});
+test("act_key inclui janela-alvo (window/hwnd) no padrao como string[]", () => {
+  const a = actionFromToolCall("act_key", { keys: "^c", window: "cmd", hwnd: 7 });
+  assert.deepEqual(a.pattern, ["^c", "cmd", "7"]);
+});
+test("act_type sem janela fica so com o texto", () => {
+  const a = actionFromToolCall("act_type", { text: "ola" });
+  assert.deepEqual(a.pattern, ["ola"]);
+});
+test("act_type ignora window/hwnd vazios", () => {
+  const a = actionFromToolCall("act_type", { text: "ola", window: "", hwnd: null });
+  assert.deepEqual(a.pattern, ["ola"]);
+});
