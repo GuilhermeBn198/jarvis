@@ -161,3 +161,29 @@ export function parseActResult(stdout: string): ActResult {
   }
   return { status: "error", detail: (stdout || "").trim().slice(0, 300) || "sem saida" };
 }
+
+// Decide entre o caminho foreground (Retorna "" -> o plugin usa ps.ts) e o
+// caminho background. Background so com mode="background" ou window/hwnd.
+export function chooseActScript(
+  name: "act_type" | "act_key",
+  args: Record<string, unknown>,
+): string {
+  const bg =
+    args.mode === "background" ||
+    args.window !== undefined ||
+    args.hwnd !== undefined;
+  if (name === "act_type") {
+    if (!bg) return ""; // sinaliza foreground -> o plugin usa ps.ts
+    return buildBackgroundTypeScript({
+      text: String(args.text ?? ""),
+      window: args.window === undefined ? undefined : String(args.window),
+      hwnd: args.hwnd === undefined ? undefined : Number(args.hwnd),
+    });
+  }
+  if (!bg) return "";
+  return buildBackgroundKeyScript({
+    keys: String(args.keys ?? ""),
+    window: args.window === undefined ? undefined : String(args.window),
+    hwnd: args.hwnd === undefined ? undefined : Number(args.hwnd),
+  });
+}
