@@ -142,7 +142,7 @@ while ($i -lt $keys.Length) {
       $i = $end + 1; continue
     }
   }
-  $vk = if ([char]::IsLetter($c)) { [int][char]([string]$c).ToUpper() } else { [int][char]$c }
+  $vk = if ([char]::IsLetter($c)) { [int][char]([string]$c).ToUpperInvariant() } else { [int][char]$c }
   [void]$main.Add($vk)
   $i++
 }
@@ -163,15 +163,16 @@ export function parseActResult(stdout: string): ActResult {
 }
 
 // Decide entre o caminho foreground (Retorna "" -> o plugin usa ps.ts) e o
-// caminho background. Background so com mode="background" ou window/hwnd.
+// caminho background. Background so com mode="background" ou window/hwnd —
+// ressalva: mode="foreground" explicito forca o foreground mesmo com window/hwnd.
 export function chooseActScript(
   name: "act_type" | "act_key",
   args: Record<string, unknown>,
 ): string {
+  const explicitForeground = args.mode === "foreground";
   const bg =
     args.mode === "background" ||
-    args.window !== undefined ||
-    args.hwnd !== undefined;
+    (!explicitForeground && (args.window !== undefined || args.hwnd !== undefined));
   if (name === "act_type") {
     if (!bg) return ""; // sinaliza foreground -> o plugin usa ps.ts
     return buildBackgroundTypeScript({

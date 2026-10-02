@@ -40,6 +40,7 @@ const ASK: Array<[RegExp, string]> = [
 ];
 
 // `act` cobre as tools de acao no PC (act_type/act_key/act_open/act_click).
+// `winlist` cobre a tool win_list (apenas lista janelas; so le).
 // `see` cobre a tool see_screen (so le a tela; o conteudo NAO roda tools).
 const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act", "see", "winlist"]);
 const ALLOW_CMD = [

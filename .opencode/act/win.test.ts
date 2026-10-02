@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWinListScript, parseWinList, buildBackgroundTypeScript, buildBackgroundKeyScript, parseActResult } from "./win.ts";
+import { buildWinListScript, parseWinList, buildBackgroundTypeScript, buildBackgroundKeyScript, parseActResult, chooseActScript } from "./win.ts";
 
 test("win_list script usa EnumWindows e nao rouba foco", () => {
   const s = buildWinListScript();
@@ -72,4 +72,13 @@ test("parseActResult le marcadores", () => {
   assert.equal(parseActResult("JARVIS_RESULT=unconfirmed|sem confirmacao").status, "unconfirmed");
   assert.equal(parseActResult("JARVIS_RESULT=ambiguous|[]").status, "ambiguous");
   assert.equal(parseActResult("nada").status, "error");
+});
+
+test("mode foreground explicito forca foreground mesmo com window", () => {
+  assert.equal(chooseActScript("act_type", { text: "oi", mode: "foreground", window: "Notepad" }), "");
+  assert.equal(chooseActScript("act_key", { keys: "^s", mode: "foreground" }), "");
+});
+
+test("hwnd sozinho entra em background", () => {
+  assert.match(chooseActScript("act_type", { text: "oi", hwnd: 123 }), /ValuePattern/);
 });

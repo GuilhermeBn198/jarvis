@@ -4,8 +4,8 @@ import { buildPsScript, encode } from "../act/ps.ts";
 import { buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
 
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
-// plugin. Este arquivo exporta APENAS `ActTools`; os helpers ficam em
-// `../act/ps.ts`.
+// plugin. Este arquivo exporta APENAS `ActTools`; os helpers puros ficam em
+// `../act/ps.ts` e `../act/win.ts`.
 export const ActTools: Plugin = async ({ $ }) => ({
   tool: {
     act_type: tool({
@@ -24,7 +24,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
         const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
         const r = parseActResult(out);
         if (r.status === "unconfirmed") {
-          return `${r.detail} — a janela nao aceita entrada em segundo plano. Quer que eu traga pra frente e faca? (repita com mode="foreground")`;
+          return `${r.detail} — a janela nao aceita entrada em segundo plano. Focalize a janela-alvo e repita com mode="foreground" (sem window).`;
         }
         if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
         return `${r.status}: ${r.detail}`;
