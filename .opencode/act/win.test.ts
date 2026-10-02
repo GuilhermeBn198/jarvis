@@ -54,10 +54,15 @@ test("background key usa PostMessage WM_KEYDOWN/UP e nao rouba foco", () => {
   assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|mouse_event/);
 });
 
-test("background key escapa chaves do SendKeys", () => {
-  const s = buildBackgroundKeyScript({ keys: "{ENTER}" });
-  assert.ok(s.includes("'"));
-  assert.ok(s.includes("{ENTER}"));
+test("background key escapa aspas simples em keys", () => {
+  const s = buildBackgroundKeyScript({ keys: "it's" });
+  assert.ok(s.includes("it''s"));
+});
+
+test("background key normaliza letras para VK maiusculo", () => {
+  const s = buildBackgroundKeyScript({ keys: "^s" });
+  assert.match(s, /IsLetter/);
+  assert.match(s, /ToUpper/);
 });
 
 test("parseActResult le marcadores", () => {

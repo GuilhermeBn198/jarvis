@@ -142,12 +142,13 @@ while ($i -lt $keys.Length) {
       $i = $end + 1; continue
     }
   }
-  [void]$main.Add([int][char]$c)
+  $vk = if ([char]::IsLetter($c)) { [int][char]([string]$c).ToUpper() } else { [int][char]$c }
+  [void]$main.Add($vk)
   $i++
 }
 foreach ($vk in $mods) { [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]::Zero) }
 foreach ($vk in $main) { [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]::Zero); [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$vk, [IntPtr]::Zero) }
-[array]::Reverse($mods)
+$mods.Reverse()
 foreach ($vk in $mods) { [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$vk, [IntPtr]::Zero) }
 Write-Output 'JARVIS_RESULT=unconfirmed|teclas enviadas (verificacao indisponivel)'
 `;
