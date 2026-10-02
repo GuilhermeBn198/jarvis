@@ -110,13 +110,14 @@ if (-not $ok) {
   foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($h, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
 }
 $got = ''
-try { if ($edit) { $got = [string]$edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value } } catch {}
-if (-not $got) {
-  $sb = New-Object System.Text.StringBuilder 8192
-  [void][W.Win]::GetWindowTextW($h, $sb, 8192)
-  $got = $sb.ToString()
-}
-if ($got -and $got.Contains($text)) { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
+$uiaRead = $false
+try {
+  if ($edit) {
+    $got = [string]$edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value
+    $uiaRead = $true
+  }
+} catch { $uiaRead = $false }
+if ($uiaRead -and $text -and $got.Contains($text)) { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
 else { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
 `;
 }

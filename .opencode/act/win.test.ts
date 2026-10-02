@@ -33,6 +33,13 @@ test("background type usa UIA ValuePattern e fallback PostMessage", () => {
   assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|mouse_event/);
 });
 
+test("background type so confirma via UIA (nao usa caption do top-level)", () => {
+  const s = buildBackgroundTypeScript({ text: "oi", window: "Notepad" });
+  assert.match(s, /\$uiaRead/);
+  assert.match(s, /if \(\$uiaRead -and \$text -and \$got\.Contains\(\$text\)\)/);
+  assert.doesNotMatch(s, /GetWindowTextW\(\$h, \$sb, 8192\)/);
+});
+
 test("background type escapa aspas simples do texto", () => {
   const s = buildBackgroundTypeScript({ text: "it's" });
   assert.ok(s.includes("it''s"));
