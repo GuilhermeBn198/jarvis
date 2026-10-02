@@ -37,6 +37,7 @@ export function actionFromToolCall(
   if (tool === "act_open") return { type: "act", pattern: String(a.target ?? "") };
   if (tool === "act_click") return { type: "act", pattern: `${a.x},${a.y}` };
   if (tool === "see_screen") return { type: "see" };
+  if (tool === "win_list") return { type: "winlist" };
   return { type: tool };
 }
 

@@ -1,6 +1,7 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
 import { buildPsScript, encode } from "../act/ps.ts";
+import { buildWinListScript } from "../act/win.ts";
 
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
 // plugin. Este arquivo exporta APENAS `ActTools`; os helpers ficam em
@@ -33,6 +34,13 @@ export const ActTools: Plugin = async ({ $ }) => ({
       args: { x: tool.schema.number(), y: tool.schema.number(), button: tool.schema.string().optional() },
       async execute(args) {
         return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
+      },
+    }),
+    win_list: tool({
+      description: "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
+      args: {},
+      async execute() {
+        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
       },
     }),
   },

@@ -1,7 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildPsScript, encode } from "../act/ps.ts";
+import { buildWinListScript } from "../act/win.ts";
 import { ActTools } from "./act-tools.ts";
+
+test("win_list script builder disponivel", () => {
+  assert.match(buildWinListScript(), /EnumWindows/);
+});
 
 test("act_type script uses SendKeys with escaping", () => {
   const s = buildPsScript("act_type", { text: "a+b(c)" });

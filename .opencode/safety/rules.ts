@@ -41,7 +41,7 @@ const ASK: Array<[RegExp, string]> = [
 
 // `act` cobre as tools de acao no PC (act_type/act_key/act_open/act_click).
 // `see` cobre a tool see_screen (so le a tela; o conteudo NAO roda tools).
-const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act", "see"]);
+const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act", "see", "winlist"]);
 const ALLOW_CMD = [
   /^\s*git\s+(status|diff|log|show)(\s|$)/,
   /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,

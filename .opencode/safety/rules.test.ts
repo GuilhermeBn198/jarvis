@@ -179,3 +179,8 @@ test("allow: act_type benigno nao casa regra Windows", () => {
   const a = actionFromToolCall("act_type", { text: "ola mundo" });
   assert.equal(decide({ ...a }).status, "allow");
 });
+
+test("win_list -> allow (leitura)", () => {
+  const a = actionFromToolCall("win_list", {});
+  assert.equal(decide({ ...a }).status, "allow");
+});
