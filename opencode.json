@@ -26,6 +26,7 @@
         "act_key": "allow",
         "act_open": "allow",
         "act_click": "allow",
+        "win_list": "allow",
         "see_screen": "allow"
       }
     },
