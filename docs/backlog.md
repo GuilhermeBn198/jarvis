@@ -59,3 +59,17 @@ Itens registrados para atacar depois, com contexto.
 
 **Fases:** v1 = **overlay/orbe + SSE** → FEITO (spec `docs/superpowers/specs/2026-09-28-jarvis-state-indicator-design.md`, plano `docs/superpowers/plans/2026-09-28-jarvis-state-indicator.md`; GUI em `gui/`) → v2 = reativo ao áudio → v3 = avatar animado.
 TODO - Ver contexto dos programas abertos no Windows: listar janelas ativas e capturar o conteudo de cada uma, nao so a janela em foco. Ja da para listar via Get-Process MainWindowTitle. Falta capturar o conteudo e expor como ferramenta do agente.
+
+## 7. Experiência no Windows — iniciativa em 3 sub-projetos (2026-10-01)
+Dor: (1) o Jarvis só age na **janela em foco** (bloqueia o usuário); (2) para "ver" a tela ele **sempre tira print** (custo de tokens); (3) editar arquivos do Windows acabou sendo feito **digitando em terminal, às cegas** (fora do escopo de `edit`/`write`, que ficam na raiz do repo).
+Ordem e relação: **A → B → C**, com um alicerce comum (descoberta de janelas / HWND).
+
+### 7.A — Ações Windows não intrusivas (background) — EM DESIGN
+Spec: `docs/superpowers/specs/2026-10-01-jarvis-windows-background-actions-design.md`.
+Resumo: `win_list` (título/processo/HWND); `act_type`/`act_key` com modo **background** opt-in (foreground segue padrão); injeção híbrida UIA `ValuePattern` → fallback `PostMessage`; resolve alvo por título/processo (ambíguo ⇒ candidatos); **verifica e pede consentimento** se a janela ignorar background (nunca rouba foco). Não-objetivo: clicar por elemento (v2).
+
+### 7.B — Contexto do Windows via MCP (texto, não imagem) — BACKLOG
+Tool MCP que devolve **texto** (árvore UIA da janela, lista de janelas, clipboard, processos) em vez de PNG, cortando tokens do `see_screen`. **Reusa o `win_list` de A.** `see_screen` vira fallback para quando UIA não expõe texto (jogos, canvas, imagem). Absorve o TODO acima.
+
+### 7.C — Arquivos do Windows estruturados — BACKLOG
+Fim do "terminal com insert às cegas": (c1) expandir escopo de `edit`/`write` para `/mnt/c/...` com regra de segurança, ou (c2) tool dedicada `win_read`/`win_write`. Contexto: o cérebro (WSL) já alcança `/mnt/c`, mas as tools ficam escopadas na raiz do projeto; fontes do overlay em `C:\Users\bguil\jarvis-gui` ficam fora. Decidir risco de escrita fora do repo antes de implementar.
