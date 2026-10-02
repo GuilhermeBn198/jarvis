@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWinListScript, parseWinList, buildBackgroundTypeScript, parseActResult } from "./win.ts";
+import { buildWinListScript, parseWinList, buildBackgroundTypeScript, buildBackgroundKeyScript, parseActResult } from "./win.ts";
 
 test("win_list script usa EnumWindows e nao rouba foco", () => {
   const s = buildWinListScript();
@@ -43,6 +43,21 @@ test("background type so confirma via UIA (nao usa caption do top-level)", () =>
 test("background type escapa aspas simples do texto", () => {
   const s = buildBackgroundTypeScript({ text: "it's" });
   assert.ok(s.includes("it''s"));
+});
+
+test("background key usa PostMessage WM_KEYDOWN/UP e nao rouba foco", () => {
+  const s = buildBackgroundKeyScript({ keys: "^s", window: "Notepad" });
+  assert.match(s, /0x0100/);
+  assert.match(s, /0x0101/);
+  assert.match(s, /PostMessageW/);
+  assert.match(s, /Resolve-JarvisTarget/);
+  assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|mouse_event/);
+});
+
+test("background key escapa chaves do SendKeys", () => {
+  const s = buildBackgroundKeyScript({ keys: "{ENTER}" });
+  assert.ok(s.includes("'"));
+  assert.ok(s.includes("{ENTER}"));
 });
 
 test("parseActResult le marcadores", () => {

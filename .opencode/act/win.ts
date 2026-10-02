@@ -122,6 +122,37 @@ else { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
 `;
 }
 
+export function buildBackgroundKeyScript(a: { keys: string; window?: string; hwnd?: number }): string {
+  const keys = psQuote(String(a.keys ?? ""));
+  return `${WIN32_SNIPPET}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
+$keys = '${keys}'
+$map = @{ 'ENTER'=0x0D; 'TAB'=0x09; 'ESC'=0x1B; 'BACKSPACE'=0x08; 'DELETE'=0x2E; 'SPACE'=0x20; 'UP'=0x26; 'DOWN'=0x28; 'LEFT'=0x25; 'RIGHT'=0x27; 'HOME'=0x24; 'END'=0x23; 'F1'=0x70; 'F2'=0x71; 'F3'=0x72; 'F4'=0x73; 'F5'=0x74; 'F6'=0x75; 'F7'=0x76; 'F8'=0x77; 'F9'=0x78; 'F10'=0x79; 'F11'=0x7A; 'F12'=0x7B }
+$MOD = @{ '^'=0x11; '%'=0x12; '+'=0x10 }
+$mods = New-Object System.Collections.ArrayList
+$main = New-Object System.Collections.ArrayList
+$i = 0
+while ($i -lt $keys.Length) {
+  $c = $keys[$i]
+  if ($MOD.ContainsKey([string]$c)) { [void]$mods.Add($MOD[[string]$c]); $i++; continue }
+  if ($c -eq '{') {
+    $end = $keys.IndexOf('}', $i)
+    if ($end -gt $i) {
+      $name = $keys.Substring($i+1, $end-$i-1).ToUpper()
+      if ($map.ContainsKey($name)) { [void]$main.Add($map[$name]) }
+      $i = $end + 1; continue
+    }
+  }
+  [void]$main.Add([int][char]$c)
+  $i++
+}
+foreach ($vk in $mods) { [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]::Zero) }
+foreach ($vk in $main) { [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]::Zero); [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$vk, [IntPtr]::Zero) }
+[array]::Reverse($mods)
+foreach ($vk in $mods) { [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$vk, [IntPtr]::Zero) }
+Write-Output 'JARVIS_RESULT=unconfirmed|teclas enviadas (verificacao indisponivel)'
+`;
+}
+
 export function parseActResult(stdout: string): ActResult {
   for (const line of stdout.split(/\r?\n/)) {
     const m = line.trim().match(/^JARVIS_RESULT=(confirmed|unconfirmed|ambiguous|error)\|(.*)$/);
