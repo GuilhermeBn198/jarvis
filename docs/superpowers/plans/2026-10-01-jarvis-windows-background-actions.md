@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Foreground permanece o padrão.** Background só quando `mode === "background"` ou `window`/`hwnd` forem informados.
+- **Foreground permanece o padrão.** Background só quando `mode === "background"` ou `window`/`hwnd` forem informados, com a ressalva de que `mode="foreground"` explicito força o caminho foreground mesmo se window/hwnd vierem.
 - **Background NUNCA chama `SetForegroundWindow`, `SetCursorPos` nem `mouse_event`.** (Invariante testável.)
 - **Sem troca automática de foco.** Quando não confirmado, a tool devolve uma mensagem pedindo consentimento; o agente então repete com `mode:"foreground"`.
 - **SafetyGate reusado.** Nenhuma regra de segurança nova; só mapear `text`/`keys`/`window`/`hwnd` para o padrão analisado.

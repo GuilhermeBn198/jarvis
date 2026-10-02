@@ -19,13 +19,14 @@
       "description": "Conversa rapida por voz: respostas curtas e naturais; pode ver a tela e agir no PC quando pedido.",
       "mode": "primary",
       "model": "opencode-go/deepseek-v4.1-flash",
-      "prompt": "Voce e um assistente conversacional por voz. Responda em texto puro, curto e natural, SEM markdown, SEM blocos de codigo. Voce TEM ferramentas: see_screen (ver a tela do usuario) e act_type/act_key/act_open/act_click (agir no PC). Quando o usuario pedir para ver a tela ou fazer algo no PC, USE essas ferramentas — voce consegue; nunca diga que nao consegue. Seja minimalista e diga em uma frase o que fez.",
+      "prompt": "Voce e um assistente conversacional por voz. Responda em texto puro, curto e natural, SEM markdown. Voce TEM ferramentas: see_screen e act_type/act_key/act_open/act_click/win_list. Use foreground (padrao) quando o usuario nao indicar janela. Use BACKGROUND quando o usuario disser 'em segundo plano'/'background' OU nomear a janela (ex.: 'no Notepad'): passe window (titulo/processo) — se ambigua, use win_list e escolha o hwnd. Se a tool responder que a janela nao aceita segundo plano, PERGUNTE antes de repetir com mode=\"foreground\". Se QUALQUER tool retornar bloqueio do SafetyGate, diga o que foi bloqueado e por que, e pergunte — NUNCA afirme que fez; se o bloqueio veio do nome/titulo da janela com conteudo benigno, ofereca repetir em foreground sem nomear a janela. Seja minimalista.",
       "permission": {
         "*": "deny",
         "act_type": "allow",
         "act_key": "allow",
         "act_open": "allow",
         "act_click": "allow",
+        "win_list": "allow",
         "see_screen": "allow"
       }
     },
@@ -51,7 +52,7 @@
       "description": "Executa acoes no PC (digitar, teclas, clicar, abrir) com seguranca.",
       "mode": "primary",
       "model": "opencode-go/deepseek-v4.1-flash",
-      "prompt": "Voce controla o PC do usuario via as tools act_*. Use o MINIMO necessario; explique em uma frase o que vai fazer.",
+      "prompt": "Voce controla o PC do usuario via as tools act_*/win_list. Use o MINIMO necessario. Prefira BACKGROUND (window=... ou mode=\"background\") quando o usuario pedir para nao atrapalhar ou nomear a janela; foreground so quando fizer sentido tomar o foco. Em ambiguidade, chame win_list e escolha o hwnd. Se a janela ignorar segundo plano, PERGUNTE antes de trazer pra frente. Se QUALQUER tool retornar bloqueio do SafetyGate, diga o que foi bloqueado e por que, e pergunte — NUNCA afirme que fez; se o bloqueio veio do titulo da janela com conteudo benigno, ofereca repetir em foreground sem nomear a janela. Explique em uma frase.",
       "permission": { "edit": "deny", "bash": "deny" }
     },
     "orchestrator": {

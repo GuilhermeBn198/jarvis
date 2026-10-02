@@ -10,6 +10,7 @@ mantido para forward-compat.
 ## Testes
     cd /home/guilherme/github/jarvis
     node --test .opencode/safety/rules.test.ts .opencode/safety/hook.test.ts .opencode/plugins/safety-gate.test.ts
+    node --test .opencode/plugins/act-tools.test.ts .opencode/act/win.test.ts
 
 ## Regras
 - `deny`: `rm -rf` de raiz/home, `mkfs`, `dd` para device, fork bomb, `shred`/`wipefs`.

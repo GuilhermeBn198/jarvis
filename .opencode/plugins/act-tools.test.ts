@@ -1,7 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildPsScript, encode } from "../act/ps.ts";
+import { buildWinListScript, chooseActScript } from "../act/win.ts";
 import { ActTools } from "./act-tools.ts";
+
+test("win_list script builder disponivel", () => {
+  assert.match(buildWinListScript(), /EnumWindows/);
+});
 
 test("act_type script uses SendKeys with escaping", () => {
   const s = buildPsScript("act_type", { text: "a+b(c)" });
@@ -21,4 +26,15 @@ test("encode is utf16le base64", () => {
 });
 test("plugin exports only the factory", () => {
   assert.equal(typeof ActTools, "function");
+});
+
+test("mode ausente -> foreground (sem script de background)", () => {
+  assert.equal(chooseActScript("act_type", { text: "oi" }), "");
+});
+test("window informado -> script background (UIA)", () => {
+  const s = chooseActScript("act_type", { text: "oi", window: "Notepad" });
+  assert.match(s, /ValuePattern/);
+});
+test("mode background explicito -> background mesmo sem janela", () => {
+  assert.match(chooseActScript("act_key", { keys: "^s", mode: "background" }), /PostMessageW/);
 });
