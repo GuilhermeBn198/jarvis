@@ -251,7 +251,7 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 | `JARVIS_REQUIRE_GUI` | `false` | anti-órfão: encerra o loop se o overlay sumir |
 | `VOICE_LOG` | `~/.local/share/jarvis/voice-log.jsonl` | log dos turnos (JSONL) |
 
-Detalhes e a lista completa: `voice/README.md`.
+Detalhes e a lista completa: [`voice/README.md`](voice/README.md).
 
 ---
 
@@ -284,7 +284,7 @@ Roadmap "sempre ligado" (issues no GitHub):
 | 7 | Roteamento determinístico nuvem↔local (proxy/LiteLLM) | — |
 | 8 | Classificador aprendido para roteamento | — |
 
-Backlog detalhado: `docs/backlog.md`.
+Backlog detalhado: [`docs/backlog.md`](docs/backlog.md).
 
 ---
 
@@ -336,6 +336,8 @@ pytest -q
 - **Voz (detalhes de env, modos e dependências)**: `voice/README.md`
 
 Histórico de fases: inferência/roteamento (Fase 1), delegação local (2a), SafetyGate (2b), ponte de texto (C1), voz TTS/STT (C2/C3), visão de tela (D), ações no PC (E), indicador de estado e streaming de TTS.
+
+Projeto irmão e inspirações: [Coucou](https://github.com/Louis-CFM/coucou) (companheiro de agentes no notch/bandeja).
 
 ---
 
