@@ -60,6 +60,19 @@ test("background type roda a UIA num job com timeout e trata estouro como unconf
   assert.match(s, /JARVIS_RESULT=unconfirmed\|UIA timeout/);
 });
 
+test("background type suporta append (I2) e WM_CHAR no controle (I3)", () => {
+  const ins = buildBackgroundTypeScript({ text: "oi", hwnd: 42 });
+  const app = buildBackgroundTypeScript({ text: "oi", hwnd: 42, append: true });
+  // I2: append concatena com o valor atual; default substitui (flag distingue).
+  assert.match(app, /\$append = \$true/);
+  assert.doesNotMatch(ins, /\$append = \$true/);
+  assert.match(ins, /\$append = \$false/);
+  assert.match(ins, /\$vp\.Current\.Value \+ \$text/);
+  // I3: fallback WM_CHAR mira o handle nativo do controle, nao so o topo.
+  assert.match(ins, /NativeWindowHandle/);
+  assert.match(ins, /0x0102/);
+});
+
 test("background type escapa aspas simples do texto", () => {
   const s = buildBackgroundTypeScript({ text: "it's" });
   assert.ok(s.includes("it''s"));
