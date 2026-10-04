@@ -71,13 +71,15 @@ Verificação automática (read-only) do `win_list` real passou em 2026-10-01: `
 
 **Verificação E2E parcial (2026-10-04):** rodada numa sessão Windows real (Notepad moderno/WinUI). Achou e corrigiu um **bug**: o editor do Notepad novo é `ControlType.Document` (classe `RichEditD2DPT`), não `ControlType.Edit`; o script procurava só `Edit` e caía no fallback inerte (`[I3]`), retornando `unconfirmed`. Agora procura `Document` antes de `Edit` e a injeção em background retorna **`confirmed`** com o texto entrando de fato. O invariante de código (script de background sem `SetForegroundWindow`/`SetCursorPos`/`mouse_event`) segue coberto por teste. **Ressalva:** a medição de foco/cursor ficou inconclusiva — a máquina estava em uso em paralelo (foco e cursor mudando entre leituras), então a garantia "foco/cursor intactos" ainda não foi provada E2E; falta repetir numa sessão ociosa.
 
-**Pendências do review final (diferidas, não bloqueiam o merge):**
-- **[I1] Timeout na UIA** (spec §4 pedia ~3–5s): hoje `AutomationElement.FromHandle`/`FindFirst`/`SetValue` não têm timeout — uma janela travada pode bloquear a tool. Envolver o bloco UIA em job com `Wait-Job -Timeout` e tratar como `unconfirmed`. Não implementado por não ser validável em host real nesta rodada.
-- **[I3] Fallback `WM_CHAR`** posta no HWND de topo (não no controle de edição): quase inerte; errar para `unconfirmed` é seguro. Documentado no README.
-- **[I2] `ValuePattern.SetValue`** substitui o valor do campo (não insere no cursor) — documentado no README; verificar se vale uma variante "append".
+**Pendências do review final — RESOLVIDAS (2026-10-04):**
+- **[I1] Timeout na UIA** — FEITO: a UIA roda num job com `Wait-Job -Timeout 5`; estouro vira `unconfirmed|UIA timeout`. Cobre `AutomationElement.FromHandle`/`FindFirst`/`SetValue`.
+- **[I3] Fallback `WM_CHAR`** — FEITO: o fallback agora mira o **handle nativo do controle** (`NativeWindowHandle` do Document/Edit), não o HWND de topo.
+- **[I2] `ValuePattern.SetValue`** — FEITO: `act_type` ganhou `append=true` (concatena ao valor atual); default segue substituindo.
 
-### 7.B — Contexto do Windows via MCP (texto, não imagem) — BACKLOG
-Tool MCP que devolve **texto** (árvore UIA da janela, lista de janelas, clipboard, processos) em vez de PNG, cortando tokens do `see_screen`. **Reusa o `win_list` de A.** `see_screen` vira fallback para quando UIA não expõe texto (jogos, canvas, imagem). Absorve o TODO acima.
+**E2E desta rodada (2026-10-04):** injeção em background confirmada de verdade no Notepad moderno (`confirmed|digitado`); `insert` gravou `AAA` e `append` resultou `AAABBB` (lido do UIA). **Limitação de medição:** a sessão `powershell.exe` do WSL é **não-interativa** — `GetForegroundWindow()` retorna 0 e `GetCursorPos()` retorna 0,0, então foco/cursor **não são mensuráveis** por aqui. A garantia de "não roubar foco/cursor" fica por conta do invariante de código (sem `SetForegroundWindow`/`SetCursorPos`/`mouse_event`, coberto por teste) — a medição E2E exige sessão interativa (issue #9 continua aberta com essa ressalva).
+
+### 7.B — Contexto do Windows via MCP (texto, não imagem) — FEITO (2026-10-04)
+MCP `mcp_servers/win_context`: `win_list_text` (janelas), `win_tree_text(hwnd, max_nodes)` (árvore UIA), `win_clipboard_text`, `win_processes_text(filter)`. Reusa a descoberta de janelas do `win_list`. Registrado em `opencode.json`. `see_screen` vira fallback para o que a UIA não expõe (Electron/jogos/canvas — verificado: VS Code devolve árvore vazia).
 
 ### 7.C — Arquivos do Windows estruturados — BACKLOG
 Fim do "terminal com insert às cegas": (c1) expandir escopo de `edit`/`write` para `/mnt/c/...` com regra de segurança, ou (c2) tool dedicada `win_read`/`win_write`. Contexto: o cérebro (WSL) já alcança `/mnt/c`, mas as tools ficam escopadas na raiz do projeto; fontes do overlay em `C:\Users\<voce>\jarvis-gui` ficam fora. Decidir risco de escrita fora do repo antes de implementar.

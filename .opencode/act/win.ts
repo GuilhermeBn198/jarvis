@@ -90,39 +90,59 @@ $h = [IntPtr]$cands[0].hwnd
 `;
 }
 
-export function buildBackgroundTypeScript(a: { text: string; window?: string; hwnd?: number }): string {
+export function buildBackgroundTypeScript(a: { text: string; window?: string; hwnd?: number; append?: boolean }): string {
   const text = psQuote(String(a.text ?? ""));
+  const append = a.append === true;
   return `${WIN32_SNIPPET}${UIA_SETUP}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
 $text = '${text}'
-$edit = $null
-$ok = $false
-try {
-  $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
+$append = ${append ? "$true" : "$false"}
+# Janela travada nao pode bloquear a tool: a UIA roda num job com timeout (#8).
+# Estouro do timeout vira 'unconfirmed' (seguro), nunca afirma sucesso.
+$job = Start-Job -ScriptBlock {
+  param($hwnd, $text, $append)
+  Add-Type -AssemblyName UIAutomationClient
+  Add-Type -AssemblyName UIAutomationTypes
+  $root = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$hwnd)
   $edit = $null
   foreach ($ct in @([System.Windows.Automation.ControlType]::Document, [System.Windows.Automation.ControlType]::Edit)) {
     $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ct)
     $cand = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
     if ($cand) { $edit = $cand; break }
   }
-  if ($edit) {
+  if (-not $edit) { return @('noset', 0) }
+  # Handle nativo do controle de edicao (para o fallback WM_CHAR, I3).
+  $native = 0
+  try { $native = [int64]$edit.Current.NativeWindowHandle } catch { $native = 0 }
+  try {
     $vp = $edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
-    $vp.SetValue($text)
-    $ok = $true
-  }
-} catch { $ok = $false }
-if (-not $ok) {
-  foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($h, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
-}
-$got = ''
-$uiaRead = $false
-try {
-  if ($edit) {
+    # I2: append concatena com o valor atual; default substitui.
+    if ($append) { $vp.SetValue([string]$vp.Current.Value + $text) } else { $vp.SetValue($text) }
+  } catch { return @('noset', $native) }
+  try {
     $got = [string]$edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value
-    $uiaRead = $true
-  }
-} catch { $uiaRead = $false }
-if ($uiaRead -and $text -and $got.Contains($text)) { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
-else { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
+    if ($text -and $got.Contains($text)) { return @('confirmed', $native) }
+  } catch { }
+  return @('set', $native)
+} -ArgumentList ([int]$h), $text, $append
+$done = Wait-Job $job -Timeout 5
+if (-not $done) {
+  Stop-Job $job -ErrorAction SilentlyContinue
+  Remove-Job $job -Force -ErrorAction SilentlyContinue
+  Write-Output 'JARVIS_RESULT=unconfirmed|UIA timeout (janela nao respondeu em 5s)'
+  exit 0
+}
+$res = @(Receive-Job $job)
+Remove-Job $job -Force -ErrorAction SilentlyContinue
+$state = $res[0]
+$native = if ($res.Count -gt 1) { [int64]$res[1] } else { 0 }
+if ($state -eq 'confirmed') { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
+elseif ($state -eq 'set') { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
+else {
+  # Sem ValuePattern: fallback WM_CHAR no controle de edicao (I3), senao no topo.
+  $hTarget = if ($native -gt 0) { [IntPtr]$native } else { [IntPtr]$h }
+  foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($hTarget, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
+  Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao (fallback WM_CHAR)'
+}
 `;
 }
 
@@ -183,6 +203,7 @@ export function chooseActScript(
       text: String(args.text ?? ""),
       window: args.window === undefined ? undefined : String(args.window),
       hwnd: args.hwnd === undefined ? undefined : Number(args.hwnd),
+      append: args.append === true,
     });
   }
   if (!bg) return "";

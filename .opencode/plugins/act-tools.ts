@@ -9,12 +9,13 @@ import { buildWinListScript, chooseActScript, parseActResult } from "../act/win.
 export const ActTools: Plugin = async ({ $ }) => ({
   tool: {
     act_type: tool({
-      description: "Digita um texto. Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: injeta na janela-alvo sem roubar foco.",
+      description: "Digita um texto. Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: injeta na janela-alvo sem roubar foco. append=true concatena ao conteudo atual (default substitui).",
       args: {
         text: tool.schema.string(),
         mode: tool.schema.string().optional(),
         window: tool.schema.string().optional(),
         hwnd: tool.schema.number().optional(),
+        append: tool.schema.boolean().optional(),
       },
       async execute(args) {
         const bg = chooseActScript("act_type", args);
