@@ -69,6 +69,11 @@
       "environment": {
         "OLLAMA_HOST": "{env:OLLAMA_HOST}"
       }
+    },
+    "win_context": {
+      "type": "local",
+      "command": ["mcp_servers/win_context/.venv/bin/python", "mcp_servers/win_context/server.py"],
+      "enabled": true
     }
   }
 }
