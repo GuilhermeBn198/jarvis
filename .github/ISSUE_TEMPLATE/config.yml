@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Segurança
+    url: https://github.com/GuilhermeBn198/jarvis/security/advisories/new
+    about: Reporte vulnerabilidades em privado (não abra issue pública).
+  - name: Como contribuir
+    url: https://github.com/GuilhermeBn198/jarvis/blob/main/CONTRIBUTING.md
+    about: Regras de contribuição; a main é protegida e só recebe PR.
