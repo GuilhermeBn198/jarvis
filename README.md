@@ -113,6 +113,17 @@ opencode --version          # ou defina OPENCODE_BIN
 opencode serve --port 4096 &   # opcional: o loop sobe sozinho se precisar
 ```
 
+### 1b. Executável standalone (zipapp, opcional)
+
+Para não depender do comando Python, empacote o cérebro num zipapp:
+
+```bash
+./scripts/build-pyz.sh          # gera dist/jarvis.pyz (~100 KB)
+voice/.venv/bin/python dist/jarvis.pyz --voice   # roda o loop direto
+```
+
+O `jarvis.pyz` **não** embute as dependências pesadas (faster-whisper etc.): ele roda com o Python/venv que já as tenha. É o ponto de entrada "sem ativar venv"; o overlay (`gui/`) e o launcher `./jarvis` continuam funcionando.
+
 ### 2. Binários no Windows (áudio/voz)
 
 Baixe e aponte (ou ajuste os env se os seus caminhos diferirem):
