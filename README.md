@@ -49,6 +49,7 @@ Divisão de responsabilidades:
 - **Vários agentes** (`opencode.json`): `chat` (conversa rápida; tem `see_screen` e `act_*`), `act` (ações), `orchestrator` (tarefas pesadas) e `local-executor` (sub-tarefas baratas no modelo local via Ollama).
 - **Delegação ao modelo local** (GPU) via MCP `delegate_local` (opcional).
 - **Contexto do Windows em texto** via MCP `win_context`: janelas, árvore de acessibilidade (UIA), clipboard e processos como texto — corta o custo de tokens do `see_screen`, que fica como fallback para o que a UIA não expõe (Electron, jogos, canvas).
+- **Arquivos do Windows estruturados** (`win_read`/`win_write`): lê e escreve arquivos em `/mnt/c/...` sem abrir editor/terminal. Escrita exige `confirm=true` e caminho dentro da allowlist `JARVIS_WIN_ALLOW_WRITE` (default vazio); destrutivo/credencial seguem bloqueados pelo SafetyGate.
 
 ---
 
