@@ -8,7 +8,7 @@ No runtime opencode 1.17.18 o hook `permission.ask` **não é despachado**; o ga
 mantido para forward-compat.
 
 ## Testes
-    cd /home/guilherme/github/jarvis
+    cd /caminho/para/jarvis
     node --test .opencode/safety/rules.test.ts .opencode/safety/hook.test.ts .opencode/plugins/safety-gate.test.ts
     node --test .opencode/plugins/act-tools.test.ts .opencode/act/win.test.ts
 

@@ -1,7 +1,25 @@
+# Superpowers (ferramenta interna)
 .superpowers/
+
+# Python
+.venv/
 mcp_servers/delegate_local/.venv/
-mcp_servers/delegate_local/**/__pycache__/
+**/__pycache__/
 .pytest_cache/
+**/.pytest_cache/
+
+# Node / Tauri
 .opencode/node_modules/
-voice/.venv/
-voice/**/__pycache__/
+node_modules/
+target/
+
+# Segredos e configs locais (nunca versionar)
+.env
+.env.*
+local.conf
+*.log
+settings.json
+jarvis-config.json
+
+# Notas internas (não publicar)
+docs/research/

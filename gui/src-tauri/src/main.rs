@@ -9,7 +9,7 @@ use tauri::Manager;
 //   2) `jarvis-config.json` ao lado do executavel (loop_cmd / distro).
 const DEFAULT_LOOP_CMD: &str = match option_env!("JARVIS_LOOP_CMD") {
     Some(cmd) => cmd,
-    None => "JARVIS_REQUIRE_GUI=1 /home/guilherme/github/jarvis/jarvis --voice",
+    None => "JARVIS_REQUIRE_GUI=1 ~/github/jarvis/jarvis --voice",
 };
 
 /// Handle do processo `wsl.exe` que roda o cerebro.

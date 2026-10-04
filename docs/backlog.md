@@ -78,4 +78,4 @@ Verificação automática (read-only) do `win_list` real passou em 2026-10-01: `
 Tool MCP que devolve **texto** (árvore UIA da janela, lista de janelas, clipboard, processos) em vez de PNG, cortando tokens do `see_screen`. **Reusa o `win_list` de A.** `see_screen` vira fallback para quando UIA não expõe texto (jogos, canvas, imagem). Absorve o TODO acima.
 
 ### 7.C — Arquivos do Windows estruturados — BACKLOG
-Fim do "terminal com insert às cegas": (c1) expandir escopo de `edit`/`write` para `/mnt/c/...` com regra de segurança, ou (c2) tool dedicada `win_read`/`win_write`. Contexto: o cérebro (WSL) já alcança `/mnt/c`, mas as tools ficam escopadas na raiz do projeto; fontes do overlay em `C:\Users\bguil\jarvis-gui` ficam fora. Decidir risco de escrita fora do repo antes de implementar.
+Fim do "terminal com insert às cegas": (c1) expandir escopo de `edit`/`write` para `/mnt/c/...` com regra de segurança, ou (c2) tool dedicada `win_read`/`win_write`. Contexto: o cérebro (WSL) já alcança `/mnt/c`, mas as tools ficam escopadas na raiz do projeto; fontes do overlay em `C:\Users\<voce>\jarvis-gui` ficam fora. Decidir risco de escrita fora do repo antes de implementar.

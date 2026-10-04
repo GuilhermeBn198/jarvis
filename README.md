@@ -20,12 +20,13 @@ Assistente pessoal por voz, **sempre ligado**, que roda no seu PC: o "cérebro" 
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Testes](#testes)
 - [Documentação](#documentação)
+- [Licença](#licença)
 
 ---
 
 ## O que é
 
-O Jarvis é um loop de voz local: **microfone → transcrição (STT) → agente (LLM) → fala (TTS)**, com modos especiais para **ver a tela** e **agir no PC**. O agente é o [`opencode`](https://opencode.ai) (via `serve`, em modo tool-free para a conversa), e o loop orquestra tudo.
+O Jarvis é um loop de voz local: **microfone → transcrição (STT) → agente (LLM) → fala (TTS)**, com modos especiais para **ver a tela** e **agir no PC**. O agente é o [`opencode`](https://opencode.ai) (via `serve`): a conversa usa o agente `chat`, que tem as tools `see_screen` e `act_*`, e o loop orquestra captura, STT, agente e TTS.
 
 Divisão de responsabilidades:
 
@@ -45,7 +46,7 @@ Divisão de responsabilidades:
 - **Indicador visual de estado** (overlay Tauri): um **orbe** sempre-no-topo, com cor e animação por estado — `idle`, `listening`, `transcribing`, `thinking`, `speaking`, `acting`, `error`. Clicável (menu: Mudo / Pausar / Iniciar|Reiniciar cérebro / Sair) e arrastável.
 - **Comandos pelo overlay**: `mute` (silencia), `pause` (não capta novos turnos) e `quit` (encerra o loop), além de subir o cérebro no WSL.
 - **Bridge de texto** (stdin → agente → stdout), útil para scripts e testes.
-- **Vários agentes** (`opencode.json`): `chat` (conversa rápida, sem ferramentas), `act` (ações), `orchestrator` (tarefas pesadas) e `local-executor` (sub-tarefas baratas no modelo local via Ollama).
+- **Vários agentes** (`opencode.json`): `chat` (conversa rápida; tem `see_screen` e `act_*`), `act` (ações), `orchestrator` (tarefas pesadas) e `local-executor` (sub-tarefas baratas no modelo local via Ollama).
 - **Delegação ao modelo local** (GPU) via MCP `delegate_local` (opcional).
 
 ---
@@ -79,8 +80,8 @@ Divisão de responsabilidades:
 - **`faster-whisper`** (instalado via `requirements.txt`; baixa o modelo na 1ª transcrição).
 
 **Windows (caminhos default em `voice/config.py`, sobrescrevíveis por env):**
-- **`ffmpeg.exe`** — captura do microfone (`dshow`). Default: `/mnt/c/Users/bguil/tools/ffmpeg/.../ffmpeg.exe`.
-- **`piper.exe`** + voz `.onnx` — TTS. Default: `/mnt/c/Users/bguil/tools/piper/...`.
+- **`ffmpeg.exe`** — captura do microfone (`dshow`). Default no código: `/mnt/c/Users/<seu-usuario>/tools/ffmpeg/.../ffmpeg.exe` (ajuste por `FFMPEG_EXE`).
+- **`piper.exe`** + voz `.onnx` — TTS. Default no código: `/mnt/c/Users/<seu-usuario>/tools/piper/...` (ajuste por `PIPER_EXE`/`PIPER_MODEL`).
 - **`ffplay.exe`** — reprodução do WAV do piper.
 - **`powershell.exe`** — TTS SAPI e ações no PC (já vem no Windows).
 
@@ -96,7 +97,7 @@ Divisão de responsabilidades:
 ### 1. Base no WSL
 
 ```bash
-git clone <url-do-repo> jarvis
+git clone https://github.com/GuilhermeBn198/jarvis.git jarvis
 cd jarvis/voice
 python -m venv .venv
 . .venv/bin/activate
@@ -192,7 +193,7 @@ echo "responda apenas: ok" | ./jarvis
 
 ### Overlay
 
-Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`, ou o exe em `C:\Users\bguil\jarvis\jarvis-overlay.exe`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair. Ao abrir, se o cérebro estiver offline, o overlay **sobe o loop sozinho**. **Sair** encerra o cérebro no WSL (o overlay mata o processo; se escapar, `pkill -f loop.py` no WSL).
+Com o cérebro no ar (`:8765`), rode o overlay no Windows (`cargo run` em `gui/src-tauri`, ou o exe em `C:\caminho\para\jarvis-overlay.exe`). O orbe reflete o estado em tempo real; o menu permite mutar, pausar, iniciar/reiniciar o cérebro e sair. Ao abrir, se o cérebro estiver offline, o overlay **sobe o loop sozinho**. **Sair** encerra o cérebro no WSL (o overlay mata o processo; se escapar, `pkill -f loop.py` no WSL).
 
 O menu **Configurações** abre um painel para escolher o **Microfone ativo**, calibrar (*Medir microfone*), ajustar sensibilidade/tempos de captura, **modo de entrada** (`auto`/`ptt`/`fixed`), **voz** (`piper`/`sapi`) e ligar/desligar o streaming de TTS.
 
@@ -204,7 +205,7 @@ O menu **Configurações** abre um painel para escolher o **Microfone ativo**, c
 
 ```json
 {
-  "loop_cmd": "JARVIS_REQUIRE_GUI=1 /home/guilherme/github/jarvis/jarvis --voice",
+  "loop_cmd": "JARVIS_REQUIRE_GUI=1 /home/<seu-usuario>/github/jarvis/jarvis --voice",
   "distro": null
 }
 ```
@@ -335,3 +336,9 @@ pytest -q
 - **Voz (detalhes de env, modos e dependências)**: `voice/README.md`
 
 Histórico de fases: inferência/roteamento (Fase 1), delegação local (2a), SafetyGate (2b), ponte de texto (C1), voz TTS/STT (C2/C3), visão de tela (D), ações no PC (E), indicador de estado e streaming de TTS.
+
+---
+
+## Licença
+
+Distribuído sob a **Apache License 2.0** — veja [`LICENSE`](LICENSE).

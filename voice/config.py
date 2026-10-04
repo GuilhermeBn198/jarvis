@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from paths import _wsl_to_windows
 from settings import load_settings
 
 DEFAULT_OPENCODE_BIN = os.path.expanduser("~/.opencode/bin/opencode")
@@ -12,8 +13,19 @@ DEFAULT_PROJECT_ROOT = os.path.dirname(
 )
 DEFAULT_TIMEOUT_S = 300
 DEFAULT_POWERSHELL_EXE = "powershell.exe"
-DEFAULT_FFMPEG_EXE = (
-    "/mnt/c/Users/bguil/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe"
+# Base do perfil do usuario do Windows vista do WSL. Neutro por padrao (nao
+# carrega caminho de uma maquina especifica): aponte JARVIS_WIN_HOME para
+# /mnt/c/Users/<voce> (ex.: no arquivo local local.conf, gitignored).
+WIN_HOME = os.environ.get("JARVIS_WIN_HOME", "/mnt/c/Users/Public").rstrip("/")
+
+
+def win_path(*parts: str) -> str:
+    """Caminho dentro do perfil do Windows (lado WSL), relativo a WIN_HOME."""
+    return "/".join([WIN_HOME, *parts])
+
+
+DEFAULT_FFMPEG_EXE = win_path(
+    "tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe"
 )
 DEFAULT_MIC_DEVICE = "Microphone (FIFINE Microphone)"
 DEFAULT_WHISPER_MODEL = "base"
@@ -26,15 +38,15 @@ DEFAULT_SERVER_URL = "http://127.0.0.1:4096"
 DEFAULT_TTS_BACKEND = "piper"
 DEFAULT_AGENT = "chat"
 DEFAULT_VOICE_LOG = os.path.expanduser("~/.local/share/jarvis/voice-log.jsonl")
-DEFAULT_PIPER_EXE = "/mnt/c/Users/bguil/tools/piper/piper/piper.exe"
-DEFAULT_PIPER_MODEL = "/mnt/c/Users/bguil/tools/piper/voices/pt_BR-faber-medium.onnx"
-DEFAULT_FFPLAY_EXE = (
-    "/mnt/c/Users/bguil/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffplay.exe"
+DEFAULT_PIPER_EXE = win_path("tools/piper/piper/piper.exe")
+DEFAULT_PIPER_MODEL = win_path("tools/piper/voices/pt_BR-faber-medium.onnx")
+DEFAULT_FFPLAY_EXE = win_path(
+    "tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffplay.exe"
 )
-DEFAULT_PIPER_OUT_WAV = r"C:\Users\bguil\tools\piper\out.wav"
+DEFAULT_PIPER_OUT_WAV = _wsl_to_windows(win_path("tools/piper/out.wav"))
 DEFAULT_VISION_MODEL = "opencode-go/deepseek-v4-flash-vision-exp"
 DEFAULT_VISION_TRIGGER = "olha"
-DEFAULT_VISION_PNG = r"C:\Users\bguil\tools\shot.png"
+DEFAULT_VISION_PNG = _wsl_to_windows(win_path("tools/shot.png"))
 DEFAULT_STATE_PORT = 8765
 DEFAULT_STATE_REQUIRE_GUI = False
 DEFAULT_STREAM_TTS = True

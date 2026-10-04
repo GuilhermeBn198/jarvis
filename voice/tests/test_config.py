@@ -52,7 +52,7 @@ def test_backend_defaults():
     assert cfg.piper_exe.endswith("piper.exe")
     assert cfg.piper_model.endswith("pt_BR-faber-medium.onnx")
     assert cfg.ffplay_exe.endswith("ffplay.exe")
-    assert cfg.piper_out_wav == r"C:\Users\bguil\tools\piper\out.wav"
+    assert cfg.piper_out_wav.endswith("piper\\out.wav")
 
 
 def test_backend_env_overrides():

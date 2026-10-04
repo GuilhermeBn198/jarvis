@@ -58,10 +58,10 @@ a porta usada na subida é derivada dele.
 
 > **Invariante do `--pure`:** `--pure` desabilita os plugins do projeto,
 > incluindo o SafetyGate e as tools `act_*`. Use-o **apenas** com um agente
-> **sem tools** (o default da voz é `chat`, tool-free); assim evita-se o custo
+> **sem tools** (a visão usa o agente tool-less `vision`); assim evita-se o custo
 > de carregar plugins sem abrir um buraco de execução. O modo `--do` NÃO usa
-> `--pure` porque precisa das tools `act_*` e do gate. A visão (`--see`) usa o
-> agente tool-less `chat` sem `--pure`, pois o conteúdo da tela é não-confiável.
+> `--pure` porque precisa das tools `act_*` e do gate. A visão (`--see`) também
+> não abre buraco: o conteúdo da tela é não-confiável e vai para o agente `vision`.
 
 ### TTS (`piper`, default)
 O `piper` precisa de:
@@ -84,8 +84,9 @@ contra `sapi` ~4s. No total, `serve`+`piper` ~4,8s contra `run`+`sapi` ~20s.
 
 ### Windows
 - **ffmpeg** é obrigatório para a captura (dshow). O default aponta para
-  `/mnt/c/Users/bguil/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe`;
-  sobrescreva com `FFMPEG_EXE` se o seu caminho for outro.
+  `$JARVIS_WIN_HOME/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe`
+  (`JARVIS_WIN_HOME` default `/mnt/c/Users/Public`; aponte para `/mnt/c/Users/<voce>`
+  no `local.conf`); sobrescreva com `FFMPEG_EXE` se o caminho for outro.
 - O **microfone** é acessado pelo ffmpeg do Windows; confira o nome do device com
   `ffmpeg -list_devices true -f dshow -i dummy`.
 
@@ -102,7 +103,7 @@ contra `sapi` ~4s. No total, `serve`+`piper` ~4,8s contra `run`+`sapi` ~20s.
 | `PIPER_EXE` | caminho do `piper.exe` (acima) | binário do piper |
 | `PIPER_MODEL` | voz `pt_BR-faber-medium.onnx` (acima) | modelo de voz do piper |
 | `FFPLAY_EXE` | caminho do `ffplay.exe` (acima) | reprodução do WAV do piper |
-| `PIPER_OUT_WAV` | `C:\Users\bguil\tools\piper\out.wav` | WAV temporário do piper |
+| `PIPER_OUT_WAV` | `%JARVIS_WIN_HOME%\tools\piper\out.wav` | WAV temporário do piper |
 | `FFMPEG_EXE` | caminho do ffmpeg.exe do Windows (acima) | binário de captura |
 | `MIC_DEVICE` | `Microphone (FIFINE Microphone)` | nome do device dshow |
 | `WHISPER_MODEL` | `base` | modelo do faster-whisper |

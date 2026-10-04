@@ -4,14 +4,14 @@ import subprocess
 import threading
 import time
 
-from config import Config, load_config
+from config import Config, load_config, win_path
 from paths import _windows_to_wsl, _wsl_to_windows
 from tts import VoiceError
 
 # Defaults consistentes: ffmpeg e o microfone sao do Windows (dshow),
 # entao ambos os modos gravam num diretorio visivel ao Windows.
-DEFAULT_OUT_WAV = r"C:\Users\bguil\tools\jarvis_rec.wav"
-DEFAULT_AUTO_OUT_WAV = r"C:\Users\bguil\tools\jarvis_rec_auto.wav"
+DEFAULT_OUT_WAV = _wsl_to_windows(win_path("tools/jarvis_rec.wav"))
+DEFAULT_AUTO_OUT_WAV = _wsl_to_windows(win_path("tools/jarvis_rec_auto.wav"))
 
 # Limiar (s) abaixo do qual um silence_start e considerado a pausa
 # inicial da captura, e nao o fim de uma fala.

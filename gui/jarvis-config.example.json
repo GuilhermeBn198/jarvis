@@ -1,4 +1,4 @@
 {
-  "loop_cmd": "JARVIS_REQUIRE_GUI=1 /home/guilherme/github/jarvis/jarvis --voice",
+  "loop_cmd": "JARVIS_REQUIRE_GUI=1 ~/github/jarvis/jarvis --voice",
   "distro": null
 }

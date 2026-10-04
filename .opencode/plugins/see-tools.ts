@@ -15,7 +15,9 @@ export const SeeTools: Plugin = async ({ $ }) => ({
       async execute(args) {
         const q =
           (args.prompt ?? "").trim() || "Descreva o que esta na tela.";
-        return (await $`/home/guilherme/github/jarvis/jarvis --see-text ${q}`).text();
+        const root = process.env.JARVIS_PROJECT_ROOT ?? process.cwd();
+        const launcher = `${root}/jarvis`;
+        return (await $`${launcher} --see-text ${q}`).text();
       },
     }),
   },

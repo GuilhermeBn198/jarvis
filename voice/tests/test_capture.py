@@ -189,7 +189,7 @@ def test_record_auto_stops_on_silence_after_speech(monkeypatch):
         seen["proc"] = proc
         return proc
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    out = r"C:\Users\bguil\tools\x.wav"
+    out = r"C:\Users\user\tools\x.wav"
     result = record_auto(out_path=out, config=CFG)
     joined = " ".join(seen["cmd"])
     assert "/ff/ffmpeg.exe" in joined
@@ -197,13 +197,13 @@ def test_record_auto_stops_on_silence_after_speech(monkeypatch):
     assert "audio=Mic X" in joined
     assert "silencedetect=noise=-35dB:d=1.0" in joined
     assert "-t 15" in joined
-    assert "C:\\Users\\bguil\\tools\\x.wav" in seen["cmd"]
+    assert "C:\\Users\\user\\tools\\x.wav" in seen["cmd"]
     assert seen["kw"]["stderr"] is subprocess.PIPE
     assert seen["kw"]["text"] is True
     assert seen["proc"].stdin.data == "q"
     assert seen["proc"].waited == 20
     assert seen["proc"].killed is False
-    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+    assert result == "/mnt/c/Users/user/tools/x.wav"
 
 
 def test_record_auto_leading_silence_then_speech_stops(monkeypatch):
@@ -218,11 +218,11 @@ def test_record_auto_leading_silence_then_speech_stops(monkeypatch):
         seen["proc"] = proc
         return proc
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    out = r"C:\Users\bguil\tools\x.wav"
+    out = r"C:\Users\user\tools\x.wav"
     result = record_auto(out_path=out, config=CFG)
     assert seen["proc"].stdin.data == "q"
     assert seen["proc"].waited == 20
-    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+    assert result == "/mnt/c/Users/user/tools/x.wav"
 
 
 def test_record_auto_immediate_speech_without_silence_end(monkeypatch):
@@ -233,11 +233,11 @@ def test_record_auto_immediate_speech_without_silence_end(monkeypatch):
         seen["proc"] = proc
         return proc
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
-    out = r"C:\Users\bguil\tools\x.wav"
+    out = r"C:\Users\user\tools\x.wav"
     result = record_auto(out_path=out, config=CFG)
     assert seen["proc"].stdin.data == "q"
     assert seen["proc"].waited == 20
-    assert result == "/mnt/c/Users/bguil/tools/x.wav"
+    assert result == "/mnt/c/Users/user/tools/x.wav"
 
 
 def test_record_auto_leading_silence_only_returns_empty(monkeypatch):

@@ -12,6 +12,16 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Overrides locais da maquina (nao versionado): ex.:
+#   JARVIS_WIN_HOME=/mnt/c/Users/voce
+if [ -f "$DIR/local.conf" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "$DIR/local.conf"
+  set +a
+fi
+
 cd "$DIR/voice"
 
 if [ ! -d .venv ]; then
