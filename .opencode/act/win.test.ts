@@ -40,6 +40,17 @@ test("background type so confirma via UIA (nao usa caption do top-level)", () =>
   assert.doesNotMatch(s, /GetWindowTextW\(\$h, \$sb, 8192\)/);
 });
 
+test("background type procura Document antes de Edit (Notepad/WinUI)", () => {
+  const s = buildBackgroundTypeScript({ text: "oi", window: "Notepad" });
+  // O editor do Notepad moderno e ControlType.Document (RichEditD2DPT), nao Edit.
+  assert.match(s, /ControlType\]::Document/);
+  assert.match(s, /ControlType\]::Edit/);
+  assert.ok(
+    s.indexOf("ControlType]::Document") < s.indexOf("ControlType]::Edit"),
+    "Document deve ser tentado antes de Edit",
+  );
+});
+
 test("background type escapa aspas simples do texto", () => {
   const s = buildBackgroundTypeScript({ text: "it's" });
   assert.ok(s.includes("it''s"));

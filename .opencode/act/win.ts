@@ -98,8 +98,12 @@ $edit = $null
 $ok = $false
 try {
   $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
-  $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)
-  $edit = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+  $edit = $null
+  foreach ($ct in @([System.Windows.Automation.ControlType]::Document, [System.Windows.Automation.ControlType]::Edit)) {
+    $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ct)
+    $cand = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+    if ($cand) { $edit = $cand; break }
+  }
   if ($edit) {
     $vp = $edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
     $vp.SetValue($text)
