@@ -62,7 +62,7 @@ pytest
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -q -r requirements-dev.txt
@@ -111,7 +111,7 @@ def test_env_overrides():
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_config.py -q
 ```
 Expected: FAIL (`ModuleNotFoundError: No module named 'config'`).
@@ -161,7 +161,7 @@ def load_config(env: dict | None = None) -> Config:
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_config.py -q
 ```
 Expected: `4 passed`
@@ -169,7 +169,7 @@ Expected: `4 passed`
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 printf 'mcp_servers/delegate_local/.venv/\nmcp_servers/delegate_local/**/__pycache__/\n.pytest_cache/\n' >> .gitignore
 git add mcp_servers/delegate_local/config.py mcp_servers/delegate_local/requirements.txt mcp_servers/delegate_local/requirements-dev.txt mcp_servers/delegate_local/tests/test_config.py .gitignore
 git commit -m "feat(jarvis): scaffold do MCP delegate_local + config"
@@ -278,7 +278,7 @@ def test_missing_content_raises(monkeypatch):
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_ollama_client.py -q
 ```
 Expected: FAIL (`No module named 'ollama_client'`).
@@ -353,7 +353,7 @@ class OllamaClient:
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_ollama_client.py -q
 ```
 Expected: `6 passed`
@@ -361,7 +361,7 @@ Expected: `6 passed`
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 git add mcp_servers/delegate_local/ollama_client.py mcp_servers/delegate_local/tests/test_ollama_client.py
 git commit -m "feat(jarvis): cliente HTTP do Ollama para o delegate_local"
 ```
@@ -429,7 +429,7 @@ def test_passes_through_to_client(monkeypatch):
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest tests/test_server.py -q
 ```
 Expected: FAIL (`No module named 'server'`).
@@ -491,7 +491,7 @@ if __name__ == "__main__":
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest -q
 ```
 Expected: `17 passed` (config 4 + client 7 + server 6; inclui os testes de validação de json-schema).
@@ -518,7 +518,7 @@ Requer `OLLAMA_HOST` definido. O opencode sobe o processo via stdio.
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 git add mcp_servers/delegate_local/server.py mcp_servers/delegate_local/tests/test_server.py mcp_servers/delegate_local/README.md
 git commit -m "feat(jarvis): servidor FastMCP do delegate_local"
 ```
@@ -538,7 +538,7 @@ git commit -m "feat(jarvis): servidor FastMCP do delegate_local"
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 python3 -c "import json;print('delegate_local' in json.load(open('opencode.json')).get('mcp',{}))"
 ```
 Expected: `False`
@@ -565,7 +565,7 @@ Nota: o venv em `mcp_servers/delegate_local/.venv` precisa existir (é gitignore
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 python3 -c "import json;d=json.load(open('opencode.json'));print('delegate_local' in d['mcp'], d['mcp']['delegate_local']['type'])"
 opencode mcp --help 2>&1 | head -5
 ```
@@ -592,7 +592,7 @@ git commit -m "feat(jarvis): registra o MCP delegate_local no opencode"
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate && pytest -q
 ```
 Expected: `17 passed`
@@ -601,7 +601,7 @@ Expected: `17 passed`
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis/mcp_servers/delegate_local
+cd ~/github/jarvis/mcp_servers/delegate_local
 . .venv/bin/activate
 python - <<'PY'
 from config import load_config
@@ -612,13 +612,13 @@ print("json:", c.chat("Devolva um objeto com a chave n igual a 7", {"type":"obje
 PY
 ```
 Expected: texto contendo `pong`; uma linha `json:` com JSON válido.
-(depois: `"/mnt/c/Users/bguil/AppData/Local/Programs/Ollama/ollama.exe" ps` → `qwen3:8b`, GPU)
+(depois: `"/mnt/c/Users/<voce>/AppData/Local/Programs/Ollama/ollama.exe" ps` → `qwen3:8b`, GPU)
 
 - [ ] **Step 3: E2E via opencode (o teste que importa)**
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 timeout 600 opencode run --pure "Use a ferramenta delegate_local para gerar uma tabela Markdown com 15 linhas de comandos git e descricoes. Depois me diga se voce usou a ferramenta."
 ```
 Expected: a resposta menciona o uso de `delegate_local`; registrar se o tool foi de fato invocado.

@@ -38,7 +38,7 @@ NEW `voice/vision.py`:
 `voice/config.py`: novos campos
 - `vision_model` (env `VISION_MODEL`, default `opencode-go/deepseek-v4-flash-vision-exp`)
 - `vision_trigger` (env `VISION_TRIGGER`, default `olha`)
-- `vision_png` (env `VISION_PNG`, default `C:\Users\bguil\tools\shot.png`; converter p/ WSL)
+- `vision_png` (env `VISION_PNG`, default `C:\Users\<voce>\tools\shot.png`; converter p/ WSL)
 
 `voice/loop.py`:
 - `main()` ganha `--see "pergunta"` (one-shot: captura + vê + imprime/fala).

@@ -156,7 +156,7 @@ test("ask: glob ls *.txt nao e allow", () => {
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 node --test .opencode/safety/rules.test.ts
 ```
 Expected: FAIL (`Cannot find module './rules.ts'`).
@@ -244,7 +244,7 @@ Expected: `# pass 32` (todos passam).
 - [x] **Step 5: Commit**
 
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 git add .opencode/safety/rules.ts .opencode/safety/rules.test.ts
 git commit -m "feat(jarvis): motor de regras do SafetyGate (deterministico)"
 ```
@@ -356,7 +356,7 @@ Append ao `.gitignore` do repo:
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
 Expected: `# pass 36` (32 + 4), sem falhas.
@@ -389,7 +389,7 @@ Plugin de projeto que implementa um gate determinístico de permissões via o ho
 `permission.ask`. Regras (não LLM) decidem `allow` / `ask` / `deny`.
 
 ## Testes
-    cd /home/guilherme/github/jarvis
+    cd ~/github/jarvis
     node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 
 ## Regras
@@ -406,7 +406,7 @@ Plugin de projeto que implementa um gate determinístico de permissões via o ho
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 node --test .opencode/safety/rules.test.ts .opencode/plugins/safety-gate.test.ts
 ```
 Expected: `# pass 36`.
@@ -415,7 +415,7 @@ Expected: `# pass 36`.
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 timeout 60 opencode run --print-logs "responda apenas: ok" 2>&1 | grep -iE 'safety-gate|failed to load plugin|plugin.*error' | head -10 || echo "(sem erros de plugin)"
 ```
 Expected: sem erro de carregamento de plugin. (Se o log não citar o plugin, considere OK desde que não haja erro.)

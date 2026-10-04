@@ -47,8 +47,8 @@ voice/
 - [ ] **Step 1: venv + pytest.ini**
 
 ```bash
-cd /home/guilherme/github/jarvis/voice 2>/dev/null || mkdir -p /home/guilherme/github/jarvis/voice
-cd /home/guilherme/github/jarvis/voice
+cd ~/github/jarvis/voice 2>/dev/null || mkdir -p ~/github/jarvis/voice
+cd ~/github/jarvis/voice
 python3 -m venv .venv && . .venv/bin/activate && pip install -q pytest
 ```
 Create `voice/requirements-dev.txt`:
@@ -152,7 +152,7 @@ def test_run_stream_skips_blank_and_reports_errors():
 - [ ] **Step 3: Rodar e ver falhar**
 
 ```bash
-cd /home/guilherme/github/jarvis/voice
+cd ~/github/jarvis/voice
 . .venv/bin/activate && pytest -q
 ```
 Expected: FAIL (`No module named 'config'`).
@@ -256,7 +256,7 @@ Create `voice/README.md`:
 Ponte de texto: stdin → agente (opencode) → stdout.
 
 ## Rodar
-    cd /home/guilherme/github/jarvis/voice
+    cd ~/github/jarvis/voice
     . .venv/bin/activate
     echo "responda apenas: ok" | python loop.py
 
@@ -267,7 +267,7 @@ Ponte de texto: stdin → agente (opencode) → stdout.
 - [ ] **Step 5: Rodar e ver passar**
 
 ```bash
-cd /home/guilherme/github/jarvis/voice
+cd ~/github/jarvis/voice
 . .venv/bin/activate && pytest -q
 ```
 Expected: `11 passed` (config 2 + client 5 + loop 2 = 9; ajustar ao número real).
@@ -275,7 +275,7 @@ Expected: `11 passed` (config 2 + client 5 + loop 2 = 9; ajustar ao número real
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 printf 'voice/.venv/\nvoice/**/__pycache__/\n' >> .gitignore
 git add voice .gitignore
 git commit -m "feat(jarvis): ponte de texto da voz (Fase C1)"
@@ -291,7 +291,7 @@ git commit -m "feat(jarvis): ponte de texto da voz (Fase C1)"
 - [ ] **Step 1: Suite completa**
 
 ```bash
-cd /home/guilherme/github/jarvis/voice
+cd ~/github/jarvis/voice
 . .venv/bin/activate && pytest -q
 ```
 Expected: todos passam (registrar o número real).
@@ -299,7 +299,7 @@ Expected: todos passam (registrar o número real).
 - [ ] **Step 2: Integração real (pode levar ~1–2 min pelo startup do opencode)**
 
 ```bash
-cd /home/guilherme/github/jarvis/voice
+cd ~/github/jarvis/voice
 . .venv/bin/activate
 timeout 200 bash -c 'echo "Responda apenas com a palavra: pong" | python loop.py'
 ```

@@ -13,7 +13,7 @@
 - Contratos (verbatim): `tts.speak(text: str, to_file: str | None = None) -> None`; `capture.record(seconds: float, out_path: str | None = None) -> str`; `stt.transcribe(wav_path: str) -> str`.
 - Erros viram `VoiceError` claro (nunca crash); transcrição vazia → `""` (o loop não chama o agente).
 - Sem segredos; sem mudanças em opencode/MCP/gate.
-- Caminhos validados nesta máquina: `FFMPEG_EXE=/mnt/c/Users/bguil/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe`; `MIC_DEVICE=Microphone (FIFINE Microphone)`.
+- Caminhos validados nesta máquina: `FFMPEG_EXE=/mnt/c/Users/<voce>/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe`; `MIC_DEVICE=Microphone (FIFINE Microphone)`.
 - `faster-whisper` instalado no venv (`voice/.venv`), modelo `base`, `device=cpu`, `compute_type=int8`.
 - TTS via `powershell.exe -NoProfile -EncodedCommand <base64 UTF-16LE>` (evita quoting).
 - Todo passo termina em commit.
@@ -79,7 +79,7 @@ def test_failure_raises(monkeypatch):
 - [ ] **Step 2: Rodar e ver falhar**
 
 ```bash
-cd /home/guilherme/github/jarvis/voice
+cd ~/github/jarvis/voice
 . .venv/bin/activate && pytest tests/test_tts.py -q
 ```
 Expected: FAIL (`No module named 'tts'`).
@@ -133,13 +133,13 @@ def speak(text: str, to_file: str | None = None, config: Config | None = None) -
 
 - [ ] **Step 4: Rodar e ver passar**
 ```bash
-cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate && pytest tests/test_tts.py -q
+cd ~/github/jarvis/voice && . .venv/bin/activate && pytest tests/test_tts.py -q
 ```
 Expected: `3 passed`.
 
 - [ ] **Step 5: Integração real (gera WAV, sem som)**
 ```bash
-cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate
+cd ~/github/jarvis/voice && . .venv/bin/activate
 python -c "from tts import speak; speak('teste de audio', to_file='/tmp/opencode/tts.wav')"
 ls -la /tmp/opencode/tts.wav
 ```
@@ -147,7 +147,7 @@ Expected: arquivo WAV criado (> 20 KB).
 
 - [ ] **Step 6: Commit**
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 git add voice/config.py voice/tts.py voice/tests/test_tts.py
 git commit -m "feat(jarvis): TTS via SAPI na voz (C2)"
 ```
@@ -254,14 +254,14 @@ def test_voice_loop_empty_transcript_skips_agent(monkeypatch):
 
 - [ ] **Step 2: Rodar e ver falhar**
 ```bash
-cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate && pytest tests/test_capture.py tests/test_stt.py tests/test_voice_loop.py -q
+cd ~/github/jarvis/voice && . .venv/bin/activate && pytest tests/test_capture.py tests/test_stt.py tests/test_voice_loop.py -q
 ```
 Expected: FAIL.
 
 - [ ] **Step 3: Implementar `config.py` (novos campos), `capture.py`, `stt.py`, `loop.voice_loop`**
 
 `voice/config.py`: adicionar campos com defaults validados:
-`ffmpeg_exe` (env `FFMPEG_EXE`, default `/mnt/c/Users/bguil/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe`), `mic_device` (env `MIC_DEVICE`, default `Microphone (FIFINE Microphone)`), `whisper_model` (env `WHISPER_MODEL`, default `base`), `record_seconds` (env `RECORD_SECONDS`, default `5`), `language` (env `VOICE_LANGUAGE`, default `pt`), e `powershell_exe` (da Task 1).
+`ffmpeg_exe` (env `FFMPEG_EXE`, default `/mnt/c/Users/<voce>/tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe`), `mic_device` (env `MIC_DEVICE`, default `Microphone (FIFINE Microphone)`), `whisper_model` (env `WHISPER_MODEL`, default `base`), `record_seconds` (env `RECORD_SECONDS`, default `5`), `language` (env `VOICE_LANGUAGE`, default `pt`), e `powershell_exe` (da Task 1).
 
 `voice/capture.py`:
 ```python
@@ -346,13 +346,13 @@ faster-whisper
 
 - [ ] **Step 4: Rodar e ver passar**
 ```bash
-cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate && pytest -q
+cd ~/github/jarvis/voice && . .venv/bin/activate && pytest -q
 ```
 Expected: toda a suíte passa (registrar o número real).
 
 - [ ] **Step 5: Integração real (curta)**
 ```bash
-cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate
+cd ~/github/jarvis/voice && . .venv/bin/activate
 # grava 3s do mic real e transcreve (fale algo)
 python -c "from capture import record; from stt import transcribe; w=record(3); print('WAV:', w); print('TEXTO:', transcribe(w))"
 ```
@@ -360,7 +360,7 @@ Expected: gera o WAV e imprime uma transcrição (ou vazio se houve silêncio).
 
 - [ ] **Step 6: Commit**
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 git add voice
 git commit -m "feat(jarvis): STT (faster-whisper) + captura (ffmpeg) + loop de voz (C3)"
 ```

@@ -1468,7 +1468,7 @@ Edite `gui/src-tauri/src/lib.rs` para conter (e registre no builder):
 
 ```rust
 const LOOP_CMD: &str =
-    "cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate && \
+    "cd ~/github/jarvis/voice && . .venv/bin/activate && \
      JARVIS_REQUIRE_GUI=1 python loop.py --voice";
 
 #[tauri::command]

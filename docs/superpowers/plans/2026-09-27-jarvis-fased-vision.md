@@ -14,7 +14,7 @@
 - `-f` (attach) **depois** da mensagem: `opencode run --pure <prompt> -m <vision_model> -f <png>`.
 - Erros → `AgentError`/`VoiceError` claros; nunca crash.
 - Acionamento **explícito**; a **imagem não é logada** (só prompt/resposta no `convlog`).
-- `VISION_MODEL` default `opencode-go/deepseek-v4-flash-vision-exp`; `VISION_TRIGGER` default `olha`; `VISION_PNG` default `C:\Users\bguil\tools\shot.png`.
+- `VISION_MODEL` default `opencode-go/deepseek-v4-flash-vision-exp`; `VISION_TRIGGER` default `olha`; `VISION_PNG` default `C:\Users\<voce>\tools\shot.png`.
 - Todo passo termina em commit.
 
 ## File Structure
@@ -194,7 +194,7 @@ def test_voice_trigger_detection():
 
 - [ ] **Step 5: Integração real**
 ```bash
-cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate
+cd ~/github/jarvis/voice && . .venv/bin/activate
 timeout 150 python loop.py --see "Descreva em uma frase o que aparece nesta tela."
 ```
 Expected: imprime e fala uma descrição da tela (latência ~20–40 s pelo startup do `run`).

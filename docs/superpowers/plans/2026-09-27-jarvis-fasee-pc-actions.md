@@ -213,7 +213,7 @@ def test_do_uses_agent_act(monkeypatch):
 
 - [ ] **Step 5: Verificação real (dry, segura)**
 ```bash
-cd /home/guilherme/github/jarvis/voice && . .venv/bin/activate
+cd ~/github/jarvis/voice && . .venv/bin/activate
 # NÃO execute input real; valide o encanamento com um comando que não aciona nada:
 timeout 120 python loop.py --do "apenas descreva quais acoes voce poderia fazer, sem executar nada"
 ```

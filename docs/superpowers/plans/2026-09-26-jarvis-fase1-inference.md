@@ -40,7 +40,7 @@
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis
+cd ~/github/jarvis
 opencode models | grep -c 'ollama/qwen3:8b'
 ```
 Expected: `0`
@@ -241,7 +241,7 @@ opencode run --agent orchestrator "Responda em uma frase curta quem e voce."
 ```
 Expected: resposta em texto; e imediatamente depois:
 ```bash
-"/mnt/c/Users/bguil/AppData/Local/Programs/Ollama/ollama.exe" ps
+"/mnt/c/Users/<voce>/AppData/Local/Programs/Ollama/ollama.exe" ps
 ```
 Expected: sem modelo local carregado (o orquestrador roda na nuvem).
 
@@ -276,7 +276,7 @@ Expected: saída contendo `delegado-ok`.
 
 Run (imediatamente após o passo anterior):
 ```bash
-"/mnt/c/Users/bguil/AppData/Local/Programs/Ollama/ollama.exe" ps
+"/mnt/c/Users/<voce>/AppData/Local/Programs/Ollama/ollama.exe" ps
 ```
 Expected: linha com `qwen3:8b` e `PROCESSOR` contendo `GPU`.
 

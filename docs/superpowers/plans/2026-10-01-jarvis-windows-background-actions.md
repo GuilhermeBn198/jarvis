@@ -721,7 +721,7 @@ Expected: `json ok`
 
 Run (sem executar ação real):
 ```bash
-cd /home/guilherme/github/jarvis && opencode run --print-logs --agent act "responda apenas: ok" 2>&1 | grep -iE "failed to load plugin|act-tools" | head
+cd ~/github/jarvis && opencode run --print-logs --agent act "responda apenas: ok" 2>&1 | grep -iE "failed to load plugin|act-tools" | head
 ```
 Expected: nenhuma linha `failed to load plugin`.
 
@@ -749,8 +749,8 @@ git commit -m "feat(act): prompts orientam background e consentimento" --no-veri
 Com o **navegador em foco**, execute no Windows um Notepad aberto e rode:
 
 ```bash
-cd /home/guilherme/github/jarvis && ./jarvis --do "liste as janelas"   # win_list deve mostrar o Notepad
-cd /home/guilherme/github/jarvis && ./jarvis --do "digite 'reuniao 15h' no Notepad em segundo plano"
+cd ~/github/jarvis && ./jarvis --do "liste as janelas"   # win_list deve mostrar o Notepad
+cd ~/github/jarvis && ./jarvis --do "digite 'reuniao 15h' no Notepad em segundo plano"
 ```
 
 Expected: o texto aparece no Notepad; **o foco continua no navegador e o cursor não se move**; a resposta reporta `confirmed`.
@@ -760,7 +760,7 @@ Expected: o texto aparece no Notepad; **o foco continua no navegador e o cursor 
 Com o **Chrome** aberto e o Notepad em foco, rode:
 
 ```bash
-cd /home/guilherme/github/jarvis && ./jarvis --do "digite 'teste' no Chrome em segundo plano"
+cd ~/github/jarvis && ./jarvis --do "digite 'teste' no Chrome em segundo plano"
 ```
 
 Expected: a tool responde com `unconfirmed — ... Quer que eu traga pra frente e faca?` (não afirma sucesso).
@@ -785,7 +785,7 @@ Na seção de capacidades/limitações, adicione:
 
 Run:
 ```bash
-cd /home/guilherme/github/jarvis && node --test .opencode/act/win.test.ts .opencode/plugins/act-tools.test.ts .opencode/safety/rules.test.ts .opencode/safety/hook.test.ts .opencode/plugins/safety-gate.test.ts
+cd ~/github/jarvis && node --test .opencode/act/win.test.ts .opencode/plugins/act-tools.test.ts .opencode/safety/rules.test.ts .opencode/safety/hook.test.ts .opencode/plugins/safety-gate.test.ts
 ```
 Expected: PASS (todos).
 
