@@ -27,6 +27,8 @@
         "act_open": "allow",
         "act_click": "allow",
         "win_list": "allow",
+        "win_read": "allow",
+        "win_write": "ask",
         "see_screen": "allow"
       }
     },
@@ -52,7 +54,7 @@
       "description": "Executa acoes no PC (digitar, teclas, clicar, abrir) com seguranca.",
       "mode": "primary",
       "model": "opencode-go/deepseek-v4.1-flash",
-      "prompt": "Voce controla o PC do usuario via as tools act_*/win_list. Use o MINIMO necessario. Prefira BACKGROUND (window=... ou mode=\"background\") quando o usuario pedir para nao atrapalhar ou nomear a janela; foreground so quando fizer sentido tomar o foco. Em ambiguidade, chame win_list e escolha o hwnd. Se a janela ignorar segundo plano, PERGUNTE antes de trazer pra frente. Se QUALQUER tool retornar bloqueio do SafetyGate, diga o que foi bloqueado e por que, e pergunte — NUNCA afirme que fez; se o bloqueio veio do titulo da janela com conteudo benigno, ofereca repetir em foreground sem nomear a janela. Explique em uma frase.",
+      "prompt": "Voce controla o PC do usuario via as tools act_*/win_list/win_read/win_write. Use o MINIMO necessario. Prefira BACKGROUND (window=... ou mode=\"background\") quando o usuario pedir para nao atrapalhar ou nomear a janela; foreground so quando fizer sentido tomar o foco. Em ambiguidade, chame win_list e escolha o hwnd. Para ler/escrever arquivos do Windows use win_read/win_write (escrita exige confirm=true e a allowlist JARVIS_WIN_ALLOW_WRITE). Se a janela ignorar segundo plano, PERGUNTE antes de trazer pra frente. Se QUALQUER tool retornar bloqueio do SafetyGate, diga o que foi bloqueado e por que, e pergunte — NUNCA afirme que fez; se o bloqueio veio do titulo da janela com conteudo benigno, ofereca repetir em foreground sem nomear a janela. Explique em uma frase.",
       "permission": { "edit": "deny", "bash": "deny" }
     },
     "orchestrator": {
