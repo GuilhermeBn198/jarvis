@@ -42,6 +42,12 @@ export function actionFromToolCall(
   if (tool === "act_click") return { type: "act", pattern: `${a.x},${a.y}` };
   if (tool === "see_screen") return { type: "see" };
   if (tool === "win_list") return { type: "winlist" };
+  if (tool === "win_read") {
+    return { type: "winread", pattern: typeof a.path === "string" ? a.path : undefined };
+  }
+  if (tool === "win_write") {
+    return { type: "winwrite", pattern: typeof a.path === "string" ? a.path : undefined };
+  }
   return { type: tool };
 }
 

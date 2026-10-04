@@ -210,3 +210,30 @@ test("act_type ignora window/hwnd vazios", () => {
   const a = actionFromToolCall("act_type", { text: "ola", window: "", hwnd: null });
   assert.deepEqual(a.pattern, ["ola"]);
 });
+
+test("win_read mapeia para tipo winread com o caminho no padrao", () => {
+  const a = actionFromToolCall("win_read", { path: "/mnt/c/Users/me/a.txt" });
+  assert.equal(a.type, "winread");
+  assert.equal(a.pattern, "/mnt/c/Users/me/a.txt");
+});
+test("win_read -> allow (leitura)", () => {
+  const a = actionFromToolCall("win_read", { path: "/mnt/c/Users/me/a.txt" });
+  assert.equal(decide({ ...a }).status, "allow");
+});
+test("win_read de credencial -> deny", () => {
+  const a = actionFromToolCall("win_read", { path: "/mnt/c/Users/me/.ssh/id_rsa" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("win_write mapeia para tipo winwrite com o caminho no padrao", () => {
+  const a = actionFromToolCall("win_write", { path: "/mnt/c/Users/me/a.txt", content: "x" });
+  assert.equal(a.type, "winwrite");
+  assert.equal(a.pattern, "/mnt/c/Users/me/a.txt");
+});
+test("win_write -> ask (nunca allow automatico de escrita)", () => {
+  const a = actionFromToolCall("win_write", { path: "/mnt/c/Users/me/a.txt", content: "x" });
+  assert.equal(decide({ ...a }).status, "ask");
+});
+test("win_write para credencial -> deny", () => {
+  const a = actionFromToolCall("win_write", { path: "/mnt/c/Users/me/.env", content: "x" });
+  assert.equal(decide({ ...a }).status, "deny");
+});
