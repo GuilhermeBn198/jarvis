@@ -42,12 +42,13 @@ Divisão de responsabilidades:
 - **Streaming de TTS por sentença** — começa a falar enquanto o texto ainda é gerado, com fallback para o caminho bloqueante (ver limitações sobre o ganho).
 - **Visão de tela** (`--see` ou a palavra-gatilho "olha"): captura a tela e pergunta a um modelo de visão. O conteúdo da tela é tratado como **não-confiável** (o agente de visão não tem ferramentas).
 - **Ações no PC** (`--do` ou o agente `act`): digitar, teclas, clicar e abrir coisas no Windows, via as tools `act_*`, protegidas por um **SafetyGate** (regras de segurança).
-- **Ações em segundo plano (opt-in):** `act_type`/`act_key` aceitam `window`/`hwnd` (ou `mode="background"`) para agir sem roubar foco/cursor via UI Automation + PostMessage; `mode="foreground"` explícito força o caminho em foco mesmo com `window`/`hwnd`. `win_list` lista as janelas. Na injeção de **texto**, apps que ignoram entrada em background retornam `unconfirmed` e o Jarvis pede confirmação antes de trazer a janela para frente; já `act_key` apenas reporta `verificacao indisponivel` e **não** pede consentimento. O `act_type` via UIA `ValuePattern` **define** o valor do campo (substitui o conteúdo existente), não insere no cursor; o fallback `WM_CHAR` é best-effort (postado à janela-alvo e alguns apps o ignoram). Clicar em controles em background ainda nao e suportado. Verificação de injeção em background E2E ainda pendente (manual).
+- **Ações em segundo plano (opt-in):** `act_type`/`act_key` aceitam `window`/`hwnd` (ou `mode="background"`) para agir sem roubar foco/cursor via UI Automation + PostMessage; `mode="foreground"` explícito força o caminho em foco mesmo com `window`/`hwnd`. `act_type` também aceita `append=true` (concatena ao conteúdo atual; default substitui). A UIA roda com timeout de ~5s (janela travada vira `unconfirmed`). `win_list` lista as janelas. Na injeção de **texto**, apps que ignoram entrada em background retornam `unconfirmed` e o Jarvis pede confirmação antes de trazer a janela para frente; já `act_key` apenas reporta `verificacao indisponivel` e **não** pede consentimento. O `act_type` via UIA `ValuePattern` **define** o valor do campo (substitui o conteúdo existente), não insere no cursor; o fallback `WM_CHAR` é best-effort (postado à janela-alvo e alguns apps o ignoram). Clicar em controles em background ainda nao e suportado. Verificação de injeção em background E2E ainda pendente (manual).
 - **Indicador visual de estado** (overlay Tauri): um **orbe** sempre-no-topo, com cor e animação por estado — `idle`, `listening`, `transcribing`, `thinking`, `speaking`, `acting`, `error`. Clicável (menu: Mudo / Pausar / Iniciar|Reiniciar cérebro / Sair) e arrastável.
 - **Comandos pelo overlay**: `mute` (silencia), `pause` (não capta novos turnos) e `quit` (encerra o loop), além de subir o cérebro no WSL.
 - **Bridge de texto** (stdin → agente → stdout), útil para scripts e testes.
 - **Vários agentes** (`opencode.json`): `chat` (conversa rápida; tem `see_screen` e `act_*`), `act` (ações), `orchestrator` (tarefas pesadas) e `local-executor` (sub-tarefas baratas no modelo local via Ollama).
 - **Delegação ao modelo local** (GPU) via MCP `delegate_local` (opcional).
+- **Contexto do Windows em texto** via MCP `win_context`: janelas, árvore de acessibilidade (UIA), clipboard e processos como texto — corta o custo de tokens do `see_screen`, que fica como fallback para o que a UIA não expõe (Electron, jogos, canvas).
 
 ---
 
@@ -309,7 +310,8 @@ jarvis/
 │   └── src-tauri/         # app Rust (orbe + start_brain)
 ├── .opencode/             # agentes, plugins (SafetyGate) e tools act_*
 ├── mcp_servers/
-│   └── delegate_local/    # MCP de delegação ao modelo local (Ollama)
+│   ├── delegate_local/    # MCP de delegação ao modelo local (Ollama)
+│   └── win_context/       # MCP de contexto do Windows em texto (UIA/clipboard/processos)
 ├── docs/
 │   ├── backlog.md
 │   └── superpowers/       # specs e planos de cada fase
