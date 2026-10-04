@@ -94,35 +94,47 @@ export function buildBackgroundTypeScript(a: { text: string; window?: string; hw
   const text = psQuote(String(a.text ?? ""));
   return `${WIN32_SNIPPET}${UIA_SETUP}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
 $text = '${text}'
-$edit = $null
-$ok = $false
-try {
-  $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
+# Janela travada nao pode bloquear a tool: a UIA roda num job com timeout (#8).
+# Estouro do timeout vira 'unconfirmed' (seguro), nunca afirma sucesso.
+$job = Start-Job -ScriptBlock {
+  param($hwnd, $text)
+  Add-Type -AssemblyName UIAutomationClient
+  Add-Type -AssemblyName UIAutomationTypes
+  $root = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$hwnd)
   $edit = $null
   foreach ($ct in @([System.Windows.Automation.ControlType]::Document, [System.Windows.Automation.ControlType]::Edit)) {
     $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ct)
     $cand = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
     if ($cand) { $edit = $cand; break }
   }
-  if ($edit) {
+  if (-not $edit) { return 'noset' }
+  try {
     $vp = $edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
     $vp.SetValue($text)
-    $ok = $true
-  }
-} catch { $ok = $false }
-if (-not $ok) {
-  foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($h, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
-}
-$got = ''
-$uiaRead = $false
-try {
-  if ($edit) {
+  } catch { return 'noset' }
+  try {
     $got = [string]$edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value
-    $uiaRead = $true
-  }
-} catch { $uiaRead = $false }
-if ($uiaRead -and $text -and $got.Contains($text)) { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
-else { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
+    if ($text -and $got.Contains($text)) { return 'confirmed' }
+  } catch { }
+  return 'set'
+} -ArgumentList ([int]$h), $text
+$done = Wait-Job $job -Timeout 5
+if (-not $done) {
+  Stop-Job $job -ErrorAction SilentlyContinue
+  Remove-Job $job -Force -ErrorAction SilentlyContinue
+  Write-Output 'JARVIS_RESULT=unconfirmed|UIA timeout (janela nao respondeu em 5s)'
+  exit 0
+}
+$state = (Receive-Job $job) | Select-Object -Last 1
+Remove-Job $job -Force -ErrorAction SilentlyContinue
+if ($state -eq 'confirmed') { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
+elseif ($state -eq 'set') { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
+else {
+  # Sem ValuePattern: fallback WM_CHAR no controle de edicao (ou na janela).
+  $hTarget = [IntPtr]$h
+  foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($hTarget, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
+  Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao (fallback WM_CHAR)'
+}
 `;
 }
 

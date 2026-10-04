@@ -35,8 +35,8 @@ test("background type usa UIA ValuePattern e fallback PostMessage", () => {
 
 test("background type so confirma via UIA (nao usa caption do top-level)", () => {
   const s = buildBackgroundTypeScript({ text: "oi", window: "Notepad" });
-  assert.match(s, /\$uiaRead/);
-  assert.match(s, /if \(\$uiaRead -and \$text -and \$got\.Contains\(\$text\)\)/);
+  // Confirmacao vem do estado 'confirmed' do job UIA; nunca do caption do topo.
+  assert.match(s, /\$state -eq 'confirmed'/);
   assert.doesNotMatch(s, /GetWindowTextW\(\$h, \$sb, 8192\)/);
 });
 
@@ -49,6 +49,15 @@ test("background type procura Document antes de Edit (Notepad/WinUI)", () => {
     s.indexOf("ControlType]::Document") < s.indexOf("ControlType]::Edit"),
     "Document deve ser tentado antes de Edit",
   );
+});
+
+test("background type roda a UIA num job com timeout e trata estouro como unconfirmed", () => {
+  const s = buildBackgroundTypeScript({ text: "oi", hwnd: 42 });
+  // #8: janela travada nao pode bloquear a tool para sempre.
+  assert.match(s, /Start-Job/);
+  assert.match(s, /Wait-Job/);
+  assert.match(s, /-Timeout/);
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|UIA timeout/);
 });
 
 test("background type escapa aspas simples do texto", () => {
