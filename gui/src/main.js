@@ -29,6 +29,9 @@ function apply(snap) {
     if (pause) pause.textContent = snap.paused ? "Retomar" : "Pausar";
     orb.dataset.muted = snap.muted ? "true" : "false";
     orb.dataset.paused = snap.paused ? "true" : "false";
+    // v2: orbe reativo ao nivel de audio (0..1) durante a escuta.
+    const level = typeof snap.level === "number" ? snap.level : 0;
+    orb.style.setProperty("--level", String(Math.max(0, Math.min(1, level))));
   }
   const title = "jarvis:" + state;
   document.title = title;

@@ -59,6 +59,13 @@ html, body {
 .orb[data-state="idle"] { --c: #64748b; animation: breathe 4.5s ease-in-out infinite; }
 .orb[data-state="listening"] { --c: #22d3ee; animation: pulse 1.4s ease-in-out infinite; }
 .orb[data-state="listening"]::after { animation: ripple 1.6s ease-out infinite; }
+/* v2: durante a escuta, a escala/brilho seguem o nivel de audio (--level 0..1).
+   Fallback = 0 quando o hub nao manda nivel (PTT/fixed). */
+.orb[data-state="listening"] {
+  transform: scale(calc(1 + 0.22 * var(--level, 0)));
+  filter: brightness(calc(1 + 0.6 * var(--level, 0)));
+  transition: transform 120ms ease-out, filter 120ms ease-out;
+}
 .orb[data-state="transcribing"] { --c: #a855f7; animation: spin 1.2s linear infinite; }
 .orb[data-state="thinking"] { --c: #34d399; animation: pulse 1.1s ease-in-out infinite; }
 .orb[data-state="speaking"] { --c: #f59e0b; animation: speak 0.55s ease-in-out infinite; }

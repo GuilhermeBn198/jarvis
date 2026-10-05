@@ -151,6 +151,7 @@ class StateHub:
         self._detail: str | None = None
         self._muted = False
         self._paused = False
+        self._level = 0.0
         self._subscribers: list[queue.Queue] = []
         self._commands: queue.Queue = queue.Queue()
         self._measure_result: dict | None = None
@@ -164,6 +165,7 @@ class StateHub:
             "detail": self._detail,
             "muted": self._muted,
             "paused": self._paused,
+            "level": self._level,
             "ts": time.time(),
         }
 
@@ -188,6 +190,26 @@ class StateHub:
                 self._muted = bool(muted)
             if paused is not None:
                 self._paused = bool(paused)
+            subs = list(self._subscribers)
+            payload = json.dumps(self._payload())
+        for q in subs:
+            q.put(payload)
+
+    def set_level(self, level: float) -> None:
+        """Publica o nivel de audio (0..1) para o orbe reagir ao vivo (v2).
+
+        So notifica assinantes se o valor mudou o suficiente (evita flood de SSE
+        durante a captura, que atualiza varias vezes por segundo).
+        """
+        try:
+            v = float(level)
+        except (TypeError, ValueError):
+            return
+        v = max(0.0, min(1.0, v))
+        with self._lock:
+            if abs(v - self._level) < 0.02:
+                return
+            self._level = v
             subs = list(self._subscribers)
             payload = json.dumps(self._payload())
         for q in subs:

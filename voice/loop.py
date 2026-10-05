@@ -54,6 +54,24 @@ def _emit(hub, state, detail=None) -> None:
         pass
 
 
+def _level_sink(hub):
+    """Callback de nivel de audio para o orbe (v2); tolera hubs sem `set_level`.
+
+    So emite se o hub expuser `set_level` (o StateHub real expoe; fakes de
+    teste podem nao ter). Nunca levanta: o indicador nao pode quebrar a voz.
+    """
+    if hub is None or not hasattr(hub, "set_level"):
+        return None
+
+    def sink(level: float) -> None:
+        try:
+            hub.set_level(level)
+        except Exception:
+            pass
+
+    return sink
+
+
 @dataclass
 class StreamResult:
     answer: str | None
@@ -338,7 +356,10 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             _emit(hub, "listening")
             _hb("gravando")
             if cfg.input_mode == "auto":
-                wav = record_auto(config=cfg, should_stop=_should_stop)
+                wav = record_auto(
+                    config=cfg, should_stop=_should_stop,
+                    on_level=_level_sink(hub),
+                )
                 if not wav:
                     err.write("[voz] nada detectado\n")
                     err.flush()

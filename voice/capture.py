@@ -98,7 +98,7 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
                 max_s: float | None = None, wait_s: float | None = None,
                 silence_s: float | None = None, noise_db: int | None = None,
                 min_speech_s: float | None = None, should_stop=None,
-                eps: float = EPS) -> str:
+                on_level=None, eps: float = EPS) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_AUTO_OUT_WAV
     # Sem parametro explicito, usa os tunables do config (env VOICE_*).
@@ -176,7 +176,11 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
                 t = _parse_silence_end(line)
                 speech_start = t if t is not None else 0.0
                 heard_speech = True
+                if on_level is not None:
+                    on_level(1.0)
             elif "silence_start" in line:
+                if on_level is not None:
+                    on_level(0.0)
                 t = _parse_silence_start(line)
                 if t is None:
                     continue
