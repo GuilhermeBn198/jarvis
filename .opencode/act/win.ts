@@ -96,12 +96,16 @@ export function buildBackgroundTypeScript(a: { text: string; window?: string; hw
   return `${WIN32_SNIPPET}${UIA_SETUP}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
 $text = '${text}'
 $append = ${append ? "$true" : "$false"}
-# Janela travada nao pode bloquear a tool: a UIA roda num job com timeout (#8).
-# Estouro do timeout vira 'unconfirmed' (seguro), nunca afirma sucesso.
+# Injetamos via PostMessage WM_CHAR, que NAO ativa a janela. A UIA e usada
+# apenas para LOCALIZAR o controle e VERIFICAR o resultado — nunca SetValue:
+# medido no #9, ValuePattern.SetValue rouba o foco (FG muda no SetValue).
 $job = Start-Job -ScriptBlock {
   param($hwnd, $text, $append)
   Add-Type -AssemblyName UIAutomationClient
   Add-Type -AssemblyName UIAutomationTypes
+  Add-Type -Namespace W -Name Win -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
+'@
   $root = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$hwnd)
   $edit = $null
   foreach ($ct in @([System.Windows.Automation.ControlType]::Document, [System.Windows.Automation.ControlType]::Edit)) {
@@ -109,15 +113,19 @@ $job = Start-Job -ScriptBlock {
     $cand = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
     if ($cand) { $edit = $cand; break }
   }
-  if (-not $edit) { return @('noset', 0) }
-  # Handle nativo do controle de edicao (para o fallback WM_CHAR, I3).
+  # Handle nativo do controle de edicao (I3): o WM_CHAR vai nele, nao no topo.
   $native = 0
-  try { $native = [int64]$edit.Current.NativeWindowHandle } catch { $native = 0 }
-  try {
-    $vp = $edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
-    # I2: append concatena com o valor atual; default substitui.
-    if ($append) { $vp.SetValue([string]$vp.Current.Value + $text) } else { $vp.SetValue($text) }
-  } catch { return @('noset', $native) }
+  if ($edit) { try { $native = [int64]$edit.Current.NativeWindowHandle } catch { $native = 0 } }
+  $target = if ($native -gt 0) { [IntPtr]$native } else { [IntPtr]$hwnd }
+  # Posiciona o caret antes de digitar (EM_SETSEL, nao rouba foco):
+  #   append  -> caret no fim (-1,-1)
+  #   default -> seleciona tudo (0,-1) para o WM_CHAR sobrescrever
+  if ($append) { [void][W.Win]::PostMessageW($target, 0x00B1, [IntPtr](-1), [IntPtr](-1)) }
+  else { [void][W.Win]::PostMessageW($target, 0x00B1, [IntPtr]::Zero, [IntPtr](-1)) }
+  foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($target, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
+  if (-not $edit) { return @('noset', $native) }
+  # Deixa a fila de mensagens processar antes de reler (verificacao best-effort).
+  Start-Sleep -Milliseconds 250
   try {
     $got = [string]$edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).Current.Value
     if ($text -and $got.Contains($text)) { return @('confirmed', $native) }
@@ -138,10 +146,7 @@ $native = if ($res.Count -gt 1) { [int64]$res[1] } else { 0 }
 if ($state -eq 'confirmed') { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
 elseif ($state -eq 'set') { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
 else {
-  # Sem ValuePattern: fallback WM_CHAR no controle de edicao (I3), senao no topo.
-  $hTarget = if ($native -gt 0) { [IntPtr]$native } else { [IntPtr]$h }
-  foreach ($ch in $text.ToCharArray()) { [void][W.Win]::PostMessageW($hTarget, 0x0102, [IntPtr][int][char]$ch, [IntPtr]::Zero) }
-  Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao (fallback WM_CHAR)'
+  Write-Output 'JARVIS_RESULT=unconfirmed|sem controle de edicao (WM_CHAR no topo)'
 }
 `;
 }
