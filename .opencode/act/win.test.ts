@@ -25,11 +25,14 @@ test("parseWinList devolve vazio para saida sem json", () => {
   assert.deepEqual(parseWinList("erro qualquer"), []);
 });
 
-test("background type usa UIA ValuePattern e fallback PostMessage", () => {
+test("background type injeta via WM_CHAR (PostMessage) e nunca usa SetValue", () => {
   const s = buildBackgroundTypeScript({ text: "oi", window: "Notepad" });
-  assert.match(s, /ValuePattern/);
+  // Injeção primária é PostMessage WM_CHAR, que não ativa a janela.
   assert.match(s, /PostMessageW/);
+  assert.match(s, /0x0102/);
   assert.match(s, /Resolve-JarvisTarget/);
+  // A UIA só LÊ (localizar/verificar); SetValue rouba o foco (regressão #9).
+  assert.doesNotMatch(s, /\.SetValue\(/);
   assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|mouse_event/);
 });
 
@@ -63,14 +66,18 @@ test("background type roda a UIA num job com timeout e trata estouro como unconf
 test("background type suporta append (I2) e WM_CHAR no controle (I3)", () => {
   const ins = buildBackgroundTypeScript({ text: "oi", hwnd: 42 });
   const app = buildBackgroundTypeScript({ text: "oi", hwnd: 42, append: true });
-  // I2: append concatena com o valor atual; default substitui (flag distingue).
+  // I2: append distingue concatenar (default substitui via selecao previa).
   assert.match(app, /\$append = \$true/);
   assert.doesNotMatch(ins, /\$append = \$true/);
   assert.match(ins, /\$append = \$false/);
-  assert.match(ins, /\$vp\.Current\.Value \+ \$text/);
-  // I3: fallback WM_CHAR mira o handle nativo do controle, nao so o topo.
+  // I3: injecao mira o handle nativo do controle, nao so o topo.
   assert.match(ins, /NativeWindowHandle/);
   assert.match(ins, /0x0102/);
+  // Caret via EM_SETSEL: append -> fim (-1,-1); default -> seleciona tudo (0,-1).
+  assert.match(app, /0x00B1/);
+  assert.match(app, /\[IntPtr\]\(-1\), \[IntPtr\]\(-1\)/);
+  assert.match(ins, /\[IntPtr\]::Zero, \[IntPtr\]\(-1\)/);
+  assert.doesNotMatch(ins, /\.SetValue\(/);
 });
 
 test("background type escapa aspas simples do texto", () => {
@@ -113,5 +120,5 @@ test("mode foreground explicito forca foreground mesmo com window", () => {
 });
 
 test("hwnd sozinho entra em background", () => {
-  assert.match(chooseActScript("act_type", { text: "oi", hwnd: 123 }), /ValuePattern/);
+  assert.match(chooseActScript("act_type", { text: "oi", hwnd: 123 }), /0x0102/);
 });
