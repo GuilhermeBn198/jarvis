@@ -335,3 +335,26 @@ def test_set_keeps_flags_in_payload():
     payload = json.loads(q.get_nowait())
     assert payload["state"] == "speaking"
     assert payload["muted"] is True
+
+
+def test_level_default_e_publicado_no_snapshot():
+    hub = StateHub(port=0)
+    assert hub.snapshot()["level"] == 0.0
+    hub.set_level(0.42)
+    assert hub.snapshot()["level"] == 0.42
+
+
+def test_level_e_clampado_entre_0_e_1():
+    hub = StateHub(port=0)
+    hub.set_level(5)
+    assert hub.snapshot()["level"] == 1.0
+    hub.set_level(-3)
+    assert hub.snapshot()["level"] == 0.0
+
+
+def test_set_level_publica_para_subscriber():
+    hub = StateHub(port=0)
+    q = hub.subscribe()
+    hub.set_level(0.7)
+    payload = q.get_nowait()
+    assert '"level": 0.7' in payload

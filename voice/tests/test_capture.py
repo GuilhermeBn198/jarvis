@@ -206,6 +206,22 @@ def test_record_auto_stops_on_silence_after_speech(monkeypatch):
     assert result == "/mnt/c/Users/user/tools/x.wav"
 
 
+def test_record_auto_emite_on_level_fala_e_silencio(monkeypatch):
+    levels = []
+    lines = [
+        "[silencedetect @ 0x1] silence_end: 1.00 | silence_duration: 2.0\n",
+        "[silencedetect @ 0x1] silence_start: 3.00\n",
+    ]
+    def fake_popen(cmd, **kw):
+        return FakeAutoProc(cmd, lines)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    record_auto(config=CFG, on_level=levels.append)
+    # Fala detectada (silence_end) -> 1.0; fim de fala (silence_start) -> 0.0.
+    assert 1.0 in levels
+    assert 0.0 in levels
+    assert levels[0] == 1.0
+
+
 def test_record_auto_leading_silence_then_speech_stops(monkeypatch):
     seen = {}
     lines = [
