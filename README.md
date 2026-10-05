@@ -42,7 +42,7 @@ Divisão de responsabilidades:
 - **Streaming de TTS por sentença** — começa a falar enquanto o texto ainda é gerado, com fallback para o caminho bloqueante (ver limitações sobre o ganho).
 - **Visão de tela** (`--see` ou a palavra-gatilho "olha"): captura a tela e pergunta a um modelo de visão. O conteúdo da tela é tratado como **não-confiável** (o agente de visão não tem ferramentas).
 - **Ações no PC** (`--do` ou o agente `act`): digitar, teclas, clicar e abrir coisas no Windows, via as tools `act_*`, protegidas por um **SafetyGate** (regras de segurança).
-- **Ações em segundo plano (opt-in):** `act_type`/`act_key` aceitam `window`/`hwnd` (ou `mode="background"`) para agir sem roubar foco/cursor via UI Automation + PostMessage; `mode="foreground"` explícito força o caminho em foco mesmo com `window`/`hwnd`. `act_type` também aceita `append=true` (concatena ao conteúdo atual; default substitui). A UIA roda com timeout de ~5s (janela travada vira `unconfirmed`). `win_list` lista as janelas. Na injeção de **texto**, apps que ignoram entrada em background retornam `unconfirmed` e o Jarvis pede confirmação antes de trazer a janela para frente; já `act_key` apenas reporta `verificacao indisponivel` e **não** pede consentimento. O `act_type` via UIA `ValuePattern` **define** o valor do campo (substitui o conteúdo existente), não insere no cursor; o fallback `WM_CHAR` é best-effort (postado à janela-alvo e alguns apps o ignoram). Clicar em controles em background ainda nao e suportado. Verificação de injeção em background E2E ainda pendente (manual).
+- **Ações em segundo plano (opt-in):** `act_type`/`act_key` aceitam `window`/`hwnd` (ou `mode="background"`) para agir sem roubar foco/cursor via UI Automation + PostMessage; `mode="foreground"` explícito força o caminho em foco mesmo com `window`/`hwnd`. A injeção de texto posiciona o caret (`EM_SETSEL`) e digita via `WM_CHAR` (`PostMessage`); a UIA só **localiza e verifica** (nunca `SetValue`, que ativava a janela). `append=true` põe o caret no fim (concatena); default seleciona tudo (substitui). A UIA roda com timeout de ~5s (janela travada vira `unconfirmed`). `win_list` lista as janelas. Na injeção de **texto**, apps que ignoram entrada em background retornam `unconfirmed` e o Jarvis pede confirmação antes de trazer a janela para frente; já `act_key` apenas reporta `verificacao indisponivel` e **não** pede consentimento. Clicar em controles em background ainda não é suportado. **Foco/cursor intactos verificados E2E** numa sessão ociosa (issue #9).
 - **Indicador visual de estado** (overlay Tauri): um **orbe** sempre-no-topo, com cor e animação por estado — `idle`, `listening`, `transcribing`, `thinking`, `speaking`, `acting`, `error`. Clicável (menu: Mudo / Pausar / Iniciar|Reiniciar cérebro / Sair) e arrastável.
 - **Comandos pelo overlay**: `mute` (silencia), `pause` (não capta novos turnos) e `quit` (encerra o loop), além de subir o cérebro no WSL.
 - **Bridge de texto** (stdin → agente → stdout), útil para scripts e testes.
@@ -289,13 +289,13 @@ Roadmap "sempre ligado" (issues no GitHub):
 | # | Item | Issue |
 |---|---|---|
 | 1 | **Wake word** ("jarvis, ...") para acordar sem falso positivo | — |
-| 2 | **Empacotar `.exe`** e auto-start no login (sem invocar Python) | [#1](https://github.com/GuilhermeBn198/jarvis/issues/1) |
+| 2 | **Empacotar `.exe`** + auto-start no login (o zipapp do #1 já roda sem invocar Python) | [#1](https://github.com/GuilhermeBn198/jarvis/issues/1) (fechado) |
 | 3 | **Personalidade configurável** — tonalidade de voz e estilo de resposta | [#3](https://github.com/GuilhermeBn198/jarvis/issues/3) |
 | 4 | **Avatar animado** (v3 do indicador, sobre o orbe) | [#2](https://github.com/GuilhermeBn198/jarvis/issues/2) |
-| 5 | **Orbe reativo ao áudio** (v2 do indicador) | [#2](https://github.com/GuilhermeBn198/jarvis/issues/2) |
-| 6 | **Corrigir o mic preso** (anti-órfão + limpeza do `ffmpeg` + modo compartilhado) | [#4](https://github.com/GuilhermeBn198/jarvis/issues/4) |
-| 7 | Roteamento determinístico nuvem↔local (proxy/LiteLLM) | — |
-| 8 | Classificador aprendido para roteamento | — |
+| 5 | Roteamento determinístico nuvem↔local (proxy/LiteLLM) — adiado | — |
+| 6 | Classificador aprendido para roteamento — adiado | — |
+
+Concluídos: orbe reativo ao áudio (v2 do indicador, PR #12), mic preso mitigado (#4), contexto do Windows em texto (#6), arquivos Windows estruturados (#7), timeout da UIA (#8), foco/cursor E2E (#9), zipapp (#1).
 
 Backlog detalhado: [`docs/backlog.md`](docs/backlog.md).
 
@@ -317,7 +317,7 @@ jarvis/
 │   ├── vision.py          # captura + visão
 │   ├── serve.py           # garante o opencode serve
 │   ├── config.py          # config por env
-│   └── tests/             # pytest (~224 testes)
+│   └── tests/             # pytest (~287 testes)
 ├── gui/                   # overlay (Tauri 2, Rust + frontend estático)
 │   └── src-tauri/         # app Rust (orbe + start_brain)
 ├── .opencode/             # agentes, plugins (SafetyGate) e tools act_*
@@ -337,7 +337,10 @@ jarvis/
 ```bash
 cd voice
 . .venv/bin/activate
-pytest -q
+pytest -q          # ~287 testes
+
+cd ..
+node --test '.opencode/**/*.test.ts'   # SafetyGate + tools act_*
 ```
 
 ---
