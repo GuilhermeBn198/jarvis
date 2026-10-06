@@ -226,30 +226,39 @@ def _budget(phrase_len: int, fuzzy: int) -> int:
     return max(0, min(fuzzy, 2))
 
 
-def _fuzzy_prefix(compact_text: str, compact_phrase: str, budget: int) -> int | None:
-    """Menor distancia entre a frase e um prefixo do texto; devolve o
-    comprimento consumido, ou None se a distancia minima passa do orcamento."""
-    k = len(compact_phrase)
-    lo = max(0, k - budget)
-    hi = min(len(compact_text), k + budget)
-    best_len = None
-    best_d = budget + 1
-    for ln in range(lo, hi + 1):
-        d = _edit_distance(compact_phrase, compact_text[:ln])
-        if d < best_d:
-            best_d = d
-            best_len = ln
-    if best_len is None or best_d > budget:
-        return None
-    return best_len
-
-
 def _boundary_ok(t_spaced: str, consumed: int) -> bool:
     pos = [i for i, c in enumerate(t_spaced) if c != " "]
     if consumed == 0 or consumed >= len(pos):
         return True
     between = t_spaced[pos[consumed - 1] + 1:pos[consumed]]
     return " " in between
+
+
+def _best_prefix_len(t_spaced: str, compact_text: str, compact_phrase: str,
+                     budget: int) -> int | None:
+    """Comprimento do prefixo do texto (forma compacta) que melhor casa a frase.
+
+    Considera apenas comprimentos que terminam em **fronteira de palavra** e
+    cuja distancia de edicao fique no orcamento; prefere menor distancia e,
+    no empate, o comprimento mais proximo do da frase (evita consumir o
+    comeco da palavra seguinte ou cortar a atual).
+    """
+    k = len(compact_phrase)
+    lo = max(0, k - budget)
+    hi = min(len(compact_text), k + budget)
+    best_key = None
+    best_ln = None
+    for ln in range(lo, hi + 1):
+        if not _boundary_ok(t_spaced, ln):
+            continue
+        d = _edit_distance(compact_phrase, compact_text[:ln])
+        if d > budget:
+            continue
+        key = (d, abs(ln - k), ln)
+        if best_key is None or key < best_key:
+            best_key = key
+            best_ln = ln
+    return best_ln
 
 
 def _strip_leading(text: str, n_alnum: int) -> str:
@@ -284,8 +293,8 @@ def match(text: str, registry: Registry) -> Match | None:
             pc = normalize(phrase).replace(" ", "")
             if not pc:
                 continue
-            consumed = _fuzzy_prefix(tc, pc, _budget(len(pc), fuzzy))
-            if consumed is None or not _boundary_ok(t, consumed):
+            consumed = _best_prefix_len(t, tc, pc, _budget(len(pc), fuzzy))
+            if consumed is None:
                 continue
             key = (-len(pc), order)
             if best_key is None or key < best_key:
@@ -610,7 +619,8 @@ def test_activation_invalido_raises():
 def test_triggers_paths_defaults_e_env():
     cfg = load_config({})
     assert cfg.triggers_base.endswith("voice/triggers.json")
-    assert cfg.triggers_override is None
+    # Nao asserta `triggers_override is None`: depende de existir (ou nao)
+    # ~/.config/jarvis/triggers.json na maquina. So o caminho por env e fixo.
     assert load_config({"JARVIS_TRIGGERS": "/x/t.json"}).triggers_override == "/x/t.json"
 ```
 
