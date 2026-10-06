@@ -5,10 +5,11 @@ import subprocess
 import sys
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
+from triggers import Target, load_registry, match as match_trigger
 from capture import (
     QuitRequested,
     list_audio_devices,
@@ -26,6 +27,8 @@ from stt import transcribe
 from stream import SentenceChunker, Speaker
 from tts import VoiceError, speak
 from vision import capture, see
+
+DEFAULT_TARGET = Target("agent", "chat")
 
 
 def gui_lost(require_gui: bool, subscribers: int, last_gui_ts: float,
@@ -390,19 +393,62 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             consecutive_errors = 0
             _emit(hub, "idle")
             continue
-        if is_vision_request(text, cfg.vision_trigger):
-            _hb("visao")
-            try:
-                see_once(strip_trigger(text, cfg.vision_trigger), err=err, config=cfg, hub=hub)
-            except VoiceError as exc:
-                _emit(hub, "error")
-                abort = _voice_error(exc)
-                if abort:
-                    return
+        registry = load_registry(
+            cfg.triggers_base, cfg.triggers_override, err=err
+        )
+        m = match_trigger(text, registry)
+        if m is None and cfg.activation == "wake":
+            err.write("[voz] sem wake word; ignorando\n")
+            err.flush()
+            consecutive_errors = 0
+            _emit(hub, "idle")
+            continue
+        target = m.target if m is not None else (registry.default or DEFAULT_TARGET)
+        payload = m.text if m is not None else text
+
+        if target.kind == "action":
+            action = target.name
+            if action == "vision":
+                _hb("visao")
+                try:
+                    see_once(payload, err=err, config=cfg, hub=hub)
+                except VoiceError as exc:
+                    _emit(hub, "error")
+                    if _voice_error(exc):
+                        return
+                    _emit(hub, "idle")
+                    continue
+                consecutive_errors = 0
+                continue
+            if action == "measure":
+                measure_requested = True
+                continue
+            if action == "mute":
+                muted = not muted
+                _publish_flags()
                 _emit(hub, "idle")
                 continue
-            consecutive_errors = 0
+            if action == "pause":
+                paused = not paused
+                _publish_flags()
+                _emit(hub, "idle")
+                continue
+            if action == "quit":
+                return
+            err.write(f"[voz] acao desconhecida: {action}\n")
+            err.flush()
+            _emit(hub, "idle")
             continue
+
+        active_client = client
+        if target.name and (cfg.agent or "chat") != target.name:
+            try:
+                active_client = _client_for(cfg, target.name)
+            except Exception as exc:  # fronteira: alvo ruim nao derruba o loop
+                err.write(f"[voz] agente '{target.name}' indisponivel: {exc}\n")
+                err.flush()
+                _emit(hub, "error")
+                continue
         error = None
         t_agent0 = time.monotonic()
         _emit(hub, "thinking")
@@ -414,8 +460,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         answer = None
         t_agent1 = None
         t_tts0 = t_agent0
-        if cfg.stream_tts and hasattr(client, "stream"):
-            res = _stream_turn(client, text, cfg, hub, muted, t_agent0, err)
+        if cfg.stream_tts and hasattr(active_client, "stream"):
+            res = _stream_turn(active_client, payload, cfg, hub, muted, t_agent0, err)
             if res.gen_done_s is not None:
                 t_agent1 = t_agent0 + res.gen_done_s
                 # O TTS do streaming toca em paralelo a geracao; tts_s mede o
@@ -435,7 +481,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 error = res.failed
         if answer is None:
             try:
-                answer = client.ask(text)
+                answer = active_client.ask(payload)
             except AgentError as exc:
                 error = str(exc)
                 answer = f"erro: {exc}"
@@ -656,6 +702,11 @@ def resolve_client(cfg, err=None):
         err.flush()
         return RunClient(cfg)
     return make_client(cfg)
+
+
+def _client_for(cfg, agent: str):
+    """Client para um agente especifico (roteamento por gatilho)."""
+    return make_client(replace(cfg, agent=agent))
 
 
 def _start_hub(cfg, err):
