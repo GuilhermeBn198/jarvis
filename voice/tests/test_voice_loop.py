@@ -1220,6 +1220,26 @@ def test_frase_de_visao_roteia_para_see_once(monkeypatch):
     assert seen == ["isso agora"]
 
 
+def test_vision_trigger_env_honrado(monkeypatch):
+    seen = []
+    reg = Registry(
+        triggers=(Trigger("vision", ("veja",), Target("action", "vision")),),
+        default=Target("agent", "chat"),
+        fuzzy=1,
+    )
+    _patch_loop(monkeypatch, "olhar a tela", registry=reg)
+    monkeypatch.setattr("loop.see_once", lambda prompt, **k: seen.append(prompt))
+    monkeypatch.setattr("loop.speak", lambda *a, **k: None)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                 input_mode="fixed", vision_trigger="olhar")
+
+    class Client:
+        def ask(self, *a, **k):
+            raise AssertionError("nao deve chamar o agente")
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=cfg)
+    assert seen == ["a tela"]
+
+
 def test_agente_roteado_usa_client_do_alvo(monkeypatch):
     seen = []
     _patch_loop(monkeypatch, "faz algo")

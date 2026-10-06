@@ -9,7 +9,7 @@ import os
 import re
 import sys
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -157,6 +157,8 @@ def match(text: str, registry: Registry) -> Match | None:
 
 
 def _target_from_dict(d: dict) -> Target:
+    if not isinstance(d, dict):
+        raise ValueError("target nao e objeto")
     kind = str(d.get("kind", "")).strip().lower()
     if kind == "agent":
         name = str(d.get("agent", "")).strip()
@@ -171,10 +173,15 @@ def _target_from_dict(d: dict) -> Target:
 
 def _trigger_from_dict(d: dict) -> Trigger:
     name = str(d.get("name", "")).strip()
+    enabled = bool(d.get("enabled", True))
     phrases = tuple(str(p).strip() for p in (d.get("phrases") or []) if str(p).strip())
-    if not name or not phrases:
+    if not name or (not phrases and enabled):
         raise ValueError("gatilho sem name/phrases")
-    target = _target_from_dict(d.get("target") or {})
+    raw_target = d.get("target")
+    if raw_target is None and not enabled:
+        target = Target("action", "noop")  # placeholder; desabilitado nunca casa
+    else:
+        target = _target_from_dict(raw_target or {})
     aliases = tuple(str(a).strip() for a in (d.get("aliases") or []) if str(a).strip())
     return Trigger(
         name=name,
@@ -183,7 +190,7 @@ def _trigger_from_dict(d: dict) -> Trigger:
         aliases=aliases,
         strip=bool(d.get("strip", True)),
         fuzzy=(None if d.get("fuzzy") is None else int(d["fuzzy"])),
-        enabled=bool(d.get("enabled", True)),
+        enabled=enabled,
     )
 
 
@@ -254,6 +261,27 @@ def _merge(base: Registry, override: Registry) -> Registry:
         default=override.default if override.default is not None else base.default,
         fuzzy=override.fuzzy if override.fuzzy is not None else base.fuzzy,
     )
+
+
+def with_vision_trigger(registry: Registry, trigger: str | None) -> Registry:
+    """Honra VISION_TRIGGER: garante a frase configurada no gatilho `vision`."""
+    phrase = (trigger or "").strip()
+    if not phrase:
+        return registry
+    norm = normalize(phrase)
+    out = []
+    found = False
+    for tr in registry.triggers:
+        if tr.name == "vision":
+            found = True
+            known = {normalize(p) for p in tr.phrases}
+            phrases = tr.phrases if norm in known else tr.phrases + (phrase,)
+            out.append(replace(tr, phrases=phrases))
+        else:
+            out.append(tr)
+    if not found:
+        out.append(Trigger("vision", (phrase,), Target("action", "vision")))
+    return replace(registry, triggers=tuple(out))
 
 
 DEFAULT_REGISTRY = Registry(

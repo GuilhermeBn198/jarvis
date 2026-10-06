@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
-from triggers import Target, load_registry, match as match_trigger
+from triggers import Target, load_registry, match as match_trigger, with_vision_trigger
 from capture import (
     QuitRequested,
     list_audio_devices,
@@ -396,6 +396,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         registry = load_registry(
             cfg.triggers_base, cfg.triggers_override, err=err
         )
+        registry = with_vision_trigger(registry, cfg.vision_trigger)
         m = match_trigger(text, registry)
         if m is None and cfg.activation == "wake":
             err.write("[voz] sem wake word; ignorando\n")

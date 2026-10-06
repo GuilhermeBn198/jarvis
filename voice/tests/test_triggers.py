@@ -68,7 +68,7 @@ def test_texto_vazio_retorna_none():
 
 
 import json
-from triggers import load_registry, DEFAULT_REGISTRY
+from triggers import load_registry, DEFAULT_REGISTRY, with_vision_trigger
 
 BASE = {
     "version": 1, "fuzzy": 1,
@@ -141,3 +141,46 @@ def test_load_registry_gatilho_invalido_e_descartado(tmp_path, capsys):
     reg = load_registry(base, use_cache=False)
     assert [t.name for t in reg.triggers] == ["ok"]
     assert "descartado" in capsys.readouterr().err
+
+
+def test_aliases_casam():
+    reg = Registry(
+        triggers=(Trigger("chat", ("jarvis",), Target("agent", "chat"),
+                          aliases=("hey jarvis",)),),
+        default=Target("agent", "chat"),
+        fuzzy=1,
+    )
+    m = match("hey jarvis oi", reg)
+    assert m is not None
+    assert m.name == "chat"
+    assert m.text == "oi"
+
+
+def test_enabled_false_no_override_desabilita(tmp_path):
+    base = _write(tmp_path, "b.json", BASE)
+    override = _write(tmp_path, "u.json", {
+        "triggers": [{"name": "vision", "enabled": False}]
+    })
+    reg = load_registry(base, override, use_cache=False)
+    by = {t.name: t for t in reg.triggers}
+    assert by["vision"].enabled is False
+    assert match("olha", reg) is None
+
+
+def test_default_nao_dict_nao_perde_gatilhos(tmp_path):
+    path = _write(tmp_path, "b.json", {
+        "default": "chat",
+        "triggers": [
+            {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
+        ],
+    })
+    reg = load_registry(path, use_cache=False)
+    assert isinstance(reg, Registry)
+    assert [t.name for t in reg.triggers] == ["ok"]
+
+
+def test_with_vision_trigger_adiciona_frase():
+    reg = with_vision_trigger(DEFAULT_REGISTRY, "olhar")
+    m = match("olhar a tela", reg)
+    assert m is not None
+    assert m.name == "vision"
