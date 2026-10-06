@@ -58,6 +58,10 @@ DEFAULT_WAIT_S = 8.0
 DEFAULT_MAX_S = 15.0
 DEFAULT_MIN_SPEECH_S = 0.4
 DEFAULT_HEARTBEAT = False
+DEFAULT_ACTIVATION = "free"
+ACTIVATIONS = ("free", "wake")
+DEFAULT_TRIGGERS_BASE = os.path.join(DEFAULT_PROJECT_ROOT, "voice", "triggers.json")
+DEFAULT_TRIGGERS_USER = os.path.expanduser("~/.config/jarvis/triggers.json")
 
 
 @dataclass(frozen=True)
@@ -96,6 +100,9 @@ class Config:
     max_s: float = DEFAULT_MAX_S
     min_speech_s: float = DEFAULT_MIN_SPEECH_S
     heartbeat: bool = DEFAULT_HEARTBEAT
+    activation: str = DEFAULT_ACTIVATION
+    triggers_base: str = DEFAULT_TRIGGERS_BASE
+    triggers_override: str | None = None
 
 
 def serve_port(server_url: str, default: int = 4096) -> int:
@@ -205,6 +212,18 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
     heartbeat = str(e.get("JARVIS_HEARTBEAT", "0")).strip().lower() in (
         "1", "true", "yes", "on",
     )
+    activation = str(
+        e.get("VOICE_ACTIVATION", settings.get("activation", DEFAULT_ACTIVATION))
+    ).strip().lower()
+    if activation not in ACTIVATIONS:
+        raise ValueError(
+            f"VOICE_ACTIVATION deve ser 'free' ou 'wake': {activation}"
+        )
+    triggers_base = DEFAULT_TRIGGERS_BASE
+    triggers_override = str(e.get("JARVIS_TRIGGERS", "")).strip()
+    if not triggers_override and os.path.exists(DEFAULT_TRIGGERS_USER):
+        triggers_override = DEFAULT_TRIGGERS_USER
+    triggers_override = triggers_override or None
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
@@ -240,4 +259,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         max_s=max_s,
         min_speech_s=min_speech_s,
         heartbeat=heartbeat,
+        activation=activation,
+        triggers_base=triggers_base,
+        triggers_override=triggers_override,
     )
