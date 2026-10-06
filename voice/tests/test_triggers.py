@@ -112,7 +112,22 @@ def test_load_registry_arquivo_invalido_usa_fallback(tmp_path, capsys):
     bad.write_text("{ nao json", encoding="utf-8")
     reg = load_registry(str(bad), use_cache=False)
     assert reg is DEFAULT_REGISTRY
-    assert "registry" in capsys.readouterr().err.lower()
+    err = capsys.readouterr().err
+    assert "[triggers]" in err and "bad.json" in err
+
+
+def test_load_registry_json_valido_tipo_ruim_nao_derruba(tmp_path, capsys):
+    bad = _write(tmp_path, "bad.json", {
+        "fuzzy": "abc",
+        "triggers": [
+            "nao-e-dict",
+            {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
+        ],
+    })
+    reg = load_registry(bad, use_cache=False)
+    assert isinstance(reg, Registry)
+    assert [t.name for t in reg.triggers] == ["ok"]
+    assert "descartado" in capsys.readouterr().err
 
 
 def test_load_registry_gatilho_invalido_e_descartado(tmp_path, capsys):

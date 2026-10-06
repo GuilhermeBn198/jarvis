@@ -190,6 +190,9 @@ def _trigger_from_dict(d: dict) -> Trigger:
 def _registry_from_dict(data: dict, err=None) -> Registry:
     triggers: list[Trigger] = []
     for item in (data.get("triggers") or []):
+        if not isinstance(item, dict):
+            _warn(err, f"gatilho descartado (nao e objeto): {item!r}")
+            continue
         try:
             triggers.append(_trigger_from_dict(item))
         except (TypeError, ValueError) as exc:
@@ -201,10 +204,16 @@ def _registry_from_dict(data: dict, err=None) -> Registry:
         except (TypeError, ValueError) as exc:
             _warn(err, f"default descartado ({exc})")
     fuzzy = data.get("fuzzy")
+    if fuzzy is not None:
+        try:
+            fuzzy = int(fuzzy)
+        except (TypeError, ValueError) as exc:
+            _warn(err, f"fuzzy invalido ({exc}): {fuzzy!r}")
+            fuzzy = None
     return Registry(
         triggers=tuple(triggers),
         default=default,
-        fuzzy=(None if fuzzy is None else int(fuzzy)),
+        fuzzy=fuzzy,
     )
 
 
@@ -229,7 +238,11 @@ def _read_registry(path: str | None, err=None) -> Registry | None:
     if not isinstance(data, dict):
         _warn(err, f"{path}: conteudo nao e um objeto JSON")
         return None
-    return _registry_from_dict(data, err)
+    try:
+        return _registry_from_dict(data, err)
+    except Exception as exc:
+        _warn(err, f"{path}: registry invalido ({exc})")
+        return None
 
 
 def _merge(base: Registry, override: Registry) -> Registry:
