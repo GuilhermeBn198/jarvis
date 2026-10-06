@@ -1155,3 +1155,129 @@ def test_mute_publishes_flags(monkeypatch):
     hub = FlagsHub(cmds=["mute"])
     voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=CFG, hub=hub)
     assert hub.flags[-1] == (True, False)
+
+
+from triggers import Target, Trigger, Registry
+
+VISION_REG = Registry(
+    triggers=(
+        Trigger("chat", ("jarvis",), Target("agent", "chat")),
+        Trigger("vision", ("olha",), Target("action", "vision")),
+        Trigger("mute", ("silencia",), Target("action", "mute")),
+        Trigger("act", ("faz",), Target("agent", "act")),
+    ),
+    default=Target("agent", "chat"),
+    fuzzy=1,
+)
+
+WAKE_CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                  input_mode="fixed", activation="wake")
+
+
+def _patch_loop(monkeypatch, transcript, registry=None):
+    monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: transcript)
+    monkeypatch.setattr("loop.load_registry", lambda *a, **k: (registry or VISION_REG))
+    monkeypatch.setattr("loop.log_turn", lambda *a, **k: None)
+
+
+def test_wake_ignora_sem_gatilho(monkeypatch):
+    calls = []
+    _patch_loop(monkeypatch, "uma conversa qualquer")
+
+    class Client:
+        def ask(self, *a, **k):
+            calls.append("ask")
+            return "x"
+    monkeypatch.setattr("loop.speak", lambda *a, **k: calls.append("tts"))
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=WAKE_CFG)
+    assert calls == []
+
+
+def test_free_cai_no_default(monkeypatch):
+    seen = []
+    _patch_loop(monkeypatch, "uma conversa qualquer")
+    monkeypatch.setattr("loop.speak", lambda *a, **k: None)
+
+    class Client:
+        def ask(self, task, timeout_s=None):
+            seen.append(task)
+            return "ok"
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert seen == ["uma conversa qualquer"]
+
+
+def test_frase_de_visao_roteia_para_see_once(monkeypatch):
+    seen = []
+    _patch_loop(monkeypatch, "olha isso agora")
+    monkeypatch.setattr("loop.see_once", lambda prompt, **k: seen.append(prompt))
+    monkeypatch.setattr("loop.speak", lambda *a, **k: None)
+
+    class Client:
+        def ask(self, *a, **k):
+            raise AssertionError("nao deve chamar o agente")
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
+    assert seen == ["isso agora"]
+
+
+def test_vision_trigger_env_honrado(monkeypatch):
+    seen = []
+    reg = Registry(
+        triggers=(Trigger("vision", ("veja",), Target("action", "vision")),),
+        default=Target("agent", "chat"),
+        fuzzy=1,
+    )
+    _patch_loop(monkeypatch, "olhar a tela", registry=reg)
+    monkeypatch.setattr("loop.see_once", lambda prompt, **k: seen.append(prompt))
+    monkeypatch.setattr("loop.speak", lambda *a, **k: None)
+    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
+                 input_mode="fixed", vision_trigger="olhar")
+
+    class Client:
+        def ask(self, *a, **k):
+            raise AssertionError("nao deve chamar o agente")
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=cfg)
+    assert seen == ["a tela"]
+
+
+def test_agente_roteado_usa_client_do_alvo(monkeypatch):
+    seen = []
+    _patch_loop(monkeypatch, "faz algo")
+    monkeypatch.setattr("loop.speak", lambda *a, **k: None)
+
+    class ActClient:
+        def ask(self, task, timeout_s=None):
+            seen.append(("act", task))
+            return "feito"
+
+    class ChatClient:
+        def ask(self, *a, **k):
+            raise AssertionError("nao deve usar o client default")
+    monkeypatch.setattr("loop.make_client", lambda cfg: ActClient())
+    voice_loop(client=ChatClient(), iterations=1, record_seconds=1, config=CFG)
+    assert seen == [("act", "algo")]
+
+
+def test_acao_mute_alterna_estado(monkeypatch):
+    flags = []
+
+    class Hub:
+        def set_flags(self, **k):
+            flags.append(k)
+        def take_command(self):
+            return None
+        def subscribers(self):
+            return 0
+        def set(self, *a, **k):
+            pass
+        def set_level(self, *a, **k):
+            pass
+
+    _patch_loop(monkeypatch, "silencia")
+    monkeypatch.setattr("loop.speak", lambda *a, **k: None)
+
+    class Client:
+        def ask(self, *a, **k):
+            raise AssertionError("mute nao chama agente")
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=Hub())
+    assert flags and flags[-1] == {"muted": True, "paused": False}

@@ -11,6 +11,7 @@ STRING_KEYS = ("mic_device",)
 CHOICE_KEYS = {
     "input_mode": ("auto", "ptt", "fixed"),
     "tts_backend": ("piper", "sapi"),
+    "activation": ("free", "wake"),
 }
 SETTINGS_KEYS = NUMERIC_KEYS + BOOL_KEYS + STRING_KEYS + tuple(CHOICE_KEYS)
 

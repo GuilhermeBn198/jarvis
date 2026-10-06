@@ -43,6 +43,10 @@ Por padrão a voz usa `serve` (agente) + `piper` (TTS). O loop sobe o
 conseguir, avisa e cai para o backend `run` (mais lento), então a voz
 continua funcionando.
 
+### Wake word e gatilhos
+
+Com `VOICE_ACTIVATION=wake`, o loop ignora falas que não começam com um gatilho declarado. Os gatilhos vivem em `voice/triggers.json` (base) e em `~/.config/jarvis/triggers.json` (override). Cada gatilho tem `phrases` (canônicas, com casamento fuzzy), um `target` (`{"kind":"agent","agent":"chat"}` ou `{"kind":"action","action":"vision|mute|pause|quit|measure"}`) e, opcionalmente, `aliases`, `strip`, `fuzzy` e `enabled`. Editar o arquivo vale no próximo turno (cache por mtime).
+
 ## Pré-requisitos e configuração
 
 ### Agente (`serve`, default)
@@ -110,6 +114,8 @@ contra `sapi` ~4s. No total, `serve`+`piper` ~4,8s contra `run`+`sapi` ~20s.
 | `RECORD_SECONDS` | `5` | duração da gravação por turno (só com `VOICE_INPUT=fixed`) |
 | `VOICE_INPUT` | `auto` | modo de entrada: `auto` (fala), `ptt` (Enter/Enter) ou `fixed` (janela) |
 | `VOICE_PTT` | — | legado: `1` → `ptt`, `0` → `fixed` (precedido por `VOICE_INPUT`) |
+| `VOICE_ACTIVATION` | `free` | modo de ativação: `free` (responde a qualquer fala) ou `wake` (exige palavra-gatilho em `triggers.json`) |
+| `JARVIS_TRIGGERS` | — | caminho de um `triggers.json` de override (mesclado por `name` sobre a base do repo); se não definido, usa `~/.config/jarvis/triggers.json` quando ele existir |
 | `VOICE_LANGUAGE` | `pt` | idioma do STT |
 | `POWERSHELL_EXE` | `powershell.exe` | PowerShell para o TTS (SAPI) |
 | `OPENCODE_BIN` | `~/.opencode/bin/opencode` | binário do agente |

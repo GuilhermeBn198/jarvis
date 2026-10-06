@@ -280,6 +280,7 @@ async function loadSettings() {
   document.getElementById("s-minspeech").value = s.min_speech_s ?? "";
   document.getElementById("s-stream").checked = s.stream_tts !== false;
   document.getElementById("s-input").value = s.input_mode ?? "auto";
+  document.getElementById("s-activation").value = s.activation ?? "free";
   document.getElementById("s-tts").value = s.tts_backend ?? "piper";
 }
 
@@ -341,6 +342,7 @@ async function saveSettings(restart) {
   const mic = document.getElementById("s-mic").value;
   if (mic) body.mic_device = mic;
   body.input_mode = document.getElementById("s-input").value;
+  body.activation = document.getElementById("s-activation").value;
   body.tts_backend = document.getElementById("s-tts").value;
   for (const k of Object.keys(body)) {
     if (body[k] === null) delete body[k];

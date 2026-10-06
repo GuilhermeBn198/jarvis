@@ -253,3 +253,24 @@ def test_env_overrides_settings_choices():
                       settings={"input_mode": "ptt", "tts_backend": "sapi"})
     assert cfg.input_mode == "fixed"
     assert cfg.tts_backend == "piper"
+
+
+def test_activation_default_e_env():
+    from config import DEFAULT_ACTIVATION
+    assert load_config({}).activation == DEFAULT_ACTIVATION
+    assert load_config({"VOICE_ACTIVATION": "WAKE"}).activation == "wake"
+
+
+def test_activation_invalido_raises():
+    with pytest.raises(ValueError) as exc:
+        load_config({"VOICE_ACTIVATION": "nope"})
+    assert "VOICE_ACTIVATION" in str(exc.value)
+    assert "nope" in str(exc.value)
+
+
+def test_triggers_paths_defaults_e_env():
+    cfg = load_config({})
+    assert cfg.triggers_base.endswith("voice/triggers.json")
+    # Nao asserta `triggers_override is None`: depende de existir (ou nao)
+    # ~/.config/jarvis/triggers.json na maquina. So o caminho por env e fixo.
+    assert load_config({"JARVIS_TRIGGERS": "/x/t.json"}).triggers_override == "/x/t.json"
