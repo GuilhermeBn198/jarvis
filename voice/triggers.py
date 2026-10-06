@@ -4,7 +4,10 @@ Nao faz I/O no nucleo de matching: `match()` recebe um `Registry` ja carregado.
 Sem dependencia nova (so stdlib).
 """
 
+import json
+import os
 import re
+import sys
 import unicodedata
 from dataclasses import dataclass
 
@@ -151,3 +154,145 @@ def match(text: str, registry: Registry) -> Match | None:
     tr, phrase, consumed = best
     remaining = _strip_leading(text, consumed) if tr.strip else text.strip()
     return Match(name=tr.name, target=tr.target, phrase=phrase, text=remaining, raw=text)
+
+
+def _target_from_dict(d: dict) -> Target:
+    kind = str(d.get("kind", "")).strip().lower()
+    if kind == "agent":
+        name = str(d.get("agent", "")).strip()
+    elif kind == "action":
+        name = str(d.get("action", "")).strip()
+    else:
+        raise ValueError(f"target.kind invalido: {kind!r}")
+    if not name:
+        raise ValueError("target sem nome")
+    return Target(kind, name)
+
+
+def _trigger_from_dict(d: dict) -> Trigger:
+    name = str(d.get("name", "")).strip()
+    phrases = tuple(str(p).strip() for p in (d.get("phrases") or []) if str(p).strip())
+    if not name or not phrases:
+        raise ValueError("gatilho sem name/phrases")
+    target = _target_from_dict(d.get("target") or {})
+    aliases = tuple(str(a).strip() for a in (d.get("aliases") or []) if str(a).strip())
+    return Trigger(
+        name=name,
+        phrases=phrases,
+        target=target,
+        aliases=aliases,
+        strip=bool(d.get("strip", True)),
+        fuzzy=(None if d.get("fuzzy") is None else int(d["fuzzy"])),
+        enabled=bool(d.get("enabled", True)),
+    )
+
+
+def _registry_from_dict(data: dict, err=None) -> Registry:
+    triggers: list[Trigger] = []
+    for item in (data.get("triggers") or []):
+        try:
+            triggers.append(_trigger_from_dict(item))
+        except (TypeError, ValueError) as exc:
+            _warn(err, f"gatilho descartado ({exc}): {item!r}")
+    default = None
+    if data.get("default"):
+        try:
+            default = _target_from_dict(data["default"])
+        except (TypeError, ValueError) as exc:
+            _warn(err, f"default descartado ({exc})")
+    fuzzy = data.get("fuzzy")
+    return Registry(
+        triggers=tuple(triggers),
+        default=default,
+        fuzzy=(None if fuzzy is None else int(fuzzy)),
+    )
+
+
+def _warn(err, msg: str) -> None:
+    stream = err if err is not None else sys.stderr
+    try:
+        stream.write(f"[triggers] {msg}\n")
+        stream.flush()
+    except Exception:
+        pass
+
+
+def _read_registry(path: str | None, err=None) -> Registry | None:
+    if not path:
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError) as exc:
+        _warn(err, f"nao foi possivel ler {path}: {exc}")
+        return None
+    if not isinstance(data, dict):
+        _warn(err, f"{path}: conteudo nao e um objeto JSON")
+        return None
+    return _registry_from_dict(data, err)
+
+
+def _merge(base: Registry, override: Registry) -> Registry:
+    by_name = {t.name: t for t in base.triggers}
+    for t in override.triggers:
+        by_name[t.name] = t
+    return Registry(
+        triggers=tuple(by_name.values()),
+        default=override.default if override.default is not None else base.default,
+        fuzzy=override.fuzzy if override.fuzzy is not None else base.fuzzy,
+    )
+
+
+DEFAULT_REGISTRY = Registry(
+    triggers=(
+        Trigger("chat", ("jarvis",), Target("agent", "chat")),
+        Trigger("vision", ("olha", "veja"), Target("action", "vision")),
+        Trigger("act", ("faz", "executa"), Target("agent", "act")),
+        Trigger("mute", ("silencia", "mudo"), Target("action", "mute")),
+        Trigger("pause", ("pausa",), Target("action", "pause")),
+    ),
+    default=Target("agent", "chat"),
+    fuzzy=1,
+)
+
+_CACHE: dict[tuple, tuple[float | None, Registry]] = {}
+
+
+def _reset_cache() -> None:
+    _CACHE.clear()
+
+
+def _max_mtime(paths) -> float | None:
+    mtimes = []
+    for p in paths:
+        if not p:
+            continue
+        try:
+            mtimes.append(os.path.getmtime(p))
+        except OSError:
+            pass
+    return max(mtimes) if mtimes else None
+
+
+def _load_uncached(base_path, override_path, err) -> Registry:
+    base = _read_registry(base_path, err)
+    if base is None:
+        base = DEFAULT_REGISTRY
+    if override_path:
+        ov = _read_registry(override_path, err)
+        if ov is not None:
+            base = _merge(base, ov)
+    return base
+
+
+def load_registry(base_path, override_path=None, err=None, use_cache=True) -> Registry:
+    if not use_cache:
+        return _load_uncached(base_path, override_path, err)
+    key = (base_path, override_path)
+    mtime = _max_mtime([base_path, override_path])
+    hit = _CACHE.get(key)
+    if hit is not None and hit[0] == mtime:
+        return hit[1]
+    reg = _load_uncached(base_path, override_path, err)
+    _CACHE[key] = (mtime, reg)
+    return reg

@@ -65,3 +65,64 @@ def test_strip_false_preserva_o_texto():
 def test_texto_vazio_retorna_none():
     assert match("", REG) is None
     assert match("   ", REG) is None
+
+
+import json
+from triggers import load_registry, DEFAULT_REGISTRY
+
+BASE = {
+    "version": 1, "fuzzy": 1,
+    "default": {"kind": "agent", "agent": "chat"},
+    "triggers": [
+        {"name": "chat", "phrases": ["jarvis"], "target": {"kind": "agent", "agent": "chat"}},
+        {"name": "vision", "phrases": ["olha"], "target": {"kind": "action", "action": "vision"}},
+    ],
+}
+
+
+def _write(tmp_path, name, data):
+    p = tmp_path / name
+    p.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return str(p)
+
+
+def test_load_registry_le_base(tmp_path):
+    reg = load_registry(_write(tmp_path, "b.json", BASE), use_cache=False)
+    assert [t.name for t in reg.triggers] == ["chat", "vision"]
+    assert reg.default == Target("agent", "chat")
+
+
+def test_load_registry_merge_por_name(tmp_path):
+    base = _write(tmp_path, "b.json", BASE)
+    override = _write(tmp_path, "u.json", {
+        "triggers": [
+            {"name": "act", "phrases": ["faz"], "target": {"kind": "agent", "agent": "act"}},
+            {"name": "vision", "phrases": ["veja"], "target": {"kind": "action", "action": "vision"}},
+        ]
+    })
+    reg = load_registry(base, override, use_cache=False)
+    by = {t.name: t for t in reg.triggers}
+    assert by["act"].phrases == ("faz",)          # adicionado
+    assert by["vision"].phrases == ("veja",)      # sobrescrito
+    assert by["chat"].phrases == ("jarvis",)      # base preservada
+
+
+def test_load_registry_arquivo_invalido_usa_fallback(tmp_path, capsys):
+    bad = tmp_path / "bad.json"
+    bad.write_text("{ nao json", encoding="utf-8")
+    reg = load_registry(str(bad), use_cache=False)
+    assert reg is DEFAULT_REGISTRY
+    assert "registry" in capsys.readouterr().err.lower()
+
+
+def test_load_registry_gatilho_invalido_e_descartado(tmp_path, capsys):
+    base = _write(tmp_path, "b.json", {
+        "triggers": [
+            {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
+            {"name": "ruim", "phrases": ["x"], "target": {"kind": "nope", "agent": "chat"}},
+            {"name": "sem_frase", "phrases": [], "target": {"kind": "agent", "agent": "chat"}},
+        ]
+    })
+    reg = load_registry(base, use_cache=False)
+    assert [t.name for t in reg.triggers] == ["ok"]
+    assert "descartado" in capsys.readouterr().err

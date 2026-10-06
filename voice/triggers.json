@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "fuzzy": 1,
+  "default": { "kind": "agent", "agent": "chat" },
+  "triggers": [
+    { "name": "chat",   "phrases": ["jarvis"],           "target": { "kind": "agent",  "agent": "chat" } },
+    { "name": "vision", "phrases": ["olha", "veja"],     "target": { "kind": "action", "action": "vision" } },
+    { "name": "act",    "phrases": ["faz", "executa"],   "target": { "kind": "agent",  "agent": "act" } },
+    { "name": "mute",   "phrases": ["silencia", "mudo"], "target": { "kind": "action", "action": "mute" } },
+    { "name": "pause",  "phrases": ["pausa"],            "target": { "kind": "action", "action": "pause" } }
+  ]
+}
