@@ -274,7 +274,7 @@ Detalhes e a lista completa: [`voice/README.md`](voice/README.md).
 - **Latência**: um turno conversacional via `serve`+`piper` fica na casa de poucos segundos. O **streaming de TTS** foi implementado, mas o ganho medido foi **modesto** (~7–20%) porque o tempo até o primeiro token domina e o modelo/API costuma entregar a resposta em poucos blocos grandes. `first_audio_s`/`stream` ficam no `convlog` para acompanhar.
 - **Caminhos do Windows hardcoded** nos defaults (`ffmpeg`, `piper`, `shot.png`, etc.) — precisam ser ajustados por env em outra máquina.
 - **Microfone "preso"** (issue [#4](https://github.com/GuilhermeBn198/jarvis/issues/4)): a captura `dshow` pode segurar o dispositivo, deixando o mic indisponível para outros apps (ex.: Discord). Mitigado por: não rodar headless sem overlay (`JARVIS_REQUIRE_GUI`), trava de instância única (`JARVIS_VOICE_LOCK`) e limpeza do `ffmpeg`. **Se o mic sumir em outros apps:** em *Configurações de Som → Microfone → Propriedades → Avançado*, **desmarque** "Permitir que os aplicativos tenham controle exclusivo" e, se preciso, reinicie o dispositivo/PC.
-- **Sem wake word**: hoje a entrada é VAD/PTT — ruído pode disparar.
+- **Sem wake word no modo `free` (default)**: a entrada é VAD/PTT — ruído pode disparar. Use `VOICE_ACTIVATION=wake` para exigir a palavra-gatilho (`triggers.json`).
 - **Sem barge-in**: não dá para interromper a fala do Jarvis falando por cima.
 - **Streaming só na conversa**: visão (`--see`) e ações (`--do`) usam o caminho bloqueante.
 - **Dependência do `serve`**: `opencode serve`/modelo são externos; sem eles, cai para `run` (lento) ou falha.
