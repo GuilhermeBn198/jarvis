@@ -78,3 +78,16 @@ def test_load_settings_drops_invalid_choice(tmp_path):
     p.write_text(json.dumps({"input_mode": "nope", "tts_backend": "sapi"}),
                  encoding="utf-8")
     assert load_settings(str(p)) == {"tts_backend": "sapi"}
+
+
+def test_save_settings_activation_validada(tmp_path):
+    p = str(tmp_path / "s.json")
+    out = save_settings({"activation": "WAKE"}, path=p)
+    assert out["activation"] == "wake"
+
+
+def test_save_settings_activation_invalida_descartada(tmp_path):
+    p = str(tmp_path / "s.json")
+    out = save_settings({"activation": "nope"}, path=p)
+    assert "activation" not in out
+    assert "activation" in SETTINGS_KEYS
