@@ -2,9 +2,12 @@
 # Protege a branch `main` do jarvis contra alterações não autorizadas.
 #
 # Requer: `gh` autenticado com admin no repo e o repo PÚBLICO (ou plano GitHub
-# Pro); em privado free a API responde 403. Aplique após publicar e rode só
-# quando a proteção ainda não existir (a API PUT exige required_status_checks
-# como JSON null; a forma `-f x=null` manda a string "null" e dá 422).
+# Pro); em privado free a API responde 403. Pode ser re-rodado: os checks
+# obrigatórios já configurados são preservados — o PUT substitui a proteção
+# inteira, então lemos o estado atual antes e reenviamos os checks existentes
+# (a API exige `required_status_checks` no corpo; mandar o campo como JSON
+# null zera os checks, e `-f x=null` manda a string "null" e dá 422, por isso
+# o corpo é JSON montado com --input).
 #
 # Uso:
 #   ./scripts/protect-main.sh            # aplica a proteção
@@ -18,14 +21,25 @@ if [ "${1:-}" = "--dry-run" ]; then
   echo "aplicaria proteção em $REPO@$BRANCH:"
   echo "  exigir PR com 1 revisão (code owners), sem push direto,"
   echo "  sem force-push, sem delete, exigir conversas resolvidas"
+  echo "  checks obrigatórios existentes seriam preservados"
   exit 0
 fi
 
+# Checks obrigatórios atuais: null se a branch ainda não tem proteção (404)
+# ou nenhum check configurado. Reconstruímos apenas os campos aceitos no PUT
+# (strict + checks[{context, app_id}]), sem os campos de leitura da resposta.
+CHECKS="$(gh api "repos/$REPO/branches/$BRANCH/protection" \
+  --jq '.required_status_checks | if . == null then null else
+        {strict: .strict,
+         checks: [.checks[] | {context: .context} + (if .app_id == null then {} else {app_id: .app_id} end)]}
+        end' 2>/dev/null || echo null)"
+CHECKS="${CHECKS:-null}"
+
 BODY="$(mktemp)"
 trap 'rm -f "$BODY"' EXIT
-cat > "$BODY" <<'JSON'
+cat > "$BODY" <<JSON
 {
-  "required_status_checks": null,
+  "required_status_checks": $CHECKS,
   "enforce_admins": false,
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": true,
@@ -43,4 +57,4 @@ gh api -X PUT "repos/$REPO/branches/$BRANCH/protection" \
   -H "Accept: application/vnd.github+json" \
   --input "$BODY" >/dev/null
 
-echo "proteção aplicada em $REPO@$BRANCH"
+echo "proteção aplicada em $REPO@$BRANCH (checks obrigatórios: $CHECKS)"
