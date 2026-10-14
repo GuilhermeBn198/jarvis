@@ -103,10 +103,18 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 - **Sintoma**: `win_write` responde `recusado: JARVIS_WIN_ALLOW_WRITE vazio (nenhum diretorio autorizado)` mesmo com `confirm=true`; ou `fora da allowlist`.
 - **Repro**: `win_write { path: "/mnt/c/Users/<voce>/notas.txt", content: "x", confirm: true }` sem allowlist configurada.
 - **Causa**: por padrão nada é autorizado (allowlist vazia) e a escrita também exige `confirm=true` (escopo explícito e auditável).
-- **Configuração/workaround**: aponte `JARVIS_WIN_ALLOW_WRITE` para uma **pasta de trabalho** (nunca o drive inteiro), em formato Windows (`C:\Users\<voce>\Notas`) ou WSL (`/mnt/c/Users/<voce>/Notas`); separe múltiplos diretórios com `;`/`:` **seguidos de espaço** (o parser atual não separa quando o próximo caminho começa com `/` — ex.: dois caminhos WSL colados; corrigido na [#22](https://github.com/GuilhermeBn198/jarvis/issues/22)). O diretório precisa existir.
+- **Configuração/workaround**: aponte `JARVIS_WIN_ALLOW_WRITE` para uma **pasta de trabalho** (nunca o drive inteiro), em formato Windows (`C:\Users\<voce>\Notas`) ou WSL (`/mnt/c/Users/<voce>/Notas`); separe múltiplos diretórios com `;`/`:` **seguidos de espaço** (o parser atual não separa quando o próximo caminho começa com `/` — ex.: dois caminhos WSL colados; correção prevista na [#22](https://github.com/GuilhermeBn198/jarvis/issues/22)). O diretório precisa existir.
   - O plugin lê a env do processo que roda o opencode. Na prática: `local.conf` na raiz do repo (gitignored) é carregado pelo launcher `./jarvis` com `set -a` e herdado pelo loop → opencode.
   - **Trocar a env exige reiniciar o cérebro** (o plugin lê no startup do opencode).
 - **Issue**: [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) (documentar + corrigir o parser) — aberta.
+
+### Caminhos do Windows hardcoded nos defaults
+
+- **Sintoma**: em outra máquina, captura, TTS ou visão falham ao encontrar os binários/arquivos dos defaults (`ffmpeg`, `piper`, `shot.png` etc.).
+- **Repro**: rodar `./jarvis --voice --once 1` (ou `--see-text`) numa instalação onde `ffmpeg`/`piper` estão fora de `$JARVIS_WIN_HOME/tools/...`, sem apontar env.
+- **Causa**: os defaults são caminhos do Windows derivados de `$JARVIS_WIN_HOME/tools/...` (`voice/config.py`), e o default do `JARVIS_WIN_HOME` é neutro (`/mnt/c/Users/Public`) — não reflete o perfil da sua máquina.
+- **Workaround**: aponte `JARVIS_WIN_HOME` para `/mnt/c/Users/<voce>` (via `local.conf`) e/ou sobrescreva cada caminho por env: `FFMPEG_EXE`, `FFPLAY_EXE`, `PIPER_EXE`, `PIPER_MODEL`, `PIPER_OUT_WAV`, `VISION_PNG` (tabela no [README](../README.md)).
+- **Issue**: — (limitação de configuração; ajuste por env).
 
 ---
 
