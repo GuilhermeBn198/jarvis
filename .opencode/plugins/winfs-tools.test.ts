@@ -12,3 +12,11 @@ test("politica: escrita so na allowlist e em /mnt", () => {
   assert.equal(isAllowedWrite(normalizeWinPath("/mnt/c/Users/me/proj/x.md"), allow), true);
   assert.equal(isAllowedWrite(normalizeWinPath("/mnt/c/Users/me/fora/x.md"), allow), false);
 });
+
+test("win_read promete e descreve leitura WSL/Windows + listagem de pastas", async () => {
+  const tools = await WinFsTools({} as never);
+  const winRead = (tools.tool as Record<string, { description: string }>).win_read;
+  assert.match(winRead.description, /WSL/);
+  assert.match(winRead.description, /Windows/);
+  assert.match(winRead.description, /lista/i);
+});
