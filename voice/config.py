@@ -44,7 +44,7 @@ DEFAULT_FFPLAY_EXE = win_path(
     "tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffplay.exe"
 )
 DEFAULT_PIPER_OUT_WAV = _wsl_to_windows(win_path("tools/piper/out.wav"))
-DEFAULT_VISION_MODEL = "opencode-go/deepseek-v4-flash-vision-exp"
+DEFAULT_VISION_MODEL = "opencode-go/deepseek-v4.1-flash"
 DEFAULT_VISION_TRIGGER = "olha"
 DEFAULT_VISION_PNG = _wsl_to_windows(win_path("tools/shot.png"))
 DEFAULT_STATE_PORT = 8765

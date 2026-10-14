@@ -5,7 +5,7 @@ import vision
 
 CFG = Config(opencode_bin="/x/opencode", timeout_s=10,
              ffmpeg_exe="/ff/ffmpeg.exe",
-             vision_model="opencode-go/deepseek-v4-flash-vision-exp",
+             vision_model="opencode-go/deepseek-v4.1-flash",
              vision_png="C:\\Users\\x\\tools\\shot.png")
 
 
@@ -59,7 +59,7 @@ def test_see_message_before_f(monkeypatch):
     cmd = seen["cmd"]
     assert cmd[0] == "/x/opencode"
     assert "o que tem na tela?" in cmd
-    assert "-m" in cmd and "opencode-go/deepseek-v4-flash-vision-exp" in cmd
+    assert "-m" in cmd and "opencode-go/deepseek-v4.1-flash" in cmd
     assert "-f" in cmd and "/mnt/c/Users/x/tools/shot.png" in cmd
     assert cmd.index("o que tem na tela?") < cmd.index("-f")   # msg antes de -f
     assert out == "uma tela com x"
@@ -164,3 +164,47 @@ def test_see_via_run_uses_project_root_cwd(monkeypatch):
     cfg = Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo")
     vision._see_via_run(cfg, "q", "/tmp/x.png")
     assert seen["kw"]["cwd"] == "/repo"
+
+
+def test_see_aggregates_serve_and_run_causes_on_double_failure(monkeypatch):
+    from agent_client import AgentError
+
+    monkeypatch.setattr(vision, "ensure_server", lambda cfg, **k: True)
+
+    class FakeServe:
+        def __init__(self, cfg):
+            pass
+
+        def see(self, *a, **k):
+            raise AgentError("falha ao falar com o servidor (HTTP Error 500)")
+
+    monkeypatch.setattr(vision, "ServeClient", FakeServe)
+
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(
+            cmd, 1, "",
+            "\x1b[31mModel not found: opencode-go/deepseek-v4.1-flash\x1b[0m",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(vision.VoiceError) as excinfo:
+        vision.see("o que tem?", "/mnt/c/x/shot.png", config=CFG)
+    msg = str(excinfo.value)
+    assert "serve" in msg
+    assert "HTTP Error 500" in msg
+    assert "Model not found" in msg
+    assert "\x1b[" not in msg
+
+
+def test_see_via_run_strips_ansi_from_stderr(monkeypatch):
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(
+            cmd, 1, "", "\x1b[31mModel not found\x1b[0m\n"
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(vision.VoiceError) as excinfo:
+        vision._see_via_run(CFG, "q", "/tmp/x.png")
+    msg = str(excinfo.value)
+    assert "Model not found" in msg
+    assert "\x1b[" not in msg
