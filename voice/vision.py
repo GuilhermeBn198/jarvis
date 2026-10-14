@@ -9,6 +9,9 @@ from tts import VoiceError
 
 def capture(out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
+    if cfg.platform == "linux":
+        from linux_screen import screenshot
+        return screenshot(out_path or cfg.vision_png, cfg)
     win_path = _wsl_to_windows(out_path) if out_path else cfg.vision_png
     cmd = [
         cfg.ffmpeg_exe, "-y", "-f", "gdigrab", "-i", "desktop",

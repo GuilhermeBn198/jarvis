@@ -59,3 +59,20 @@ def test_model_is_cached_per_whisper_model(monkeypatch):
     stt_mod.transcribe("/tmp/a.wav", config=CFG)
     stt_mod.transcribe("/tmp/a.wav", config=CFG)
     assert loads == ["base"]
+
+
+def test_whisper_audio_dependency_decodes_pcm(tmp_path):
+    """Catch incompatible PyAV API before downloading/loading a speech model."""
+    import pytest
+    import wave
+    pytest.importorskip('faster_whisper')
+    from faster_whisper.audio import decode_audio
+    path=tmp_path/'silence.wav'
+    with wave.open(str(path),'wb') as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(16000)
+        stream.writeframes(b'\x00\x00'*1600)
+    audio=decode_audio(str(path),sampling_rate=16000)
+    assert len(audio)==1600
+    assert not audio.any()
