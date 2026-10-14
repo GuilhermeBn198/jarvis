@@ -7,6 +7,7 @@ import time
 from config import Config, load_config, win_path
 from paths import _windows_to_wsl, _wsl_to_windows
 from tts import VoiceError
+from audio import input_args, list_devices, recording_output
 
 # Defaults consistentes: ffmpeg e o microfone sao do Windows (dshow),
 # entao ambos os modos gravam num diretorio visivel ao Windows.
@@ -24,58 +25,57 @@ class QuitRequested(Exception):
 
 def record(seconds: float, out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
-    out = out_path or DEFAULT_OUT_WAV
-    cmd = [cfg.ffmpeg_exe, "-f", "dshow", "-i", f"audio={cfg.mic_device}",
-           "-t", str(seconds), "-y", _wsl_to_windows(out)]
-    try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace",
-            timeout=int(seconds) + 30,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
-    if proc.returncode != 0:
-        raise VoiceError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
-    return _windows_to_wsl(out)
+    with recording_output(cfg, out_path, DEFAULT_OUT_WAV) as out:
+        cmd = [cfg.ffmpeg_exe, *input_args(cfg),
+               "-t", str(seconds), "-y", (out if cfg.platform == "linux" else _wsl_to_windows(out))]
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, errors="replace",
+                timeout=int(seconds) + 30,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise VoiceError(
+                f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
+            ) from exc
+        if proc.returncode != 0:
+            raise VoiceError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
+        return (out if cfg.platform == "linux" else _windows_to_wsl(out))
 
 
 def record_ptt(out_path: str | None = None, config: Config | None = None,
                prompt_fn=input) -> str:
     cfg = config or load_config()
-    out = out_path or DEFAULT_OUT_WAV
-    cmd = [cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i",
-           f"audio={cfg.mic_device}", _wsl_to_windows(out)]
-    prompt_fn("Pressione Enter para comecar a gravar...")
-    try:
-        proc = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
-    try:
-        prompt_fn("Fale agora. Pressione Enter para parar...")
-        proc.stdin.write(b"q")
-        proc.stdin.flush()
-        proc.wait(timeout=20)
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
-    finally:
-        if proc.poll() is None:
-            proc.kill()
-            try:
-                proc.wait(timeout=5)
-            except Exception:
-                pass
-    if proc.returncode != 0:
-        raise VoiceError(f"ffmpeg falhou ({proc.returncode})")
-    return _windows_to_wsl(out)
+    with recording_output(cfg, out_path, DEFAULT_OUT_WAV) as out:
+        cmd = [cfg.ffmpeg_exe, "-y", *input_args(cfg), (out if cfg.platform == "linux" else _wsl_to_windows(out))]
+        prompt_fn("Pressione Enter para comecar a gravar...")
+        try:
+            proc = subprocess.Popen(
+                cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise VoiceError(
+                f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
+            ) from exc
+        try:
+            prompt_fn("Fale agora. Pressione Enter para parar...")
+            proc.stdin.write(b"q")
+            proc.stdin.flush()
+            proc.wait(timeout=20)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise VoiceError(
+                f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
+            ) from exc
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                try:
+                    proc.wait(timeout=5)
+                except Exception:
+                    pass
+        if proc.returncode != 0:
+            raise VoiceError(f"ffmpeg falhou ({proc.returncode})")
+        return (out if cfg.platform == "linux" else _windows_to_wsl(out))
 
 
 def _parse_silence_start(line: str) -> float | None:
@@ -100,120 +100,127 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
                 min_speech_s: float | None = None, should_stop=None,
                 on_level=None, eps: float = EPS) -> str:
     cfg = config or load_config()
-    out = out_path or DEFAULT_AUTO_OUT_WAV
-    # Sem parametro explicito, usa os tunables do config (env VOICE_*).
-    if max_s is None:
-        max_s = cfg.max_s
-    if wait_s is None:
-        wait_s = cfg.wait_s
-    if silence_s is None:
-        silence_s = cfg.silence_s
-    if noise_db is None:
-        noise_db = cfg.noise_db
-    if min_speech_s is None:
-        min_speech_s = cfg.min_speech_s
-    cmd = [
-        cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i", f"audio={cfg.mic_device}",
-        "-af", f"silencedetect=noise={noise_db}dB:d={silence_s}",
-        "-t", str(max_s), "-nostats", "-loglevel", "info",
-        _wsl_to_windows(out),
-    ]
-    try:
-        proc = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE, text=True, bufsize=1,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
-
-    lines: "queue.Queue[str | None]" = queue.Queue()
-
-    def _reader() -> None:
+    with recording_output(cfg, out_path, DEFAULT_AUTO_OUT_WAV) as out:
+        # Sem parametro explicito, usa os tunables do config (env VOICE_*).
+        if max_s is None:
+            max_s = cfg.max_s
+        if wait_s is None:
+            wait_s = cfg.wait_s
+        if silence_s is None:
+            silence_s = cfg.silence_s
+        if noise_db is None:
+            noise_db = cfg.noise_db
+        if min_speech_s is None:
+            min_speech_s = cfg.min_speech_s
+        cmd = [
+            cfg.ffmpeg_exe, "-y", *input_args(cfg),
+            "-af", f"silencedetect=noise={noise_db}dB:d={silence_s}",
+            "-t", str(max_s), "-nostats", "-loglevel", "info",
+            (out if cfg.platform == "linux" else _wsl_to_windows(out)),
+        ]
         try:
-            for line in proc.stderr:
-                lines.put(line)
-        except Exception:
-            pass
-        finally:
-            lines.put(None)
+            proc = subprocess.Popen(
+                cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE, text=True, bufsize=1,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise VoiceError(
+                f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
+            ) from exc
 
-    threading.Thread(target=_reader, daemon=True).start()
+        lines: "queue.Queue[str | None]" = queue.Queue()
 
-    def _stop(wait: bool) -> None:
-        try:
-            proc.stdin.write("q")
-            proc.stdin.flush()
-            if wait:
-                proc.wait(timeout=20)
-        except (OSError, subprocess.SubprocessError):
-            pass
-
-    heard_speech = False
-    speech_start: float | None = None
-    t0 = time.monotonic()
-    try:
-        while True:
-            if should_stop is not None and should_stop():
-                # Encerramento pedido (ex.: botao Sair): nao espera o max_s.
-                raise QuitRequested()
-            if time.monotonic() - t0 > max_s:
-                if heard_speech:
-                    _stop(wait=True)
-                break
+        def _reader() -> None:
             try:
-                line = lines.get(timeout=0.2)
-            except queue.Empty:
-                if not heard_speech and time.monotonic() - t0 > wait_s:
-                    break
-                continue
-            if line is None:
-                break
-            if "silence_end" in line:
-                # Fim de um silencio = inicio de som. Guarda o instante para
-                # medir a duracao do segmento nao-silencioso.
-                t = _parse_silence_end(line)
-                speech_start = t if t is not None else 0.0
-                heard_speech = True
-                if on_level is not None:
-                    on_level(1.0)
-            elif "silence_start" in line:
-                if on_level is not None:
-                    on_level(0.0)
-                t = _parse_silence_start(line)
-                if t is None:
-                    continue
-                if speech_start is not None:
-                    # Duracao da fala = inicio do som -> inicio do silencio.
-                    if (t - speech_start) >= min_speech_s:
-                        _stop(wait=True)
-                        break
-                    # Segmento curto demais: provavel ruido; volta a esperar.
-                    speech_start = None
-                    heard_speech = False
-                elif t > eps:
-                    # Audio nao-silencioso desde o inicio ate t: houve fala
-                    # imediata (sem leading silence, sem silence_end).
-                    if t >= min_speech_s:
-                        heard_speech = True
-                        _stop(wait=True)
-                        break
-                # t <= eps: pausa inicial; continua aguardando.
-            if not heard_speech and time.monotonic() - t0 > wait_s:
-                break
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
-    finally:
-        if proc.poll() is None:
-            proc.kill()
-            try:
-                proc.wait(timeout=5)
+                for line in proc.stderr:
+                    lines.put(line)
             except Exception:
                 pass
-    return _windows_to_wsl(out) if heard_speech else ""
+            finally:
+                lines.put(None)
+
+        threading.Thread(target=_reader, daemon=True).start()
+
+        def _stop(wait: bool) -> None:
+            try:
+                proc.stdin.write("q")
+                proc.stdin.flush()
+                if wait:
+                    proc.wait(timeout=20)
+            except (OSError, subprocess.SubprocessError):
+                pass
+
+        forced_stop = False
+        heard_speech = False
+        speech_start: float | None = None
+        t0 = time.monotonic()
+        try:
+            while True:
+                if should_stop is not None and should_stop():
+                    # Encerramento pedido (ex.: botao Sair): nao espera o max_s.
+                    raise QuitRequested()
+                if time.monotonic() - t0 > max_s:
+                    if heard_speech:
+                        _stop(wait=True)
+                    break
+                try:
+                    line = lines.get(timeout=0.2)
+                except queue.Empty:
+                    if not heard_speech and time.monotonic() - t0 > wait_s:
+                        break
+                    continue
+                if line is None:
+                    break
+                if "silence_end" in line:
+                    # Fim de um silencio = inicio de som. Guarda o instante para
+                    # medir a duracao do segmento nao-silencioso.
+                    t = _parse_silence_end(line)
+                    speech_start = t if t is not None else 0.0
+                    heard_speech = True
+                    if on_level is not None:
+                        on_level(1.0)
+                elif "silence_start" in line:
+                    if on_level is not None:
+                        on_level(0.0)
+                    t = _parse_silence_start(line)
+                    if t is None:
+                        continue
+                    if speech_start is not None:
+                        # Duracao da fala = inicio do som -> inicio do silencio.
+                        if (t - speech_start) >= min_speech_s:
+                            _stop(wait=True)
+                            break
+                        # Segmento curto demais: provavel ruido; volta a esperar.
+                        speech_start = None
+                        heard_speech = False
+                    elif t > eps:
+                        # Audio nao-silencioso desde o inicio ate t: houve fala
+                        # imediata (sem leading silence, sem silence_end).
+                        if t >= min_speech_s:
+                            heard_speech = True
+                            _stop(wait=True)
+                            break
+                    # t <= eps: pausa inicial; continua aguardando.
+                if not heard_speech and time.monotonic() - t0 > wait_s:
+                    break
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise VoiceError(
+                f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
+            ) from exc
+        finally:
+            if proc.poll() is None:
+                forced_stop = True
+                proc.kill()
+                try:
+                    proc.wait(timeout=5)
+                except Exception:
+                    pass
+        if not forced_stop and proc.returncode not in (None, 0):
+            raise VoiceError(f"ffmpeg falhou ({proc.returncode}) ao capturar audio")
+        if not heard_speech and cfg.platform == "linux" and out_path is None:
+            from pathlib import Path
+            Path(out).unlink(missing_ok=True)
+        return (out if cfg.platform == "linux" else _windows_to_wsl(out)) if heard_speech else ""
 
 
 def _first_float(line: str):
@@ -244,7 +251,7 @@ def measure_level(seconds: float = 5, config: Config | None = None) -> dict:
     """
     cfg = config or load_config()
     cmd = [
-        cfg.ffmpeg_exe, "-f", "dshow", "-i", f"audio={cfg.mic_device}",
+        cfg.ffmpeg_exe, *input_args(cfg),
         "-t", str(seconds), "-af", "volumedetect", "-f", "null", "-",
     ]
     try:
@@ -290,6 +297,8 @@ def list_audio_devices(config: Config | None = None) -> list[str]:
     returncode e ignorado e so o stderr interessa.
     """
     cfg = config or load_config()
+    if cfg.platform == "linux":
+        return list_devices(cfg)
     cmd = [
         cfg.ffmpeg_exe, "-hide_banner", "-list_devices", "true",
         "-f", "dshow", "-i", "dummy",

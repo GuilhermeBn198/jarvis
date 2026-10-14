@@ -356,27 +356,31 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 continue
         t0 = time.monotonic()
         try:
-            _emit(hub, "listening")
-            _hb("gravando")
-            if cfg.input_mode == "auto":
-                wav = record_auto(
-                    config=cfg, should_stop=_should_stop,
-                    on_level=_level_sink(hub),
-                )
-                if not wav:
-                    err.write("[voz] nada detectado\n")
-                    err.flush()
-                    consecutive_errors = 0
-                    _emit(hub, "idle")
-                    continue
-            elif cfg.input_mode == "ptt":
-                wav = record_ptt(config=cfg)
-            else:
-                wav = record(seconds=secs, config=cfg)
-            t_rec = time.monotonic()
-            _emit(hub, "transcribing")
-            _hb("transcrevendo")
-            text = transcribe(wav, config=cfg)
+            from contextlib import nullcontext
+            from audio import temporary_audio
+            audio_context = temporary_audio(cfg) if cfg.platform == "linux" else nullcontext(None)
+            with audio_context as recording_path:
+                _emit(hub, "listening")
+                _hb("gravando")
+                if cfg.input_mode == "auto":
+                    wav = record_auto(
+                        config=cfg, **({"out_path": recording_path} if recording_path else {}), should_stop=_should_stop,
+                        on_level=_level_sink(hub),
+                    )
+                    if not wav:
+                        err.write("[voz] nada detectado\n")
+                        err.flush()
+                        consecutive_errors = 0
+                        _emit(hub, "idle")
+                        continue
+                elif cfg.input_mode == "ptt":
+                    wav = record_ptt(config=cfg, **({"out_path": recording_path} if recording_path else {}))
+                else:
+                    wav = record(seconds=secs, config=cfg, **({"out_path": recording_path} if recording_path else {}))
+                t_rec = time.monotonic()
+                _emit(hub, "transcribing")
+                _hb("transcrevendo")
+                text = transcribe(wav, config=cfg)
         except QuitRequested:
             return
         except VoiceError as exc:
