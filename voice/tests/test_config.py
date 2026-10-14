@@ -1,3 +1,5 @@
+import os
+
 from config import load_config, DEFAULT_TIMEOUT_S
 import pytest
 
@@ -237,7 +239,9 @@ def test_project_root_defaults_to_repo_root():
     from config import DEFAULT_PROJECT_ROOT
     cfg = load_config({})
     assert cfg.project_root == DEFAULT_PROJECT_ROOT
-    assert cfg.project_root.endswith("jarvis")
+    # portavel a worktrees: o default e a raiz do checkout que contem voice/
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    assert os.path.realpath(cfg.project_root) == os.path.realpath(root)
     assert load_config({"JARVIS_PROJECT_ROOT": "/repo"}).project_root == "/repo"
 
 
