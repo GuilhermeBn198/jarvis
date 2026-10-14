@@ -1,5 +1,8 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
+import { isNativeLinux } from "../act/platform.ts";
+import { runLinux } from "../act/linux.ts";
+
 import { encode } from "../act/ps.ts";
 import {
   buildReadScript,
@@ -16,11 +19,24 @@ import {
 // o plugin.
 export const WinFsTools: Plugin = async ({ $ }) => ({
   tool: {
+    ...(isNativeLinux() ? {
+      file_read: tool({
+        description: "Le arquivo UTF-8 local Linux (ate 64 KiB), sem seguir links nem acessar credenciais.",
+        args: { path: tool.schema.string() },
+        async execute(args) { return runLinux("file_read", args); },
+      }),
+      file_write: tool({
+        description: "Escreve arquivo Linux autorizado por JARVIS_ALLOW_WRITE (lista JSON de diretorios existentes). Exige confirm=true; nao segue links.",
+        args: { path: tool.schema.string(), content: tool.schema.string(), append: tool.schema.boolean().optional(), confirm: tool.schema.boolean().optional() },
+        async execute(args) { return runLinux("file_write", args); },
+      }),
+    } : {}),
     win_read: tool({
       description:
         "Le um arquivo do Windows como texto (via /mnt/c). Aceita caminho WSL ou Windows. Sem abrir editor/terminal.",
       args: { path: tool.schema.string() },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("win_read", args);
         const p = normalizeWinPath(String(args.path ?? ""));
         if (!p.startsWith("/mnt/")) return "apenas caminhos do Windows (/mnt/<drive>/...) sao aceitos";
         const win = toWindowsPath(p);
@@ -37,6 +53,7 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
         confirm: tool.schema.boolean().optional(),
       },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("win_write", args);
         const p = normalizeWinPath(String(args.path ?? ""));
         const allow = parseAllowlist(process.env.JARVIS_WIN_ALLOW_WRITE ?? "");
         if (args.confirm !== true) {

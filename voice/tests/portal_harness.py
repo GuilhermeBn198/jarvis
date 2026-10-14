@@ -11,6 +11,7 @@ from portal import PortalClient, PortalError, DESTINATION, REQUEST_INTERFACE
 async def main(scenario):
     bus = await MessageBus().connect()
     closed = []
+    senders = []
     rogue = await MessageBus().connect()
     if scenario != 'missing':
         await bus.request_name(DESTINATION)
@@ -23,6 +24,7 @@ async def main(scenario):
             return Message.new_method_return(message)
         if message.interface != 'org.freedesktop.portal.Screenshot' or message.member != 'Screenshot':
             return
+        senders.append(message.sender)
         token = message.body[1]['handle_token'].value
         sender = message.sender.lstrip(':').replace('.', '_')
         path = f'/org/freedesktop/portal/desktop/request/{sender}/{token}'
@@ -38,14 +40,19 @@ async def main(scenario):
 
     bus.add_message_handler(handle)
     try:
-        result = await PortalClient().request_async('org.freedesktop.portal.Screenshot',
+        client = PortalClient(persistent=scenario=='persistent')
+        result = await client.request_async('org.freedesktop.portal.Screenshot',
                                                    'Screenshot', ('', {}), 0.3)
-        assert scenario in ('success', 'forged'), (scenario, result)
+        assert scenario in ('success', 'forged', 'persistent'), (scenario, result)
         assert result == {'uri': 'file:///correct.png'}, result
+        if scenario=='persistent':
+            await client.request_async('org.freedesktop.portal.Screenshot','Screenshot',('',{}),0.3)
+            assert len(senders)==2 and senders[0]==senders[1],senders
+            await client.close()
     except PortalError as exc:
         assert exc.code == {'missing': 'unavailable'}.get(scenario, scenario), (scenario, exc.code)
     if scenario != 'missing':
-        assert len(closed) == 1, closed
+        assert len(closed) == (2 if scenario=='persistent' else 1), closed
     bus.disconnect()
     rogue.disconnect()
 

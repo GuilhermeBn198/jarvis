@@ -32,3 +32,12 @@ def test_invalid_bus_address_is_diagnostic(monkeypatch):
     with pytest.raises(PortalError) as exc:
         PortalClient().request('org.freedesktop.portal.Screenshot','Screenshot',('',{}),0.2)
     assert exc.value.code == 'unavailable'
+
+
+def test_persistent_portal_reuses_dbus_connection():
+    import subprocess
+    import sys
+    from pathlib import Path
+    pytest.importorskip('dbus_next')
+    result=subprocess.run(['dbus-run-session','--',sys.executable,str(Path(__file__).with_name('portal_harness.py')),'persistent'],capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stdout+result.stderr

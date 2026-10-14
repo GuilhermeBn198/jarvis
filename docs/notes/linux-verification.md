@@ -74,3 +74,34 @@ A tarefa de áudio tem implementação e testes reais de captura/STT/TTS; a
 validação integral entre backends/ambientes permanece em andamento. A tarefa
 de screenshot tem implementação e testes de transporte, mas captura Wayland
 com consentimento e execução em outros desktops ainda não foram verificadas.
+
+## Desktop nativo, contexto e arquivos
+
+- Screenshot Wayland autorizado pelo usuário: PNG decodificado de 3840x1200,
+  2622279 bytes. Captura real KDE Wayland comprovada nesta máquina.
+- Sessão RemoteDesktop autorizada: dois streams, 1920x1200 e 1920x1080, com
+  posições/dimensões no espaço do compositor. Conexão D-Bus mantida entre tools.
+- Janela GTK forçada a Wayland: recebeu exatamente `Jarvis ação 🙂`; Ctrl+A
+  seguido de digitação resultou em `Teste concluído`, verificado pelo widget.
+  A API de produção continua retornando unconfirmed quando só envia eventos.
+- AT-SPI encontrou a janela de teste e sua árvore com IDs de controles.
+- Background: uma janela de teste recebeu `Texto em segundo plano`, enquanto
+  uma segunda janela de teste permaneceu ativa e seu campo não foi alterado;
+  posição do ponteiro reportada pelo XWayland permaneceu idêntica. O teste
+  opt-in `JARVIS_DESKTOP_TESTS=1` passou, sem modificar apps do usuário.
+- Corrigida ambiguidade GI entre getter de interface `Accessible.get_text`
+  e leitura `Atspi.Text.get_text`; falha real reproduzida antes da correção.
+- MCP inicializado pelo cliente stdio real: ferramentas neutras registradas e
+  consulta de processos respondeu; filtro de nomes é literal, sem shell.
+- Bridge de arquivos real: confirmação exigida, escrita/leitura UTF-8 dentro
+  da allowlist e recusa fora dela; serviço próprio encerrado ao fim do teste.
+- Escrita usa descritores/no-follow e valida inode antes de truncar; testes
+  cobrem symlink trocado no instante de open, hardlinks e raiz autorizada
+  ausente sem criar ancestrais fora do escopo.
+- Regressão: 383 passed, 1 skipped (GUI opt-in) na voz; 118 testes TypeScript
+  passaram e 13 testes MCP passaram. O teste GUI foi executado separadamente:
+  5 passed (background nativo mais contexto).
+
+Pendências: click real pelo portal, abertura real pelo desktop, clipboard,
+revogação real de sessão, lifecycle ligado ao cérebro/overlay, instalação,
+Flatpak e pacotes/matriz de distros. As evidências acima não concluem o porte.

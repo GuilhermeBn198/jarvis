@@ -4,6 +4,11 @@ import pytest
 
 import context as ctx
 
+@pytest.fixture(autouse=True)
+def windows_contract(monkeypatch):
+    monkeypatch.setenv("JARVIS_PLATFORM", "wsl")
+
+
 
 def _server():
     import server
@@ -55,3 +60,13 @@ def test_clipboard_vazio_mensagem(monkeypatch):
     s = _server()
     monkeypatch.setattr(ctx, "_default_run", lambda script: "")
     assert s.win_clipboard_text() == "(clipboard vazio)"
+
+
+def test_linux_windows_alias_selects_native_backend(monkeypatch):
+    s=_server()
+    monkeypatch.setenv("JARVIS_PLATFORM","linux")
+    monkeypatch.setattr(s.linux,"list_windows",lambda:[{"id":"atspi:opaque","process":"gtk","title":"ação"}])
+    monkeypatch.setattr(ctx,"list_windows",lambda:pytest.fail("Windows backend invoked"))
+    assert s.win_list_text()=="atspi:opaque\tgtk\tação"
+    with pytest.raises(ValueError,match="hwnd"):
+        s.win_tree_text(123)

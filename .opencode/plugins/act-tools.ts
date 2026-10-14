@@ -1,5 +1,8 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
+import { isNativeLinux } from "../act/platform.ts";
+import { runLinux } from "../act/linux.ts";
+
 import { buildPsScript, encode } from "../act/ps.ts";
 import { buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
 
@@ -16,8 +19,10 @@ export const ActTools: Plugin = async ({ $ }) => ({
         window: tool.schema.string().optional(),
         hwnd: tool.schema.number().optional(),
         append: tool.schema.boolean().optional(),
+        control: tool.schema.string().optional(),
       },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("act_type", args);
         const bg = chooseActScript("act_type", args);
         if (!bg) {
           return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`).text();
@@ -40,6 +45,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
         hwnd: tool.schema.number().optional(),
       },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("act_key", args);
         const bg = chooseActScript("act_key", args);
         if (!bg) {
           return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`).text();
@@ -55,20 +61,45 @@ export const ActTools: Plugin = async ({ $ }) => ({
       description: "Abre uma URL, arquivo ou aplicativo (Start-Process).",
       args: { target: tool.schema.string() },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("act_open", args);
         return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
       },
     }),
     act_click: tool({
-      description: "Move o mouse para (x,y) e clica (left/right).",
-      args: { x: tool.schema.number(), y: tool.schema.number(), button: tool.schema.string().optional() },
+      description: "Move o mouse para (x,y) e clica. No Wayland, coordenadas logicas locais ao stream autorizado; selecione stream quando houver varios monitores.",
+      args: { x: tool.schema.number(), y: tool.schema.number(), button: tool.schema.string().optional(), stream: tool.schema.number().optional() },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("act_click", args);
         return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
       },
     }),
+    ...(isNativeLinux() ? {
+    desktop_list: tool({
+      description: "Lista janelas acessiveis no Linux com IDs opacos AT-SPI; no Windows use win_list.",
+      args: {},
+      async execute() { return runLinux("desktop_list", {}); },
+    }),
+    desktop_tree: tool({
+      description: "Arvore de acessibilidade de uma janela Linux; inclui IDs de controles, sem campos de senha.",
+      args: { window: tool.schema.string(), max_nodes: tool.schema.number().optional() },
+      async execute(args) { return runLinux("desktop_tree", args); },
+    }),
+    desktop_clipboard: tool({
+      description: "Le texto do clipboard da sessao Linux quando solicitado.",
+      args: {},
+      async execute() { return runLinux("desktop_clipboard", {}); },
+    }),
+    desktop_processes: tool({
+      description: "Lista nomes/PIDs de processos Linux; filtro literal opcional.",
+      args: { name_filter: tool.schema.string().optional() },
+      async execute(args) { return runLinux("desktop_processes", args); },
+    }),
+    } : {}),
     win_list: tool({
       description: "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
       args: {},
       async execute() {
+        if (isNativeLinux()) return runLinux("win_list", {});
         return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
       },
     }),

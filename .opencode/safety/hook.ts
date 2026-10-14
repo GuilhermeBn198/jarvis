@@ -41,11 +41,12 @@ export function actionFromToolCall(
   if (tool === "act_open") return { type: "act", pattern: String(a.target ?? "") };
   if (tool === "act_click") return { type: "act", pattern: `${a.x},${a.y}` };
   if (tool === "see_screen") return { type: "see" };
+  if (["desktop_list", "desktop_tree", "desktop_clipboard", "desktop_processes"].includes(tool)) return { type: "winlist" };
   if (tool === "win_list") return { type: "winlist" };
-  if (tool === "win_read") {
+  if (tool === "win_read" || tool === "file_read") {
     return { type: "winread", pattern: typeof a.path === "string" ? a.path : undefined };
   }
-  if (tool === "win_write") {
+  if (tool === "win_write" || tool === "file_write") {
     return { type: "winwrite", pattern: typeof a.path === "string" ? a.path : undefined };
   }
   return { type: tool };

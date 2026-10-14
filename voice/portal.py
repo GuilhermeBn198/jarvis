@@ -22,6 +22,51 @@ def decode_response(code: int, values: dict) -> dict:
 
 
 class PortalClient:
+    def __init__(self, persistent: bool = False):
+        self.persistent = persistent
+        self.bus = None
+        self.owner = None
+        self.session_handlers = []
+
+    async def close(self):
+        if self.bus is not None:
+            for handler in self.session_handlers:
+                self.bus.remove_message_handler(handler)
+            self.session_handlers.clear()
+            self.bus.disconnect()
+            self.bus = None
+
+    async def call(self, interface: str, method: str, signature: str, body: list, path=None):
+        from dbus_next import Message, MessageType
+        if self.bus is None:
+            raise PortalError("unavailable", "sessao de portal nao conectada")
+        try:
+            reply = await asyncio.wait_for(self.bus.call(Message(destination=self.owner,
+                path=path or OBJECT, interface=interface, member=method,
+                signature=signature, body=body)), 10)
+        except (OSError, EOFError, asyncio.TimeoutError) as exc:
+            raise PortalError("unavailable", f"conexao de portal perdida: {exc}") from exc
+        if reply is None or reply.message_type == MessageType.ERROR:
+            raise PortalError("denied", f"portal recusou {method}: {getattr(reply, 'error_name', None)}")
+        return reply.body
+
+    async def watch_session(self, session: str, callback):
+        from dbus_next import Message, MessageType
+        owner = self.owner
+        def handle(message):
+            if (message.message_type == MessageType.SIGNAL and message.sender == owner
+                    and message.path == session and message.interface == "org.freedesktop.portal.Session"
+                    and message.member == "Closed"):
+                callback()
+        self.bus.add_message_handler(handle)
+        self.session_handlers.append(handle)
+        rule = f"type='signal',sender='{owner}',path='{session}',interface='org.freedesktop.portal.Session',member='Closed'"
+        reply = await asyncio.wait_for(self.bus.call(Message(destination='org.freedesktop.DBus',
+            path='/org/freedesktop/DBus',interface='org.freedesktop.DBus',member='AddMatch',
+            signature='s',body=[rule])),10)
+        if reply.message_type == MessageType.ERROR:
+            raise PortalError('unavailable','nao foi possivel acompanhar sessao do portal')
+
     def request(self, interface: str, method: str, args: tuple, timeout_s: float) -> dict:
         return asyncio.run(self.request_async(interface, method, args, timeout_s))
 
@@ -38,14 +83,19 @@ class PortalClient:
             raise PortalError('error', f'metodo de portal nao suportado: {method}')
         bus = None
         request_path = None
+        handle = None
+        rule = None
         try:
-            bus = await asyncio.wait_for(MessageBus().connect(), timeout_s)
+            bus = self.bus or await asyncio.wait_for(MessageBus().connect(), timeout_s)
+            if self.persistent:
+                self.bus = bus
             owner_reply = await asyncio.wait_for(bus.call(Message(destination='org.freedesktop.DBus',
                 path='/org/freedesktop/DBus', interface='org.freedesktop.DBus',
                 member='GetNameOwner', signature='s', body=[DESTINATION])), timeout_s)
             if owner_reply.message_type == MessageType.ERROR:
                 raise PortalError('unavailable', 'servico xdg-desktop-portal indisponivel')
             owner = owner_reply.body[0]
+            self.owner = owner
             token = 'jarvis_' + uuid.uuid4().hex
             sender = bus.unique_name.lstrip(':').replace('.', '_')
             request_path = f'/org/freedesktop/portal/desktop/request/{sender}/{token}'
@@ -101,4 +151,14 @@ class PortalClient:
                             path=request_path, interface=REQUEST_INTERFACE, member='Close')), 1)
                     except Exception:
                         pass
-                bus.disconnect()
+                if handle is not None:
+                    bus.remove_message_handler(handle)
+                if self.persistent and rule is not None:
+                    try:
+                        await asyncio.wait_for(bus.call(Message(destination='org.freedesktop.DBus',
+                            path='/org/freedesktop/DBus',interface='org.freedesktop.DBus',member='RemoveMatch',
+                            signature='s',body=[rule])),1)
+                    except Exception:
+                        pass
+                if not self.persistent:
+                    bus.disconnect()

@@ -237,3 +237,8 @@ test("win_write para credencial -> deny", () => {
   const a = actionFromToolCall("win_write", { path: "/mnt/c/Users/me/.env", content: "x" });
   assert.equal(decide({ ...a }).status, "deny");
 });
+
+test('native file aliases preserve credential and write gates',()=>{
+  assert.equal(decide(actionFromToolCall('file_read',{path:'/home/user/.ssh/id_rsa'})).status,'deny');
+  assert.equal(decide(actionFromToolCall('file_write',{path:'/home/user/note.txt'})).status,'ask');
+});
