@@ -1,6 +1,9 @@
 # Superpowers (ferramenta interna)
 .superpowers/
 
+# Worktrees de execucao paralela
+.worktrees/
+
 # Python
 .venv/
 mcp_servers/delegate_local/.venv/
