@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseKeys, buildForegroundKeyScript, MOD_VK } from "./keys.ts";
+import { parseKeys, buildForegroundKeyScript, encodeKeyChords, MOD_VK } from "./keys.ts";
 
 test("parseKeys: teclas nomeadas viram VK (case-insensitive)", () => {
   const ks = parseKeys("ENTER esc Tab backspace DELETE space");
@@ -112,10 +112,18 @@ test("buildForegroundKeyScript: mods down, tecla, mods up (ordem)", () => {
   assert.ok(iEscUp < iShiftUp && iShiftUp < iCtrlUp, "mods up em ordem reversa");
 });
 
-test("buildForegroundKeyScript: letra manda SO keydown (evita insercao dupla)", () => {
+test("buildForegroundKeyScript: letra manda down+up (onlyDown e mitigacao so do BG)", () => {
+  // Em FG (keybd_event) down+up e digitacao normal; a duplicacao medida em
+  // RichEdit foi no caminho BG (PostMessage), que segue com down-only.
   const s = buildForegroundKeyScript("b");
   assert.match(s, /keybd_event\(0x42, 0, 0, 0\)/);
-  assert.doesNotMatch(s, /keybd_event\(0x42, 0, 2, 0\)/);
+  assert.match(s, /keybd_event\(0x42, 0, 2, 0\)/);
+});
+
+test("encodeKeyChords: onlyDown viaja no payload do background", () => {
+  const payload = JSON.parse(encodeKeyChords(parseKeys("b enter"))) as Array<{ onlyDown: boolean }>;
+  assert.equal(payload[0].onlyDown, true);
+  assert.equal(payload[1].onlyDown, false);
 });
 
 test("buildForegroundKeyScript: tecla especial manda down+up", () => {

@@ -134,7 +134,13 @@ test("background key: char manda so keydown; tecla especial down+up", () => {
 
 test("background key avisa que win+r nao funciona em background", () => {
   const s = buildBackgroundKeyScript({ keys: "win+r", hwnd: 42 });
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|' \+ \$alvo/);
   assert.match(s, /win\+r nao funciona em background/);
+});
+
+test("background key: detalhe e so o alvo (a tool compoe a mensagem sem repetir)", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter", hwnd: 42 });
+  assert.doesNotMatch(s, /teclas enviadas para/);
 });
 
 test("background key escapa aspas simples em keys", () => {

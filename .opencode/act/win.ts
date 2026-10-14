@@ -226,7 +226,8 @@ $res = @(Receive-Job $job)
 Remove-Job $job -Force -ErrorAction SilentlyContinue
 $native = if ($res.Count -gt 0) { [int64]$res[0] } else { 0 }
 $alvo = if ($native -gt 0) { 'controle de edicao' } else { 'topo da janela (sem controle de edicao)' }
-Write-Output ('JARVIS_RESULT=unconfirmed|teclas enviadas para ' + $alvo + '${hasWin ? " — win+r nao funciona em background" : ""}')
+# Detalhe e SO o alvo (a tool compoe a mensagem); win+r appendado quando usado.
+Write-Output ('JARVIS_RESULT=unconfirmed|' + $alvo + '${hasWin ? " — win+r nao funciona em background" : ""}')
 `;
 }
 

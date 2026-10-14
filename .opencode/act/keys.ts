@@ -12,7 +12,7 @@ export type KeyChord = {
   mods: ModName[]; // ordem canonica: ctrl, shift, alt, win
   vk: number;
   extended: boolean;
-  onlyDown: boolean; // tecla de caractere: so KEYDOWN evita insercao dupla
+  onlyDown: boolean; // BG (PostMessage): char so KEYDOWN evita insercao dupla; FG (keybd_event) manda down+up
   name: string;
 };
 
@@ -129,8 +129,9 @@ function hex2(vk: number): string {
 }
 
 // Foreground: keybd_event (mesmo padrao P/Invoke do act_click). Mods down ->
-// tecla -> mods up em ordem reversa. Teclas de caractere mandam SO keydown
-// (down+up insere duas vezes em controles RichEdit). NUNCA chama
+// tecla (down+up) -> mods up em ordem reversa. Em FG down+up e digitacao
+// normal; a insercao dupla medida em RichEdit foi no caminho BG (PostMessage),
+// entao `onlyDown` e mitigacao SO do background. NUNCA chama
 // SetForegroundWindow: o envio vai para a janela em foco (a sintaxe natural
 // substitui o SendKeys, que interpretava `ctrl+v` como "ctrl" + Shift(v)).
 export function buildForegroundKeyScript(keys: string): string {
@@ -139,10 +140,8 @@ export function buildForegroundKeyScript(keys: string): string {
     .map((c) => {
       const lines = c.mods.map((m) => `keybd_event(${hex2(MOD_VK[m])}, 0, 0, 0)`);
       lines.push(`keybd_event(${hex2(c.vk)}, 0, 0, 0)`);
-      if (!c.onlyDown) {
-        lines.push(`Start-Sleep -Milliseconds 20`);
-        lines.push(`keybd_event(${hex2(c.vk)}, 0, 2, 0)`);
-      }
+      lines.push(`Start-Sleep -Milliseconds 20`);
+      lines.push(`keybd_event(${hex2(c.vk)}, 0, 2, 0)`);
       for (const m of [...c.mods].reverse()) lines.push(`keybd_event(${hex2(MOD_VK[m])}, 0, 2, 0)`);
       return lines.join("; ");
     })

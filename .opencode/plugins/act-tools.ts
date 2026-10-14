@@ -56,7 +56,11 @@ export const ActTools: Plugin = async ({ $ }) => ({
           const r = parseActResult(out);
           if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
           if (r.status === "error") return `erro: ${r.detail}`;
-          return `teclas enviadas em segundo plano (confirmacao indisponivel)${r.detail.includes("win+r") ? " — win+r nao funciona em background" : ""}`;
+          // Timeout nao e sucesso: as teclas podem nunca ter sido postadas.
+          if (/timeout/i.test(r.detail)) {
+            return `timeout: a janela nao respondeu em 5s — as teclas podem nao ter sido enviadas (confirme o estado da janela antes de repetir)`;
+          }
+          return `teclas enviadas em segundo plano (confirmacao indisponivel) — ${r.detail}`;
         } catch (err) {
           // Sintaxe invalida falha no parser, antes de qualquer script rodar.
           return `erro: ${err instanceof Error ? err.message : String(err)}`;
