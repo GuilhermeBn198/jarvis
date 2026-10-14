@@ -5,6 +5,8 @@
 O usuário pediu: “Faça o porte para linux que funcione em toda distro linux”.
 Em 2026-10-14 aprovou a direção: execução nativa, voz e overlay, X11 e
 Wayland, distribuição Flatpak e instalação pelo código-fonte.
+Também pediu instalação pelo gerenciador de pacotes de cada distro, com
+pacote ou receita nativa correspondente. Essa entrega é adicional ao Flatpak.
 Este documento detalha essa direção para revisão antes da implementação.
 
 O resultado deve preservar conversa por voz, visão, ações, contexto textual,
@@ -12,8 +14,8 @@ arquivos, configurações, streaming, gatilhos e controle do cérebro pelo overl
 Windows/WSL continuam suportados. O caminho Linux não exige Windows,
 PowerShell, caminhos `/mnt/c`, dispositivos DirectShow ou serviços WSL.
 
-“Toda distro” significa independência do gerenciador de pacotes e das
-bibliotecas particulares de uma distribuição, usando um runtime Flatpak.
+“Toda distro” exige um caminho comum via runtime Flatpak e caminhos nativos
+por família de gerenciadores, sem acoplar o aplicativo a uma distribuição.
 Não é possível certificar literalmente todas as versões, arquiteturas e
 compositores existentes. A documentação deve distinguir suporte por contrato,
 ambientes efetivamente testados e capacidades ausentes no sistema hospedeiro.
@@ -136,6 +138,54 @@ exemplos de instalação por família de distros. Empacotar inicialmente x86_64
 e aarch64; artefatos e suporte só são anunciados após build e validação de
 dependências em cada arquitetura.
 
+### Pacotes nativos por gerenciador
+
+Entregar receitas de build e pacotes instaláveis no formato de cada família,
+com o mesmo código e versão do aplicativo. O gerenciador deve registrar
+arquivos, resolver dependências declaradas e permitir atualização e remoção.
+Um script que só instala dependências e copia arquivos não substitui o pacote.
+
+| Família / exemplos | Gerenciador | Entrega nativa |
+| --- | --- | --- |
+| Debian, Ubuntu e derivados | apt / dpkg | `.deb` e fonte `debian/` |
+| Fedora, RHEL e derivados | dnf / yum / rpm | `.rpm` e spec RPM por alvo |
+| openSUSE | zypper / rpm | `.rpm` e spec adaptada às dependências SUSE |
+| Arch, Manjaro e derivados | pacman | `PKGBUILD` e `.pkg.tar.zst` |
+| Alpine | apk | `APKBUILD` e `.apk` compilado para musl |
+| Void | xbps | template e pacote `.xbps` por variante libc |
+| Gentoo | emerge / Portage | ebuild e metadados de overlay |
+| NixOS e ambientes Nix | nix | derivação, flake e integração desktop |
+| GNU Guix | guix | definição de pacote em canal instalável |
+| Slackware | installpkg / upgradepkg / slackpkg | SlackBuild e `.txz` |
+| Solus | eopkg | receita e pacote `.eopkg` |
+
+Guardar essas receitas em `packaging/`, por família. Compartilhar recursos
+comuns (launcher, desktop entry, ícones e metadados) e separar dependências
+específicas. Identificar distribuição e versão por `/etc/os-release` apenas
+para orientar instalação; não selecionar pela primeira ferramenta encontrada
+no PATH. Permitir escolha explícita do formato/alvo e documentar o comando
+real para instalar o artefato local ou a receita de cada gerenciador.
+
+Pacotes binários precisam de builds compatíveis com a ABI de cada alvo;
+um RPM Fedora não deve ser anunciado como RPM universal. Receitas baseadas
+em fonte também são entregas nativas para gerenciadores que usam esse modelo.
+Em musl, compilar e verificar as dependências nativas de STT/TTS e GUI em vez
+de reutilizar wheels/binários glibc. Dependências sem pacote no alvo exigem
+receitas auxiliares ou inclusão controlada no pacote, com licenças e hashes.
+Não substituir o aplicativo completo por um pacote vazio que chama Flatpak.
+
+Build e instalação não executam `pip install` ou downloads como root em
+scripts de pós-instalação. Não modificar o Python do sistema; usar dependências
+da distro ou ambiente privado preparado no build. Modelos e credenciais
+continuam pertencendo ao usuário e não são removidos ao desinstalar o pacote.
+
+Publicar artefatos de release com checksums, versão, arquitetura, distro-alvo
+e instruções de instalação/atualização. Não pressupor inclusão em repositórios
+oficiais, AUR, Flathub ou canais externos: isso é uma publicação separada.
+Para famílias adicionais identificadas durante o porte, incluir adaptador de
+empacotamento e validação próprios; nenhuma lista finita comprova cobertura
+literal de todos os gerenciadores existentes.
+
 ## Validação e critérios de entrega
 
 1. Testes existentes de Python, MCP e SafetyGate continuam passando; novos
@@ -158,12 +208,24 @@ dependências em cada arquitetura.
 8. README, documentação e diagnóstico descrevem instalação, permissões,
    dependências, limites comprovados e recuperação. A meta não é concluída
    enquanto houver requisito não implementado ou não verificado.
+9. Para cada família da tabela de pacotes nativos, construir em ambiente limpo,
+   instalar pelo gerenciador correspondente, verificar dependências e launcher,
+   atualizar de uma versão anterior e remover sem deixar arquivos de sistema
+   órfãos nem apagar dados do usuário. Verificar x86_64 e aarch64 onde o alvo
+   suporta essas arquiteturas; registrar variantes libc e versões dos alvos.
+   Receita escrita sem build/instalação real não comprova a entrega.
+10. Inspecionar conteúdo, metadados, licenças e scripts dos pacotes; executar
+    os validadores de cada formato. Em distros imutáveis, testar o método
+    nativo aplicável e manter o Flatpak como opção, sem exigir alteração
+    arbitrária da imagem do sistema. Testes de pacote em container não
+    substituem os testes funcionais de desktop da matriz.
 
 ## Sequência proposta
 
 Primeiro plataforma/configuração e áudio; depois visão, automação/contexto e
 arquivos; em seguida overlay/ciclo de vida; finalmente distribuição e matriz
-de validação. Cada etapa mantém regressão Windows e adiciona evidência Linux.
+de validação, incluindo cada família de pacotes nativos. Cada etapa mantém
+regressão Windows e adiciona evidência Linux.
 O plano de implementação será escrito após revisão desta especificação.
 
 ## Referências oficiais consultadas
@@ -171,3 +233,7 @@ O plano de implementação será escrito após revisão desta especificação.
 - https://docs.flatpak.org/en/latest/flatpak-command-reference.html
 - https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Screenshot.html
 - https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html
+- https://www.debian.org/doc/manuals/debian-faq/pkg-basics.en
+- https://rpm.org/docs/4.20.x/manual/spec.html
+- https://man.archlinux.org/man/PKGBUILD.5
+- https://wiki.alpinelinux.org/wiki/APKBUILD_Reference
