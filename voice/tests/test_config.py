@@ -1,4 +1,8 @@
-from config import load_config, DEFAULT_TIMEOUT_S
+from config import load_config as _load_config, DEFAULT_TIMEOUT_S
+
+# This suite covers the historical Windows/WSL contract explicitly.
+def load_config(env, **kwargs):
+    return _load_config({"JARVIS_PLATFORM": "wsl", **env}, **kwargs)
 import pytest
 
 def test_defaults():
@@ -237,7 +241,8 @@ def test_project_root_defaults_to_repo_root():
     from config import DEFAULT_PROJECT_ROOT
     cfg = load_config({})
     assert cfg.project_root == DEFAULT_PROJECT_ROOT
-    assert cfg.project_root.endswith("jarvis")
+    from pathlib import Path
+    assert Path(cfg.project_root) == Path(__file__).resolve().parents[2]
     assert load_config({"JARVIS_PROJECT_ROOT": "/repo"}).project_root == "/repo"
 
 

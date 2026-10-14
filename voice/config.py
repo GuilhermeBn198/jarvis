@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from paths import _wsl_to_windows
 from settings import load_settings
+from platforms import current_platform, xdg_path
 
 DEFAULT_OPENCODE_BIN = os.path.expanduser("~/.opencode/bin/opencode")
 # Raiz do projeto (voice/ fica um nivel abaixo): o `opencode` precisa rodar daqui
@@ -69,6 +70,8 @@ class Config:
     opencode_bin: str
     timeout_s: int
     project_root: str = DEFAULT_PROJECT_ROOT
+    platform: str = "wsl"
+    audio_backend: str = "dshow"
     powershell_exe: str = DEFAULT_POWERSHELL_EXE
     ffmpeg_exe: str = DEFAULT_FFMPEG_EXE
     mic_device: str = DEFAULT_MIC_DEVICE
@@ -119,6 +122,13 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         # variaveis de ambiente tem precedencia. Testes passam um env dict e
         # ficam herméticos (settings vazio).
         settings = load_settings() if env is None else {}
+    selected_platform = current_platform(e)
+    linux = selected_platform == "linux"
+    audio_backend = e.get("AUDIO_BACKEND", settings.get("audio_backend", "pulse" if linux else "dshow"))
+    if audio_backend not in (("pulse", "alsa") if linux else ("dshow",)):
+        raise ValueError(f"AUDIO_BACKEND incompativel com {selected_platform}: {audio_backend}")
+    data_dir = xdg_path("data", e)
+    cache_dir = xdg_path("cache", e)
     raw_timeout = e.get("VOICE_TIMEOUT_S", DEFAULT_TIMEOUT_S)
     try:
         timeout_s = int(raw_timeout)
@@ -139,6 +149,8 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         raise ValueError(
             f"TTS_BACKEND deve ser 'sapi' ou 'piper': {tts_backend}"
         )
+    if linux and tts_backend == "sapi":
+        raise ValueError("SAPI exige Windows/WSL; use TTS_BACKEND=piper no Linux")
     legacy_ptt = str(e.get("VOICE_PTT", "1")).strip().lower() in (
         "1", "true", "yes", "on",
     )
@@ -221,16 +233,19 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         )
     triggers_base = DEFAULT_TRIGGERS_BASE
     triggers_override = str(e.get("JARVIS_TRIGGERS", "")).strip()
-    if not triggers_override and os.path.exists(DEFAULT_TRIGGERS_USER):
-        triggers_override = DEFAULT_TRIGGERS_USER
+    triggers_user = str(xdg_path("config", e) / "triggers.json")
+    if not triggers_override and os.path.exists(triggers_user):
+        triggers_override = triggers_user
     triggers_override = triggers_override or None
     return Config(
         opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
         project_root=e.get("JARVIS_PROJECT_ROOT", DEFAULT_PROJECT_ROOT),
+        platform=selected_platform,
+        audio_backend=audio_backend,
         powershell_exe=e.get("POWERSHELL_EXE", DEFAULT_POWERSHELL_EXE),
-        ffmpeg_exe=e.get("FFMPEG_EXE", DEFAULT_FFMPEG_EXE),
-        mic_device=e.get("MIC_DEVICE", settings.get("mic_device", DEFAULT_MIC_DEVICE)),
+        ffmpeg_exe=e.get("FFMPEG_EXE", "ffmpeg" if linux else DEFAULT_FFMPEG_EXE),
+        mic_device=e.get("MIC_DEVICE", settings.get("mic_device", "default" if linux else DEFAULT_MIC_DEVICE)),
         whisper_model=e.get("WHISPER_MODEL", DEFAULT_WHISPER_MODEL),
         record_seconds=record_seconds,
         language=e.get("VOICE_LANGUAGE", DEFAULT_LANGUAGE),
@@ -238,14 +253,14 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         agent=e.get("VOICE_AGENT", DEFAULT_AGENT) or None,
         server_url=e.get("OPENCODE_SERVER_URL", DEFAULT_SERVER_URL),
         tts_backend=tts_backend,
-        voice_log_path=e.get("VOICE_LOG", DEFAULT_VOICE_LOG),
-        piper_exe=e.get("PIPER_EXE", DEFAULT_PIPER_EXE),
-        piper_model=e.get("PIPER_MODEL", DEFAULT_PIPER_MODEL),
-        ffplay_exe=e.get("FFPLAY_EXE", DEFAULT_FFPLAY_EXE),
-        piper_out_wav=e.get("PIPER_OUT_WAV", DEFAULT_PIPER_OUT_WAV),
+        voice_log_path=e.get("VOICE_LOG", str(xdg_path("state", e) / "voice-log.jsonl") if linux else DEFAULT_VOICE_LOG),
+        piper_exe=e.get("PIPER_EXE", "piper" if linux else DEFAULT_PIPER_EXE),
+        piper_model=e.get("PIPER_MODEL", str(data_dir / "voices/pt_BR-faber-medium.onnx") if linux else DEFAULT_PIPER_MODEL),
+        ffplay_exe=e.get("FFPLAY_EXE", "ffplay" if linux else DEFAULT_FFPLAY_EXE),
+        piper_out_wav=e.get("PIPER_OUT_WAV", str(cache_dir / "piper.wav") if linux else DEFAULT_PIPER_OUT_WAV),
         vision_model=e.get("VISION_MODEL", DEFAULT_VISION_MODEL),
         vision_trigger=e.get("VISION_TRIGGER", DEFAULT_VISION_TRIGGER),
-        vision_png=e.get("VISION_PNG", DEFAULT_VISION_PNG),
+        vision_png=e.get("VISION_PNG", str(cache_dir / "shot.png") if linux else DEFAULT_VISION_PNG),
         input_mode=input_mode,
         ptt=ptt,
         state_port=state_port,

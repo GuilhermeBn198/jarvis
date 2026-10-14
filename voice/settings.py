@@ -1,5 +1,6 @@
 import json
 import os
+from platforms import xdg_path
 
 DEFAULT_SETTINGS_PATH = os.path.expanduser("~/.config/jarvis/settings.json")
 
@@ -12,12 +13,13 @@ CHOICE_KEYS = {
     "input_mode": ("auto", "ptt", "fixed"),
     "tts_backend": ("piper", "sapi"),
     "activation": ("free", "wake"),
+    "audio_backend": ("pulse", "alsa", "dshow"),
 }
 SETTINGS_KEYS = NUMERIC_KEYS + BOOL_KEYS + STRING_KEYS + tuple(CHOICE_KEYS)
 
 
 def _path(path: str | None) -> str:
-    return path or os.environ.get("JARVIS_SETTINGS", DEFAULT_SETTINGS_PATH)
+    return path or os.environ.get("JARVIS_SETTINGS", str(xdg_path("config", os.environ) / "settings.json"))
 
 
 def load_settings(path: str | None = None) -> dict:

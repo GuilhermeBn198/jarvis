@@ -758,6 +758,11 @@ def release_singleton(fd) -> None:
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
+        if "--doctor" in args:
+            import json
+            from diagnostics import diagnose
+            sys.stdout.write(json.dumps(diagnose(load_config()), ensure_ascii=False, indent=2) + "\n")
+            return 0
         if "--list-mics" in args:
             cfg = load_config()
             try:
