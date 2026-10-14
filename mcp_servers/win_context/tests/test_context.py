@@ -1,3 +1,6 @@
+import base64
+import re
+
 import context as ctx
 
 
@@ -43,3 +46,18 @@ def test_tree_script_usa_namespace_uia_correto():
     s = ctx._tree_script(123, 10)
     assert "[System.Windows.Automation.AutomationElement]::FromHandle" in s
     assert "System.Management.Automation.AutomationElement" not in s
+
+
+def test_clipboard_write_script_roundtrip_unicode_base64():
+    text = "Ola, mundo! Acao 🚀 acai \u00e7\u00e3o"
+    script = ctx.clipboard_write_script(text)
+    m = re.search(r"\$b\s*=\s*'([A-Za-z0-9+/=]+)'", script)
+    assert m, script
+    assert base64.b64decode(m.group(1)).decode("utf-8") == text
+    assert "Set-Clipboard" in script
+
+
+def test_clipboard_write_script_nao_vaza_texto_cru():
+    script = ctx.clipboard_write_script("rm -rf / e senha hunter2")
+    assert "rm -rf" not in script
+    assert "hunter2" not in script

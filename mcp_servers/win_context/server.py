@@ -60,6 +60,25 @@ def win_clipboard_text() -> str:
 
 
 @mcp.tool()
+def win_clipboard_write(text: str, confirm: bool = False) -> str:
+    """Escreve `text` no clipboard do Windows.
+
+    Args:
+        text: conteudo a copiar (Unicode OK).
+        confirm: precisa ser true — escrita explicita e auditavel.
+    """
+    if not confirm:
+        return "recusado: escrita no clipboard exige confirm=true (escopo explicito e auditavel)"
+    if not text:
+        return "recusado: texto vazio"
+    try:
+        ctx._default_run(ctx.clipboard_write_script(text))
+    except ctx.WinContextError as exc:
+        raise RuntimeError(str(exc)) from exc
+    return f"escrito no clipboard ({len(text)} caracteres)"
+
+
+@mcp.tool()
 def win_processes_text(name_filter: str = "") -> str:
     """Lista processos do Windows (nome, id, título da janela) como texto.
 

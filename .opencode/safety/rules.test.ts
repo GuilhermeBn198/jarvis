@@ -237,3 +237,33 @@ test("win_write para credencial -> deny", () => {
   const a = actionFromToolCall("win_write", { path: "/mnt/c/Users/me/.env", content: "x" });
   assert.equal(decide({ ...a }).status, "deny");
 });
+
+test("clipboard_write benigno -> allow", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", { text: "ola mundo", confirm: true });
+  assert.equal(decide({ ...a }).status, "allow");
+});
+test("clipboard_write com rm -rf / -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", { text: "rm -rf /", confirm: true });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("clipboard_write de credencial -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "cat ~/.ssh/id_rsa",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("clipboard_write com credencial no meio do texto -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "minha chave: ~/.ssh/id_ed25519",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("clipboard_write com PowerShell destrutivo -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "Remove-Item C:\\x -Recurse",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
