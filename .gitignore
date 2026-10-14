@@ -26,3 +26,6 @@ docs/research/
 
 # Artefatos de build (zipapp)
 dist/
+
+# Isolated implementation worktrees
+.worktrees/
