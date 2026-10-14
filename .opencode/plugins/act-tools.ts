@@ -32,7 +32,14 @@ export const ActTools: Plugin = async ({ $ }) => ({
       },
     }),
     act_key: tool({
-      description: "Envia teclas/atalho. Padrao: janela em foco. Com window/hwnd ou mode=background: envia a janela-alvo sem roubar foco.",
+      description:
+        "Envia teclas/atalho em sintaxe natural (case-insensitive). " +
+        "Teclas: enter esc tab backspace delete space up down left right home end pgup pgdn f1..f24, letras/digitos, plus. " +
+        "Combos: ctrl+/alt+/shift+/win+ (ex.: ctrl+c, ctrl+shift+esc, alt+f4). " +
+        "Acordes separados por espaco ou virgula (ex.: \"ctrl+s , enter\"). " +
+        "Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: envia a janela-alvo sem roubar foco. " +
+        "Limites do background: win+r nao funciona (hotkey do sistema, nunca chega via PostMessage); " +
+        "combos com ctrl/alt sao best-effort (apps que consultam GetKeyState podem ignora-los).",
       args: {
         keys: tool.schema.string(),
         mode: tool.schema.string().optional(),
@@ -40,15 +47,20 @@ export const ActTools: Plugin = async ({ $ }) => ({
         hwnd: tool.schema.number().optional(),
       },
       async execute(args) {
-        const bg = chooseActScript("act_key", args);
-        if (!bg) {
-          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`).text();
+        try {
+          const bg = chooseActScript("act_key", args);
+          if (!bg) {
+            return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`).text();
+          }
+          const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
+          const r = parseActResult(out);
+          if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
+          if (r.status === "error") return `erro: ${r.detail}`;
+          return `teclas enviadas em segundo plano (confirmacao indisponivel)${r.detail.includes("win+r") ? " — win+r nao funciona em background" : ""}`;
+        } catch (err) {
+          // Sintaxe invalida falha no parser, antes de qualquer script rodar.
+          return `erro: ${err instanceof Error ? err.message : String(err)}`;
         }
-        const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
-        const r = parseActResult(out);
-        if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
-        if (r.status === "error") return `erro: ${r.detail}`;
-        return "teclas enviadas em segundo plano (confirmacao indisponivel)";
       },
     }),
     act_open: tool({

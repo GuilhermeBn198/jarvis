@@ -86,7 +86,7 @@ test("background type escapa aspas simples do texto", () => {
 });
 
 test("background key usa PostMessage WM_KEYDOWN/UP e nao rouba foco", () => {
-  const s = buildBackgroundKeyScript({ keys: "^s", window: "Notepad" });
+  const s = buildBackgroundKeyScript({ keys: "ctrl+s", window: "Notepad" });
   assert.match(s, /0x0100/);
   assert.match(s, /0x0101/);
   assert.match(s, /PostMessageW/);
@@ -94,15 +94,55 @@ test("background key usa PostMessage WM_KEYDOWN/UP e nao rouba foco", () => {
   assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|mouse_event/);
 });
 
-test("background key escapa aspas simples em keys", () => {
-  const s = buildBackgroundKeyScript({ keys: "it's" });
-  assert.ok(s.includes("it''s"));
+test("background key consome o parser natural (nao mais SendKeys cru)", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter" });
+  assert.doesNotMatch(s, /\$MOD =/); // parser antigo de SendKeys removido
+  assert.match(s, /"vk":13/); // VK de enter vindo do parser, no JSON
+  assert.throws(() => buildBackgroundKeyScript({ keys: "foo" }), /desconhecid/i);
 });
 
-test("background key normaliza letras para VK maiusculo", () => {
-  const s = buildBackgroundKeyScript({ keys: "^s" });
-  assert.match(s, /IsLetter/);
-  assert.match(s, /ToUpper/);
+test("background key monta lParam com scan code e flag extended", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter" });
+  // lParam correto: scan code em (sc << 16); extended em (1 << 24).
+  assert.match(s, /MapVirtualKey/);
+  assert.match(s, /0x0001/); // MAPVK_VK_TO_VSC
+  assert.match(s, /0x1000000/); // 1 << 24
+  assert.match(s, /0x8000/); // bit de transicao (keyup)
+  // Keydown com lParam (sc << 16); keyup com o bit de transicao.
+  assert.match(s, /PostMessageW\(\$h, 0x0100, \[IntPtr\]\$vk, \[IntPtr\]\$lpDown\)/);
+  assert.match(s, /PostMessageW\(\$h, 0x0101, \[IntPtr\]\$vk, \[IntPtr\]\$lpUp\)/);
+});
+
+test("background key mira o controle de edicao via UIA (I3), com fallback no topo", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter", hwnd: 42 });
+  // Mesmo padrao do act_type bg: Document antes de Edit, handle nativo.
+  assert.match(s, /Start-Job/);
+  assert.match(s, /Wait-Job/);
+  assert.match(s, /ControlType\]::Document/);
+  assert.match(s, /NativeWindowHandle/);
+  assert.match(s, /\$native/);
+  // Sem roubo de foco nem SetValue.
+  assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|\.SetValue\(/);
+});
+
+test("background key: char manda so keydown; tecla especial down+up", () => {
+  const s = buildBackgroundKeyScript({ keys: "b enter", hwnd: 42 });
+  assert.match(s, /if \(\$c\.onlyDown\) \{ \[void\]\[W\.Win\]::PostMessageW\(\$h, 0x0100, \[IntPtr\]\$vk, \[IntPtr\]\$lpDown\) \}/);
+  assert.match(s, /"onlyDown":true/);
+  assert.match(s, /"onlyDown":false/);
+});
+
+test("background key avisa que win+r nao funciona em background", () => {
+  const s = buildBackgroundKeyScript({ keys: "win+r", hwnd: 42 });
+  assert.match(s, /win\+r nao funciona em background/);
+});
+
+test("background key escapa aspas simples em keys", () => {
+  const s = buildBackgroundKeyScript({ keys: "plus" });
+  // O payload vai num here-string 'single-quoted': JSON sem risco de interpolacao.
+  assert.match(s, /@'\n\[/);
+  assert.match(s, /"vk":187/);
+  assert.throws(() => buildBackgroundKeyScript({ keys: "it's" }), /desconhecid/i);
 });
 
 test("parseActResult le marcadores", () => {
@@ -116,7 +156,7 @@ test("parseActResult le marcadores", () => {
 
 test("mode foreground explicito forca foreground mesmo com window", () => {
   assert.equal(chooseActScript("act_type", { text: "oi", mode: "foreground", window: "Notepad" }), "");
-  assert.equal(chooseActScript("act_key", { keys: "^s", mode: "foreground", window: "Notepad" }), "");
+  assert.equal(chooseActScript("act_key", { keys: "ctrl+s", mode: "foreground", window: "Notepad" }), "");
 });
 
 test("hwnd sozinho entra em background", () => {
