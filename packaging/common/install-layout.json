@@ -1,0 +1,7 @@
+{
+  "application": "lib/jarvis",
+  "launcher": "bin/jarvis",
+  "overlay": "bin/jarvis-overlay",
+  "desktop": "share/applications/com.jarvis.overlay.desktop",
+  "icon": "share/icons/hicolor/128x128/apps/jarvis.png"
+}

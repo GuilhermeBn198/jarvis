@@ -1,3 +1,5 @@
+import { resizeWindow } from "./window-layout.mjs";
+
 let base = "http://localhost:8765";
 
 const LABELS = {
@@ -93,6 +95,12 @@ if (AUTOSTART_BRAIN) {
   setTimeout(ensureBrain, 1200);
 }
 
+orb.addEventListener("click", (event) => {
+  // Keyboard/accessibility activation has no mouse-down/up gesture.
+  if (orbDragged && event.detail !== 0) { orbDragged = false; return; }
+  toggleMenu();
+});
+
 orb.addEventListener("mouseenter", () => {
   if (menu.classList.contains("hidden") && settingsPanel.classList.contains("hidden")) {
     label.classList.add("show");
@@ -102,8 +110,10 @@ orb.addEventListener("mouseleave", () => label.classList.remove("show"));
 
 // Clique-e-segura no orbe = arrastar a janela; clique curto = abre/fecha o menu.
 let orbDown = null;
+let orbDragged = false;
 orb.addEventListener("mousedown", (ev) => {
   if (ev.button !== 0) return;
+  orbDragged = false;
   orbDown = { x: ev.clientX, y: ev.clientY, moved: false };
   ev.preventDefault();
 });
@@ -111,6 +121,7 @@ window.addEventListener("mousemove", async (ev) => {
   if (!orbDown || orbDown.moved) return;
   if (Math.abs(ev.clientX - orbDown.x) > 4 || Math.abs(ev.clientY - orbDown.y) > 4) {
     orbDown.moved = true;
+    orbDragged = true;
     try {
       await window.__TAURI__.window.getCurrentWindow().startDragging();
     } catch (e) {
@@ -119,9 +130,7 @@ window.addEventListener("mousemove", async (ev) => {
   }
 });
 window.addEventListener("mouseup", () => {
-  const wasClick = orbDown && !orbDown.moved;
   orbDown = null;
-  if (wasClick) toggleMenu();
 });
 
 async function command(cmd) {
@@ -224,15 +233,7 @@ async function anchorBottomRight(w, h) {
   try {
     const win = window.__TAURI__.window.getCurrentWindow();
     const dpi = window.__TAURI__.dpi;
-    const scale = await win.scaleFactor();
-    const pos = await win.outerPosition();
-    const size = await win.innerSize();
-    const tw = Math.round(w * scale);
-    const th = Math.round(h * scale);
-    await win.setSize(new dpi.PhysicalSize(tw, th));
-    await win.setPosition(
-      new dpi.PhysicalPosition(pos.x + size.width - tw, pos.y + size.height - th),
-    );
+    await resizeWindow(win, dpi, w, h);
   } catch (e) {
     /* fora do Tauri ou sem permissao: segue sem redimensionar */
   }
@@ -281,6 +282,13 @@ async function loadSettings() {
   document.getElementById("s-stream").checked = s.stream_tts !== false;
   document.getElementById("s-input").value = s.input_mode ?? "auto";
   document.getElementById("s-activation").value = s.activation ?? "free";
+  try {
+    const info = await window.__TAURI__.core.invoke("platform_info");
+    const ttsSelect = document.getElementById("s-tts");
+    for (const option of Array.from(ttsSelect.options)) {
+      if (!info.tts_backends.includes(option.value)) option.remove();
+    }
+  } catch (error) { console.error("Falha ao consultar vozes disponiveis", error); }
   document.getElementById("s-tts").value = s.tts_backend ?? "piper";
 }
 

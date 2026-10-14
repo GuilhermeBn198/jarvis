@@ -105,3 +105,33 @@ com consentimento e execução em outros desktops ainda não foram verificadas.
 Pendências: click real pelo portal, abertura real pelo desktop, clipboard,
 revogação real de sessão, lifecycle ligado ao cérebro/overlay, instalação,
 Flatpak e pacotes/matriz de distros. As evidências acima não concluem o porte.
+
+## Aplicativo instalado e lifecycle
+
+- Overlay Linux compilado com GTK3/WebKitGTK 4.1; 6 testes Rust passaram.
+  Native startup usa launcher instalado e grupo próprio; parada não mata um
+  processo sentinel alheio. Logs XDG e override de porta runtime verificados.
+- Instalador por fonte executado em prefixo privado, incluindo venv, SDK dos
+  plugins e ambos os MCPs. Launcher resolveu projeto e Piper no prefixo.
+- Overlay instalado iniciou o cérebro nativo; janela e estado HTTP/SSE
+  observados. Teste usou limiar 0 dB e backend run para impedir envio de falas
+  incidentais ao modelo externo durante a verificação do lifecycle.
+- Menu via AT-SPI real: mudo e pausa mudaram flags do cérebro; configurações
+  expuseram microfones/tunables/Piper. Reiniciar trocou PID 1520895 por 1525696,
+  resetando flags. Sair encerrou cérebro e overlay; nenhum PID de teste ficou
+  ativo. Gtk warning de decoração foi corrigido configurando antes de criar.
+- Falha real de ativação acessível do orbe reproduzida; agora um botão real e
+  um único handler de click atendem mouse, teclado e AT-SPI. Dois testes JS
+  cobrem resize sem posições globais (Wayland) e âncora com escala.
+- Serviço encerra quando identidade/PID dono termina, cancela requests e
+  termina workers próprios; testes de lease e worker RED→GREEN passaram.
+- Zipapp iniciado fora do checkout extraiu recursos em cache privado, incluindo
+  triggers, plugins, configuração e MCP, com launcher executável.
+- Download real de voz com revisão c10ece1aade47bb51c153c893d14e5bf8e5b7117,
+  três SHA256s e tamanhos fixados passou. Não substitui arquivo sem verificar.
+- Regressão de voz: 391 passed, 1 skipped em 13.42s. Delegate MCP exigia httpx
+  no venv de teste; dependência declarada foi instalada, e seus 17 testes
+  passaram. Não era falha do pacote fonte instalado, que inclui esse requisito.
+
+Flatpak, formatos nativos, aarch64 e matriz de demais distros permanecem
+pendentes. Nada acima comprova conclusão desses entregáveis.

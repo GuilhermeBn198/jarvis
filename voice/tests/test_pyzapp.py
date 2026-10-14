@@ -36,3 +36,21 @@ def test_pyz_importa_sem_dependencias_pesadas(tmp_path):
     combined = proc.stdout + proc.stderr
     assert "ModuleNotFoundError" not in combined
     assert "Traceback" not in combined or "ffmpeg" in combined.lower()
+
+
+def test_pyz_outside_repo_extracts_project_resources(tmp_path):
+    import os,json
+    archive=tmp_path/'jarvis.pyz'
+    unrelated=tmp_path/'unrelated';unrelated.mkdir()
+    env=dict(os.environ,OUT=str(archive),XDG_CACHE_HOME=str(tmp_path/'cache'))
+    env.pop('JARVIS_PROJECT_ROOT',None)
+    subprocess.run(['bash',str(ROOT/'scripts/build-pyz.sh')],env=env,check=True,capture_output=True,text=True)
+    result=subprocess.run([sys.executable,str(archive),'--doctor'],cwd=unrelated,env=env,capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
+    report=json.loads(result.stdout)
+    project=Path(report['project_root'])
+    assert project.is_relative_to(tmp_path/'cache')
+    assert (project/'voice/triggers.json').is_file()
+    assert (project/'.opencode/plugins/act-tools.ts').is_file()
+    assert (project/'opencode.json').is_file()
+    assert os.access(project/'jarvis',os.X_OK)

@@ -25,7 +25,7 @@ export async function runLinux(operation: string,args: Record<string,unknown>): 
       try {
         const response=JSON.parse(output);
         if(typeof response.status!=='string' || typeof response.detail!=='string')throw new Error('resposta desktop invalida');
-        resolve(`${response.status}: ${response.detail}`);
+        resolve(operation === "desktop_capabilities" ? JSON.stringify(response) : `${response.status}: ${response.detail}`);
       } catch(error){reject(new Error(`falha no bridge desktop: ${errors || String(error)}`));}
     });
     child.stdin.end(JSON.stringify({operation,args}));

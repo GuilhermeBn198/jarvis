@@ -68,7 +68,8 @@ def validate_action(operation: str, args: dict) -> None:
     else: raise ValueError(f'operacao desconhecida: {operation}')
 
 
-def x11_action(operation: str, args: dict) -> dict:
+def x11_action(operation: str, args: dict,run=None) -> dict:
+    runner=run or subprocess.run
     validate_action(operation,args)
     if background_requested(args):
         return {'status':'unsupported','detail':'background exige alvo acessivel AT-SPI; nenhuma janela foi ativada'}
@@ -92,7 +93,7 @@ def x11_action(operation: str, args: dict) -> dict:
     else:
         return open_target(args)
     try:
-        proc=subprocess.run(argv,capture_output=True,text=True,errors='replace',timeout=20)
+        proc=runner(argv,capture_output=True,text=True,errors='replace',timeout=20)
         if proc.returncode: return {'status':'error','detail':proc.stderr.strip()[-300:] or 'xdotool falhou'}
         return dict(UNCONFIRMED)
     except (OSError,subprocess.SubprocessError) as exc:

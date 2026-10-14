@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Jarvis
+Comment=Assistente pessoal por voz
+Exec=jarvis-overlay
+Icon=jarvis
+Terminal=false
+Categories=Utility;Accessibility;
+StartupNotify=true

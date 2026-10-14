@@ -52,3 +52,40 @@ def test_bridge_real_socket_lifecycle(tmp_path):
         assert not path.exists()
     finally:
         if proc.poll() is None:proc.kill();proc.wait()
+
+
+def test_service_exits_when_owning_brain_exits(tmp_path):
+    runtime=tmp_path/'runtime';runtime.mkdir(mode=0o700)
+    env=dict(os.environ,XDG_RUNTIME_DIR=str(runtime))
+    parent=subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)'])
+    service=subprocess.Popen([sys.executable,str(VOICE/'desktop_service.py'),'--idle-timeout','30'],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+    try:
+        path=runtime/'jarvis/desktop.sock'
+        for _ in range(100):
+            if path.exists():break
+            time.sleep(.02)
+        result=subprocess.run([sys.executable,str(VOICE/'desktop_bridge.py')],input=json.dumps({'operation':'attach','args':{'pid':parent.pid}}),env=env,capture_output=True,text=True,timeout=5)
+        assert result.returncode==0,result.stdout+result.stderr
+        parent.terminate();parent.wait(timeout=5)
+        service.wait(timeout=5)
+        assert not path.exists()
+    finally:
+        for proc in (parent,service):
+            if proc.poll() is None:proc.kill();proc.wait()
+
+
+def test_service_shutdown_terminates_owned_worker():
+    import asyncio
+    from desktop_service import DesktopService
+    async def run():
+        service=DesktopService()
+        worker=asyncio.create_task(asyncio.to_thread(service.run_child,[sys.executable,'-c','import time;time.sleep(30)'],capture_output=True,text=True,errors='replace',timeout=30))
+        for _ in range(100):
+            if service.children:break
+            await asyncio.sleep(.01)
+        assert service.children
+        await service.close()
+        result=await asyncio.wait_for(worker,2)
+        assert result.returncode!=0
+        assert not service.children
+    asyncio.run(run())

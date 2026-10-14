@@ -7,6 +7,8 @@ import signal
 import socket
 import stat
 import struct
+import subprocess
+import threading
 import time
 from pathlib import Path
 from platforms import desktop_session, xdg_path
@@ -35,6 +37,16 @@ def peer_is_owner(peer) -> bool:
     return uid==os.getuid()
 
 
+
+def process_identity(pid):
+    if isinstance(pid,bool) or not isinstance(pid,int) or pid<=0:raise ValueError('pid invalido')
+    directory=Path('/proc')/str(pid)
+    try:
+        if directory.stat().st_uid!=os.getuid():raise ValueError('processo pertence a outro usuario')
+        fields=(directory/'stat').read_text().rsplit(')',1)[1].split()
+        return pid,fields[19]
+    except FileNotFoundError:return None
+
 class DesktopService:
     def __init__(self):
         self.session=desktop_session(os.environ)
@@ -42,11 +54,45 @@ class DesktopService:
         self.wayland=WaylandInput(self.portal)
         self.lock=asyncio.Lock()
         self.last_activity=time.monotonic()
+        self.brain_owner=None
+        self.stopping=False
+        self.clients=set()
+        self.children=set()
+        self.children_lock=threading.Lock()
+        self.closing=False
+
+    def run_child(self,argv,*,capture_output=True,text=True,errors='replace',timeout=10,input=None):
+        with self.children_lock:
+            if self.closing:raise RuntimeError('servico desktop encerrando')
+            child=subprocess.Popen(argv,stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
+                stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=text,errors=errors)
+            self.children.add(child)
+        try:
+            output,error=child.communicate(input,timeout=timeout)
+            return subprocess.CompletedProcess(argv,child.returncode,output,error)
+        except BaseException:
+            child.kill()
+            try:child.communicate(timeout=1)
+            except subprocess.TimeoutExpired:
+                child.stdout.close();child.stderr.close();child.wait(timeout=1)
+            raise
+        finally:
+            with self.children_lock:self.children.discard(child)
 
     async def execute(self,operation: str,args: dict) -> dict:
         self.last_activity=time.monotonic()
-        if operation=='capabilities':
-            return {'status':'ok','service_pid':os.getpid(),'session':self.session,'detail':'eventos de entrada exigem autorizacao; resultado depende do aplicativo',
+        if operation=='attach':
+            owner=process_identity(args.get('pid'))
+            if owner is None:raise ValueError('processo do cerebro nao existe')
+            if self.brain_owner and process_identity(self.brain_owner[0])==self.brain_owner and self.brain_owner!=owner:
+                raise ValueError('servico desktop pertence a outro cerebro ativo')
+            self.brain_owner=owner
+            return {'status':'ok','detail':'servico acompanha ciclo de vida do cerebro'}
+        if operation=='detach':
+            if self.brain_owner and args.get('pid')==self.brain_owner[0]:self.stopping=True
+            return {'status':'ok','detail':'liberacao do servico solicitada'}
+        if operation in ('capabilities','desktop_capabilities'):
+            return {'status':'ok','service_pid':os.getpid(),'owner_pid':self.brain_owner[0] if self.brain_owner else None,'session':self.session,'detail':'eventos de entrada exigem autorizacao; resultado depende do aplicativo',
                     'streams':[{ 'id':node, 'properties':{k:getattr(v,'value',v) for k,v in props.items()}}
                                for node,props in self.wayland.streams]}
         if operation=='authorize':
@@ -62,10 +108,10 @@ class DesktopService:
         if operation in ('win_list','desktop_list','desktop_tree','desktop_clipboard','desktop_processes'):
             from linux_context import list_windows, accessibility_tree, clipboard_text, processes
             if operation in ('win_list','desktop_list'):
-                windows=await asyncio.to_thread(list_windows)
+                windows=await asyncio.to_thread(list_windows,self.run_child)
                 detail='\n'.join(f"{item['id']}\t{item['process']}\t{item['title']}" for item in windows) or '(nenhuma janela acessivel)'
-            elif operation=='desktop_tree':detail=await asyncio.to_thread(accessibility_tree,args.get('window',''),args.get('max_nodes',200))
-            elif operation=='desktop_clipboard':detail=await asyncio.to_thread(clipboard_text)
+            elif operation=='desktop_tree':detail=await asyncio.to_thread(accessibility_tree,args.get('window',''),args.get('max_nodes',200),10,self.run_child)
+            elif operation=='desktop_clipboard':detail=await asyncio.to_thread(clipboard_text,self.run_child)
             else:detail=await asyncio.to_thread(processes,args.get('name_filter',''))
             return {'status':'ok','detail':detail}
         validate_action(operation,args)
@@ -73,13 +119,15 @@ class DesktopService:
             if args.get('hwnd') is not None:
                 return {'status':'unsupported','detail':'hwnd e especifico de Windows; use window com ID AT-SPI'}
             from linux_context import accessibility_request
-            return await asyncio.to_thread(accessibility_request,operation,args)
+            return await asyncio.to_thread(accessibility_request,operation,args,10,self.run_child)
         if operation=='act_open':return await asyncio.to_thread(open_target,args)
         if self.session=='wayland':return await self.wayland.execute(operation,args)
-        if self.session=='x11':return await asyncio.to_thread(x11_action,operation,args)
+        if self.session=='x11':return await asyncio.to_thread(x11_action,operation,args,self.run_child)
         return {'status':'unsupported','detail':'controle de entrada exige sessao grafica'}
 
     async def handle(self,reader,writer):
+        task=asyncio.current_task()
+        self.clients.add(task)
         try:
             peer=writer.get_extra_info('socket')
             if peer is None or not peer_is_owner(peer):
@@ -103,9 +151,20 @@ class DesktopService:
         except (ConnectionError,OSError):pass
         finally:
             writer.close()
-            await writer.wait_closed()
+            try:await writer.wait_closed()
+            except (ConnectionError,OSError):pass
+            self.clients.discard(task)
 
-    async def close(self):await self.wayland.close()
+    async def close(self):
+        with self.children_lock:
+            self.closing=True
+            for child in list(self.children):
+                try:child.kill()
+                except ProcessLookupError:pass
+        tasks=list(self.clients)
+        for task in tasks:task.cancel()
+        if tasks:await asyncio.gather(*tasks,return_exceptions=True)
+        await self.wayland.close()
 
 
 async def serve(idle_timeout: float=300):
@@ -133,7 +192,9 @@ async def serve(idle_timeout: float=300):
                 while not stop.is_set():
                     try:await asyncio.wait_for(stop.wait(),1)
                     except asyncio.TimeoutError:pass
-                    if time.monotonic()-service.last_activity>idle_timeout and not service.lock.locked():break
+                    if service.stopping:break
+                    if service.brain_owner and process_identity(service.brain_owner[0])!=service.brain_owner:break
+                    if service.brain_owner is None and time.monotonic()-service.last_activity>idle_timeout and not service.lock.locked():break
         finally:
             await service.close()
     finally:

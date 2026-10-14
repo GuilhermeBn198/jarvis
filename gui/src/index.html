@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="drag" data-tauri-drag-region></div>
-    <div id="orb" class="orb" data-state="offline"></div>
+    <button id="orb" class="orb" data-state="offline" type="button" aria-label="Abrir menu Jarvis"></button>
     <div id="label" class="label">offline</div>
     <div id="menu" class="menu hidden">
       <button id="menu-mute" data-cmd="mute">Mudo</button>
@@ -69,6 +69,6 @@
       </div>
       <div class="settings-hint">Aplicado ao reiniciar o cérebro.</div>
     </div>
-    <script src="main.js"></script>
+    <script type="module" src="main.js"></script>
   </body>
 </html>

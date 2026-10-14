@@ -66,14 +66,14 @@ def flatten_accessibility(root,max_nodes=200,max_depth=12) -> list[dict]:
     return rows
 
 
-def accessibility_request(operation: str,args: dict,timeout_s: float=10) -> dict:
+def accessibility_request(operation: str,args: dict,timeout_s: float=10,run=None) -> dict:
     if not 0<timeout_s<=30:raise ValueError("timeout deve estar entre 0 e 30 segundos")
     if desktop_session(os.environ)=='headless':raise ContextError('unsupported','AT-SPI exige sessao grafica')
     python=os.environ.get('JARVIS_ACCESSIBILITY_PYTHON')
     if not python:
         python=sys.executable if importlib.util.find_spec('gi') else '/usr/bin/python3'
     try:
-        proc=subprocess.run([python,str(Path(__file__).with_name('atspi_worker.py'))],
+        proc=(run or subprocess.run)([python,str(Path(__file__).with_name('atspi_worker.py'))],
             input=json.dumps({'operation':operation,'args':args}),capture_output=True,text=True,errors='replace',timeout=timeout_s)
         response=json.loads(proc.stdout)
         if response.get('status') not in ('ok','unconfirmed'):
@@ -83,21 +83,21 @@ def accessibility_request(operation: str,args: dict,timeout_s: float=10) -> dict
         raise ContextError('unavailable',f'AT-SPI indisponivel/timeout: {exc}') from exc
 
 
-def list_windows() -> list[dict]:return accessibility_request('windows',{})['windows']
+def list_windows(run=None) -> list[dict]:return accessibility_request('windows',{},run=run)['windows']
 
 
-def accessibility_tree(window_id: str,max_nodes: int=200,timeout_s: float=10) -> str:
+def accessibility_tree(window_id: str,max_nodes: int=200,timeout_s: float=10,run=None) -> str:
     if timeout_s<=0:raise ValueError('timeout deve ser positivo')
-    rows=accessibility_request('tree',{'window':window_id,'max_nodes':max_nodes},timeout_s)['nodes']
+    rows=accessibility_request('tree',{'window':window_id,'max_nodes':max_nodes},timeout_s,run)['nodes']
     return '\n'.join(f"{row.get('id','')}\t{'  '*row['depth']}{row['role']}\t{row['name'].replace(chr(10),' ')}" for row in rows) or '(arvore vazia)'
 
 
-def clipboard_text() -> str:
+def clipboard_text(run=None) -> str:
     session=desktop_session(os.environ)
     if session=='headless':raise ContextError('unsupported','clipboard exige sessao grafica')
     argv=['wl-paste','--no-newline'] if session=='wayland' else ['xclip','-selection','clipboard','-o']
     try:
-        proc=subprocess.run(argv,capture_output=True,text=True,errors='replace',timeout=5)
+        proc=(run or subprocess.run)(argv,capture_output=True,text=True,errors='replace',timeout=5)
         if proc.returncode:raise ContextError('unavailable',proc.stderr.strip()[-200:] or 'clipboard nao disponivel')
         return proc.stdout[:100000] or '(clipboard vazio)'
     except (OSError,subprocess.SubprocessError) as exc:raise ContextError('unavailable',f'clipboard: {exc}') from exc

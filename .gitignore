@@ -29,3 +29,6 @@ dist/
 
 # Isolated implementation worktrees
 .worktrees/
+
+# Tauri-generated schema files
+gui/src-tauri/gen/

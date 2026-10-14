@@ -41,6 +41,14 @@ trap 'rm -rf "$BUILD"' EXIT
 for f in "${FILES[@]}"; do
   cp "$SRC/$f" "$BUILD/$f"
 done
+JARVIS_BUILD_ROOT="$ROOT" JARVIS_BUILD_DIR="$BUILD" python3 - <<'PY_RESOURCES'
+import os,sys
+from pathlib import Path
+root=Path(os.environ['JARVIS_BUILD_ROOT'])
+sys.path.insert(0,str(root/'scripts'))
+from resources import copy_application
+copy_application(root,Path(os.environ['JARVIS_BUILD_DIR'])/'jarvis_resources')
+PY_RESOURCES
 # `__main__.py` ja existe em voice/; garante que veio.
 if [ ! -f "$BUILD/__main__.py" ]; then
   echo "erro: voice/__main__.py ausente (entrypoint do zipapp)" >&2

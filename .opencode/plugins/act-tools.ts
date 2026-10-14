@@ -58,7 +58,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
       },
     }),
     act_open: tool({
-      description: "Abre uma URL, arquivo ou aplicativo (Start-Process).",
+      description: "Abre uma URL, arquivo ou aplicativo usando a plataforma do usuario.",
       args: { target: tool.schema.string() },
       async execute(args) {
         if (isNativeLinux()) return runLinux("act_open", args);
@@ -74,6 +74,11 @@ export const ActTools: Plugin = async ({ $ }) => ({
       },
     }),
     ...(isNativeLinux() ? {
+    desktop_capabilities: tool({
+      description: "Sessao Linux e streams de controle autorizados, com ID, posicao e dimensoes logicas; nao solicita autorizacao por conta propria.",
+      args: {},
+      async execute() { return runLinux("desktop_capabilities", {}); },
+    }),
     desktop_list: tool({
       description: "Lista janelas acessiveis no Linux com IDs opacos AT-SPI; no Windows use win_list.",
       args: {},
@@ -96,7 +101,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
     }),
     } : {}),
     win_list: tool({
-      description: "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
+      description: isNativeLinux() ? "Alias de desktop_list: janelas acessiveis com IDs AT-SPI, titulo e processo." : "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
       args: {},
       async execute() {
         if (isNativeLinux()) return runLinux("win_list", {});

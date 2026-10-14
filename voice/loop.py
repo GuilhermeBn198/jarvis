@@ -762,6 +762,13 @@ def release_singleton(fd) -> None:
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
+        if "--download-voice" in args:
+            from models import download_default_voice
+            try:download_default_voice()
+            except (OSError, ValueError) as exc:
+                sys.stderr.write(f"[erro] falha ao obter voz Piper: {exc}\n")
+                return 1
+            return 0
         if "--doctor" in args:
             import json
             from diagnostics import diagnose
@@ -849,10 +856,25 @@ def main(argv=None) -> int:
                 sys.stderr.flush()
                 return 3
             hub = _start_hub(cfg, sys.stderr)
+            desktop_attached = False
+            if cfg.platform == "linux":
+                from platforms import desktop_session
+                if desktop_session(os.environ) != "headless":
+                    try:
+                        from desktop_bridge import request as desktop_request
+                        result = desktop_request("attach", {"pid": os.getpid()})
+                        desktop_attached = result.get("status") == "ok"
+                        if not desktop_attached:
+                            sys.stderr.write(f"[aviso] desktop: {result.get('detail', 'indisponivel')}\n")
+                    except Exception as exc:
+                        sys.stderr.write(f"[aviso] desktop indisponivel: {exc}\n")
             try:
                 voice_loop(resolve_client(cfg, sys.stderr), iterations=iterations,
                            config=cfg, hub=hub)
             finally:
+                if desktop_attached:
+                    try:desktop_request("detach", {"pid": os.getpid()}, autostart=False)
+                    except Exception:pass
                 if hub is not None:
                     hub.stop()
                 release_singleton(lock_fd)

@@ -231,7 +231,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         raise ValueError(
             f"VOICE_ACTIVATION deve ser 'free' ou 'wake': {activation}"
         )
-    triggers_base = DEFAULT_TRIGGERS_BASE
+    triggers_base = os.path.join(e.get("JARVIS_PROJECT_ROOT", DEFAULT_PROJECT_ROOT), "voice", "triggers.json")
     triggers_override = str(e.get("JARVIS_TRIGGERS", "")).strip()
     triggers_user = str(xdg_path("config", e) / "triggers.json")
     if not triggers_override and os.path.exists(triggers_user):

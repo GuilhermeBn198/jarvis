@@ -17,3 +17,7 @@ Reusa a descoberta de janelas do `win_list` (mesmo P/Invoke de `.opencode/act/wi
 
 ## Testes
     . .venv/bin/activate && pip install -r requirements-dev.txt && pytest -q
+
+## Linux nativo
+
+O servidor seleciona contexto Linux automaticamente e oferece `desktop_list_text`, `desktop_tree_text`, `desktop_clipboard_text` e `desktop_processes_text`. IDs AT-SPI são opacos; `hwnd` permanece exclusivo de Windows. Use `./jarvis --mcp win_context` para compartilhar o runtime instalado. Contexto acessível requer PyGObject/AT-SPI; veja `docs/linux.md` e as evidências de validação.

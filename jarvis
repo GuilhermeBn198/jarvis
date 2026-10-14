@@ -1,35 +1,38 @@
-#!/usr/bin/env bash
-# Launcher do cerebro do jarvis (roda no WSL).
-#
-# Uso:
-#   ./jarvis --voice            # loop de voz continuo
-#   ./jarvis --voice --once 1   # um turno (teste)
-#   ./jarvis --see "pergunta"   # visao de tela
-#   ./jarvis --do "acao"        # acao no PC
-#   echo "oi" | ./jarvis        # bridge de texto
-#
-# Ativa o venv de voice/ automaticamente (sem precisar de `source .venv/bin/activate`).
-set -euo pipefail
-
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Overrides locais da maquina (nao versionado): ex.:
-#   JARVIS_WIN_HOME=/mnt/c/Users/voce
-if [ -f "$DIR/local.conf" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  . "$DIR/local.conf"
-  set +a
+#!/bin/sh
+# Source and installed entrypoint; every executable/path is a separate argument.
+set -eu
+task_launcher_dir=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+if [ -d "$task_launcher_dir/voice" ]; then
+    task_app_root=$task_launcher_dir
+else
+    task_app_root=$(CDPATH= cd -P "$task_launcher_dir/../lib/jarvis" && pwd)
 fi
-
-cd "$DIR/voice"
-
-if [ ! -d .venv ]; then
-  echo "jarvis: venv ausente em $DIR/voice/.venv" >&2
-  echo "  crie com: python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt" >&2
-  exit 1
+if [ -f "$task_app_root/local.conf" ]; then
+    set -a
+    . "$task_app_root/local.conf"
+    set +a
 fi
-
-# shellcheck disable=SC1091
-. .venv/bin/activate
-exec python loop.py "$@"
+JARVIS_PROJECT_ROOT=${JARVIS_PROJECT_ROOT:-$task_app_root}
+export JARVIS_PROJECT_ROOT
+if [ -n "${JARVIS_PYTHON:-}" ]; then
+    task_python=$JARVIS_PYTHON
+elif [ -x "$task_app_root/voice/.venv/bin/python" ]; then
+    task_python=$task_app_root/voice/.venv/bin/python
+elif [ -x "$task_app_root/runtime/bin/python3" ]; then
+    task_python=$task_app_root/runtime/bin/python3
+else
+    task_python=python3
+fi
+if [ "${1:-}" = "--mcp" ]; then
+    case "${2:-}" in win_context|delegate_local) task_mcp=$2 ;; *) echo 'jarvis: MCP desconhecido' >&2; exit 2 ;; esac
+    if [ -z "${JARVIS_PYTHON:-}" ] && [ -x "$task_app_root/mcp_servers/$task_mcp/.venv/bin/python" ]; then
+        task_python=$task_app_root/mcp_servers/$task_mcp/.venv/bin/python
+    fi
+    task_entry=$task_app_root/mcp_servers/$task_mcp/server.py
+    shift 2
+else
+    task_entry=$task_app_root/voice/loop.py
+fi
+case "$task_python" in */*) PATH="$(dirname "$task_python"):$PATH"; export PATH ;; esac
+cd "$task_app_root"
+exec "$task_python" "$task_entry" "$@"

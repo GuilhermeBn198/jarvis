@@ -14,6 +14,9 @@ html, body {
 }
 
 .orb {
+  appearance: none;
+  border: 0;
+  padding: 0;
   position: fixed;
   right: 22px;
   bottom: 22px;

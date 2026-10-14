@@ -28,5 +28,5 @@ def diagnose(config) -> dict:
     if config.tts_backend == 'sapi':
         found = shutil.which(config.powershell_exe)
         capabilities['tts'] = {'available': found is not None, 'backend': 'sapi', 'reason': 'SAPI exige teste de runtime Windows'}
-    return {'platform': config.platform, 'session': session, 'dependencies': dependencies,
+    return {'project_root': config.project_root, 'platform': config.platform, 'session': session, 'dependencies': dependencies,
             'capabilities': capabilities}
