@@ -13,3 +13,7 @@ local.conf
 *.log
 jarvis-config.json
 settings.json
+
+# Internal notes and generated schemas are not distribution inputs.
+docs/research
+gui/src-tauri/gen
