@@ -44,6 +44,42 @@ function collapse(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+// stderr do PowerShell 5.1 pode vir em CLIXML ("#< CLIXML <Objs...>"): markup
+// XML + escapes _xHHHH_ escondem a mensagem real e fragmentos de progresso
+// ("Preparando modulos para primeiro uso...") consomem o orcamento do
+// truncamento. Extrai SO os fragmentos <S S="Error"> — concatenados, porque o
+// PowerShell corta a mensagem no meio ("n" + "&#xE3;o") — desescapa _xHHHH_ e
+// entidades, e sem fragmento de erro remove o preambulo.
+const CLIXML_MARCADOR = "#< CLIXML";
+const CLIXML_PREAMBULO = /#< CLIXML\r?\n?/;
+
+function unescapeClixml(text: string): string {
+  return text
+    .replace(/_x([0-9A-Fa-f]{4})_/g, (_, hex: string) =>
+      String.fromCharCode(Number.parseInt(hex, 16)),
+    )
+    .replace(/&#x([0-9A-Fa-f]+);/g, (_, hex: string) =>
+      String.fromCharCode(Number.parseInt(hex, 16)),
+    )
+    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCharCode(Number.parseInt(dec, 10)))
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+function decodeClixml(text: string): string {
+  const inicio = text.indexOf(CLIXML_MARCADOR);
+  if (inicio < 0) return text;
+  // Preserva o que veio antes do CLIXML (ex.: "exit code 1: ").
+  const prefixo = text.slice(0, inicio);
+  const clixml = text.slice(inicio);
+  const fragmentos = [...clixml.matchAll(/<S S="Error">([\s\S]*?)<\/S>/g)].map((m) => m[1]);
+  if (fragmentos.length === 0) return prefixo + clixml.replace(CLIXML_PREAMBULO, "");
+  return prefixo + unescapeClixml(fragmentos.join(""));
+}
+
 // Troca padroes de token por [REDACTADO] (exportada para teste).
 export function redact(text: string): string {
   let out = text;
@@ -77,10 +113,12 @@ function causaBruta(err: unknown): string {
   return s === "" || s === "undefined" || s === "null" ? "erro desconhecido" : s;
 }
 
-// Causa pronta para exibir: sem ANSI, sem segredos, whitespace colapsado e
-// truncada para nao dominar o contexto do modelo.
+// Causa pronta para exibir: CLIXML decodificado, sem ANSI, sem segredos,
+// whitespace colapsado e truncada para nao dominar o contexto do modelo.
+// A decodificacao vem ANTES de redact/truncate: o markup pode esconder segredo
+// e o corte nao pode cair no meio do CLIXML (perderia a mensagem real).
 export function extractCause(err: unknown): string {
-  const limpo = collapse(redact(stripAnsi(causaBruta(err))));
+  const limpo = collapse(redact(stripAnsi(decodeClixml(causaBruta(err)))));
   return truncate(limpo || "erro desconhecido");
 }
 

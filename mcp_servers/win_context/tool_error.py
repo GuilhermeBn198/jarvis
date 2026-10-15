@@ -52,8 +52,51 @@ def _collapse(text: str) -> str:
     return " ".join(text.split())
 
 
+# stderr do PowerShell 5.1 pode vir em CLIXML ("#< CLIXML <Objs...>"): markup
+# XML + escapes _xHHHH_ escondem a mensagem real e fragmentos de progresso
+# ("Preparando modulos para primeiro uso...") consomem o orcamento do
+# truncamento. Extrai SO os fragmentos <S S="Error"> — concatenados, porque o
+# PowerShell corta a mensagem no meio ("n" + "&#xE3;o") — desescapa _xHHHH_ e
+# entidades, e sem fragmento de erro remove o preambulo.
+_CLIXML_MARCADOR = "#< CLIXML"
+_CLIXML_PREAMBULO = re.compile(r"#< CLIXML\r?\n?")
+_CLIXML_FRAGMENTO_ERROR = re.compile(r'<S S="Error">(.*?)</S>', re.DOTALL)
+_CLIXML_ESCAPE = re.compile(r"_x([0-9A-Fa-f]{4})_")
+_CLIXML_ENTIDADE_HEX = re.compile(r"&#x([0-9A-Fa-f]+);")
+_CLIXML_ENTIDADE_DEC = re.compile(r"&#(\d+);")
+_CLIXML_ENTIDADES_NOMEADAS = (
+    ("&lt;", "<"),
+    ("&gt;", ">"),
+    ("&quot;", '"'),
+    ("&apos;", "'"),
+    ("&amp;", "&"),
+)
+
+
+def _unescape_clixml(text: str) -> str:
+    text = _CLIXML_ESCAPE.sub(lambda m: chr(int(m.group(1), 16)), text)
+    text = _CLIXML_ENTIDADE_HEX.sub(lambda m: chr(int(m.group(1), 16)), text)
+    text = _CLIXML_ENTIDADE_DEC.sub(lambda m: chr(int(m.group(1))), text)
+    for entidade, char in _CLIXML_ENTIDADES_NOMEADAS:
+        text = text.replace(entidade, char)
+    return text
+
+
+def _decode_clixml(text: str) -> str:
+    inicio = text.find(_CLIXML_MARCADOR)
+    if inicio < 0:
+        return text
+    # Preserva o que veio antes do CLIXML (ex.: "exit code 1: ").
+    prefixo = text[:inicio]
+    clixml = text[inicio:]
+    fragmentos = [m.group(1) for m in _CLIXML_FRAGMENTO_ERROR.finditer(clixml)]
+    if not fragmentos:
+        return prefixo + _CLIXML_PREAMBULO.sub("", clixml)
+    return prefixo + _unescape_clixml("".join(fragmentos))
+
+
 def _limpa(text: str) -> str:
-    return truncate(_collapse(redact(_ANSI.sub("", text))))
+    return truncate(_collapse(redact(_ANSI.sub("", _decode_clixml(text)))))
 
 
 def extract_cause(err: object) -> str:
