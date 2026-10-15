@@ -98,6 +98,44 @@ test("extractCause: fallback para erro desconhecido", () => {
   assert.equal(extractCause(undefined), "erro desconhecido");
 });
 
+// CLIXML (#26): o stderr do PowerShell 5.1 pode vir como "#< CLIXML ... <S S=\"Error\">".
+// Sem decodificar, o markup e os escapes escondem a mensagem real e os
+// fragmentos de progresso consomem o orcamento do truncamento.
+const CLIXML_ERRO_REAL =
+  "#< CLIXML\n" +
+  '<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">' +
+  '<S S="Error">O termo &apos;keybd_event&apos; n</S>' +
+  '<S S="Error">&#xE3;o &#xE9; reconhecido como nome de cmdlet, fun&#xE7;&#xE3;o, ' +
+  "arquivo de script ou programa oper&#xE1;vel. Verifique a grafia do nome ou, " +
+  "se um caminho tiver sido inclu&#xED;do, verifique se o caminho est&#xE1; correto " +
+  "e tente novamente.</S>" +
+  '<S S="Error">_x000D__x000A_Em linha:1 caractere:1_x000D__x000A_+ keybd_event(0x11, 0, 0, 0)_x000D__x000A_</S>' +
+  '<S S="Progress">Preparando m&#xF3;dulos para primeiro uso...</S>' +
+  "</Objs>";
+
+test("extractCause: CLIXML extrai a mensagem real dos fragmentos Error (#26)", () => {
+  const out = extractCause({ exitCode: 1, stderr: CLIXML_ERRO_REAL });
+  assert.match(out, /O termo 'keybd_event' não é reconhecido como nome de cmdlet/);
+  assert.match(out, /keybd_event\(0x11/);
+  assert.doesNotMatch(out, /#</);
+  assert.doesNotMatch(out, /_x000D_/);
+  // Fragmento Progress ("Preparando modulos...") nao consome o orcamento.
+  assert.doesNotMatch(out, /Preparando/);
+});
+
+test("extractCause: CLIXML desescapa _xHHHH_ e entidades HTML", () => {
+  const stderr =
+    '#< CLIXML\n<Objs><S S="Error">a &lt;tag&gt; &amp; b_x000D__x000A__x0009_c</S></Objs>';
+  assert.equal(extractCause({ exitCode: 1, stderr }), "exit code 1: a <tag> & b c");
+});
+
+test("extractCause: CLIXML sem fragmentos Error remove o preambulo", () => {
+  const stderr = '#< CLIXML\n<Objs><S S="Progress">carregando modulos</S></Objs>';
+  const out = extractCause({ exitCode: 1, stderr });
+  assert.match(out, /carregando modulos/);
+  assert.doesNotMatch(out, /#</);
+});
+
 // formatToolError: formato unico dos plugins.
 test("formatToolError: formato base sem action", () => {
   const msg = formatToolError({ tool: "act", step: "run" }, { exitCode: 1, stderr: "not found" });

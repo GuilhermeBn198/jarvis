@@ -96,6 +96,46 @@ def test_extract_cause_fallback_desconhecido():
     assert te.extract_cause(None) == "erro desconhecido"
 
 
+# CLIXML (#26): o stderr do PowerShell 5.1 pode vir como "#< CLIXML ... <S S=\"Error\">".
+# Sem decodificar, o markup e os escapes escondem a mensagem real e os
+# fragmentos de progresso consomem o orcamento do truncamento.
+_CLIXML_ERRO_REAL = (
+    "#< CLIXML\n"
+    '<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04">'
+    '<S S="Error">O termo &apos;keybd_event&apos; n</S>'
+    '<S S="Error">&#xE3;o &#xE9; reconhecido como nome de cmdlet, fun&#xE7;&#xE3;o, '
+    "arquivo de script ou programa oper&#xE1;vel. Verifique a grafia do nome ou, "
+    "se um caminho tiver sido inclu&#xED;do, verifique se o caminho est&#xE1; correto "
+    "e tente novamente.</S>"
+    '<S S="Error">_x000D__x000A_Em linha:1 caractere:1_x000D__x000A_'
+    "+ keybd_event(0x11, 0, 0, 0)_x000D__x000A_</S>"
+    '<S S="Progress">Preparando m&#xF3;dulos para primeiro uso...</S>'
+    "</Objs>"
+)
+
+
+def test_extract_cause_clixml_extrai_mensagem_real():
+    out = te.extract_cause(_Falha("x", exit_code=1, stderr=_CLIXML_ERRO_REAL))
+    assert "O termo 'keybd_event' não é reconhecido como nome de cmdlet" in out
+    assert "keybd_event(0x11" in out
+    assert "#<" not in out
+    assert "_x000D_" not in out
+    # Fragmento Progress ("Preparando modulos...") nao consome o orcamento.
+    assert "Preparando" not in out
+
+
+def test_extract_cause_clixml_desescapa_escapes_e_entidades():
+    stderr = '#< CLIXML\n<Objs><S S="Error">a &lt;tag&gt; &amp; b_x000D__x000A__x0009_c</S></Objs>'
+    assert te.extract_cause(_Falha("x", exit_code=1, stderr=stderr)) == "exit code 1: a <tag> & b c"
+
+
+def test_extract_cause_clixml_sem_fragmento_error_remove_preambulo():
+    stderr = '#< CLIXML\n<Objs><S S="Progress">carregando modulos</S></Objs>'
+    out = te.extract_cause(_Falha("x", exit_code=1, stderr=stderr))
+    assert "carregando modulos" in out
+    assert "#<" not in out
+
+
 # format_tool_error: formato unico do pacote.
 def test_format_tool_error_base():
     assert (
