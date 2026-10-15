@@ -1,0 +1,12 @@
+{
+  "x86_64": {
+    "org.gnome.Sdk//49": "faf37bdc962236ef8e61fd0b289fd311f7961cc5a7b4bc11a6e29506d7874003",
+    "org.gnome.Platform//49": "2bb946ea4ebb050f6a32f90e979feb975b08280d1ff1aac881dec3d1361ad84d",
+    "org.freedesktop.Sdk.Extension.rust-stable//25.08": "09784a9989ae5a7fda6a2280033ca9aa32aac6907961da8b18be4590dd261507"
+  },
+  "aarch64": {
+    "org.gnome.Sdk//49": "fff4a1de0b4cef7dc8163dcad095aac1fe076639a097de0b945687e8cb4b3806",
+    "org.gnome.Platform//49": "c3daeced6f88f9c4ffc4f88c798c48fffd395d873fc0d36b7fc73b753d7f59c9",
+    "org.freedesktop.Sdk.Extension.rust-stable//25.08": "ff31047b5582073ea1284807c0d654c787a731d5ffda7dfba0922635dfad8d7b"
+  }
+}

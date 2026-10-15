@@ -9,9 +9,10 @@ usa `--offline` e a instalação Python usa apenas o wheelhouse local.
 Pré-requisitos no computador de build: Git, Python, Cargo, Node/npm e Flatpak,
 com org.flatpak.Builder, org.gnome.Sdk//49, org.gnome.Platform//49 e a extensão
 org.freedesktop.Sdk.Extension.rust-stable//25.08 instalados para o usuário.
-O script exige os commits x86_64 registrados nele e recusa versões diferentes.
-Ele não altera automaticamente um runtime instalado. ARM64 ainda aguarda pins
-e build reais; não reutilize artefatos x86_64 nessa arquitetura.
+O script exige os commits da arquitetura registrados em `runtime-pins.json`
+e recusa versões diferentes. Ele não altera automaticamente um runtime
+instalado. Há pins separados para x86_64 e ARM64; ARM64 ainda aguarda o
+resultado do build real. Não reutilize artefatos x86_64 nessa arquitetura.
 
 ```sh
 scripts/build-flatpak.sh "$PWD/dist/flatpak"
@@ -29,6 +30,9 @@ do aplicativo, use um novo diretório de saída. O build regenera o manifesto
 externo com as opções atuais, mantendo o hash do snapshot de fontes.
 
 O bundle é `dist/flatpak/jarvis-x86_64.flatpak`; seu SHA256 fica ao lado.
+No ARM64, o nome é `jarvis-aarch64.flatpak`. O workflow manual
+`Linux Flatpak experimental` constrói cada arquitetura em runner nativo e
+verifica instalação, versão do agente e imports; não valida desktop ou áudio.
 A instalação para teste, quando o build estiver concluído, é:
 
 ```sh
