@@ -38,7 +38,18 @@ export function actionFromToolCall(
   if (tool === "act_key") {
     return { type: "act", pattern: patternParts([a.keys, a.window, a.hwnd]) };
   }
-  if (tool === "act_open") return { type: "act", pattern: String(a.target ?? "") };
+  // act_open: target + args formam o comando completo. O join por espaco
+  // reconstroi a linha para as regras line-scoped (ex.: "del" + "/s" em args
+  // separados). O consentimento de execucao (confirm) fica na propria tool,
+  // como no win_write; aqui valem so DENY/CREDENTIAL sobre o texto.
+  if (tool === "act_open") {
+    const argv = Array.isArray(a.args)
+      ? a.args.map((v) => String(v))
+      : a.args === undefined || a.args === null
+        ? []
+        : [String(a.args)];
+    return { type: "act", pattern: patternParts([a.target, ...argv]).join(" ") };
+  }
   if (tool === "act_click") return { type: "act", pattern: `${a.x},${a.y}` };
   if (tool === "see_screen") return { type: "see" };
   if (tool === "win_list") return { type: "winlist" };

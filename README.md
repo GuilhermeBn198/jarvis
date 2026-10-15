@@ -197,7 +197,7 @@ Na voz, **linguagem natural**: o agente `chat` tem a tool **`see_screen`** — b
 ./jarvis --do "abra o navegador e pesquise por X"    # agente act, caminho bloqueante
 ```
 
-Na voz, **linguagem natural**: o agente `chat` agora tem as tools **`act_type`/`act_key`/`act_open`/`act_click`** — basta pedir ("abre o navegador") que o modelo decide. Tudo passa pelo **SafetyGate** (`ask`/`deny` viram bloqueio para `act_*`).
+Na voz, **linguagem natural**: o agente `chat` agora tem as tools **`act_type`/`act_key`/`act_open`/`act_click`** — basta pedir ("abre o navegador") que o modelo decide. Tudo passa pelo **SafetyGate** (`ask`/`deny` viram bloqueio para `act_*`). O `act_open` aceita `args` (lista de strings, com quoting Windows); alvos que abrem caminho de execução (terminais/interpretadores/scripts: `cmd`, `powershell`, `wsl`, `.bat`, `.ps1`, `.vbs`, `.js`, ...) só abrem com `confirm=true` — sem ele a tool recusa e o agente pergunta antes.
 
 ### Bridge de texto
 

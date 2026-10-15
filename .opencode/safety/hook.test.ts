@@ -82,6 +82,31 @@ test("beforeToolCall: act_open com deny -> throw", () => {
   );
 });
 
+test("mapping: act_open com args reconstroi o comando completo", () => {
+  assert.deepEqual(actionFromToolCall("act_open", { target: "cmd", args: ["/c", "dir"], confirm: true }), {
+    type: "act",
+    pattern: "cmd /c dir",
+  });
+});
+
+test("mapping: act_open sem args mantem o target (regressao)", () => {
+  assert.deepEqual(actionFromToolCall("act_open", { target: "https://x" }), {
+    type: "act",
+    pattern: "https://x",
+  });
+});
+
+test("beforeToolCall: act_open de execucao sem confirm nao bloqueia no hook (consentimento fica na tool)", () => {
+  assert.doesNotThrow(() => beforeToolCall("act_open", { target: "cmd", args: ["/c", "dir"] }));
+});
+
+test("beforeToolCall: act_open com deny em args -> throw mesmo com confirm", () => {
+  assert.throws(
+    () => beforeToolCall("act_open", { target: "cmd", args: ["/c", "del /s C:\\temp"], confirm: true }),
+    /SafetyGate bloqueou/,
+  );
+});
+
 test("beforeToolCall: clipboard_write destrutivo -> throw (deny)", () => {
   assert.throws(
     () => beforeToolCall("win_context_win_clipboard_write", { text: "rm -rf /", confirm: true }),

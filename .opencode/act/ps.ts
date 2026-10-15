@@ -10,6 +10,49 @@ export function encode(script: string): string {
   return Buffer.from(script, "utf16le").toString("base64");
 }
 
+// Port fiel de subprocess.list2cmdline (CPython): regras de quoting da linha
+// de comando do MS C runtime. Barras invertidas so dobram antes de aspas
+// internas; aspas viram \" ; espaco/tab/vazio forcam o par de aspas; barra
+// final dobra quando o arg e cotado. O recon validou saida identica ao Python
+// para espacos, aspas, `\` final e `%`.
+export function buildWindowsArgs(seq: readonly string[]): string {
+  const out: string[] = [];
+  for (const arg of seq) {
+    let bs = 0; // barras pendentes (literal, ou dobra antes de aspa)
+    if (out.length > 0) out.push(" ");
+    const needquote = arg.includes(" ") || arg.includes("\t") || arg.length === 0;
+    if (needquote) out.push('"');
+    for (const c of arg) {
+      if (c === "\\") bs += 1;
+      else if (c === '"') {
+        out.push("\\".repeat(bs * 2), '\\"');
+        bs = 0;
+      } else {
+        if (bs > 0) {
+          out.push("\\".repeat(bs));
+          bs = 0;
+        }
+        out.push(c);
+      }
+    }
+    if (bs > 0) out.push("\\".repeat(bs));
+    if (needquote) {
+      // Barra final antes da aspa de fechamento precisa do segundo par.
+      if (bs > 0) out.push("\\".repeat(bs));
+      out.push('"');
+    }
+  }
+  return out.join("");
+}
+
+// Normaliza `args` vindo do modelo: so array vira lista (escalares viram
+// string; null/undefined somem). Vazio sinaliza o caminho antigo sem
+// -ArgumentList.
+export function toArgList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v) => v !== undefined && v !== null).map((v) => String(v));
+}
+
 export function buildPsScript(name: string, args: Record<string, unknown>): string {
   if (name === "act_type") {
     const text = String(args.text ?? "").replace(SENDFLARE, "{$1}");
@@ -22,7 +65,10 @@ export function buildPsScript(name: string, args: Record<string, unknown>): stri
   }
   if (name === "act_open") {
     const target = String(args.target ?? "").replace(/'/g, "''");
-    return `Start-Process '${target}'`;
+    const argv = toArgList(args.args);
+    if (argv.length === 0) return `Start-Process '${target}'`;
+    const line = buildWindowsArgs(argv).replace(/'/g, "''");
+    return `Start-Process -FilePath '${target}' -ArgumentList '${line}'`;
   }
   if (name === "act_click") {
     const x = Number(args.x ?? 0), y = Number(args.y ?? 0);
