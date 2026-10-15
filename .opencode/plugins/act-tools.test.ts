@@ -59,7 +59,7 @@ test("act_key com keys invalido falha didaticamente antes de qualquer script", (
   assert.throws(() => buildPsScript("act_key", { keys: "foo" }), /ctrl\+c/);
 });
 
-test("act_key execute com keys invalido retorna erro sem chamar o shell", async () => {
+test("act_key execute com keys invalido retorna erro formatado sem chamar o shell", async () => {
   let called = false;
   const shell = (() => {
     called = true;
@@ -67,7 +67,7 @@ test("act_key execute com keys invalido retorna erro sem chamar o shell", async 
   }) as never;
   const tools = (await ActTools({ $: shell } as never)).tool as Record<string, { execute: (a: Record<string, unknown>) => Promise<string> }>;
   const out = await tools.act_key.execute({ keys: "foo" });
-  assert.match(out, /^erro: /);
+  assert.match(out, /^erro em act_key \(etapa: validar sintaxe\): /);
   assert.match(out, /tecla desconhecida "foo"/);
   assert.equal(called, false, "nao pode rodar powershell com keys invalido");
 });
@@ -320,4 +320,101 @@ test("act_type: sem JARVIS_ACT_DEBUG (ou != 1) nada e logado", async (t) => {
   await actType.execute({ text: "C:\\a" });
   delete process.env.JARVIS_ACT_DEBUG;
   assert.deepEqual(events.filter((e) => e.includes("[act_type]")), []);
+});
+
+// --- #26: falha de subprocesso vira mensagem com etapa, comando e stderr -----
+
+// Shell que falha como o do Bun: a promessa rejeita com {exitCode, stderr, stdout}.
+function shellFailing(exitCode: number, stderr: string) {
+  return (() => Promise.reject({ exitCode, stderr, stdout: "" })) as never;
+}
+
+async function actingTool(shell: unknown, name: string) {
+  const tools = (await ActTools({ $: shell } as never)).tool as Record<
+    string,
+    { execute: (a: Record<string, unknown>) => Promise<string> }
+  >;
+  return tools[name];
+}
+
+test("act_type foreground: falha do powershell vira erro com etapa, comando e causa", async () => {
+  const out = await (
+    await actingTool(shellFailing(1, "PowerShell: acesso negado\n"), "act_type")
+  ).execute({ text: "oi" });
+  assert.equal(
+    out,
+    "erro em act_type (etapa: foreground; powershell (SendKeys)): exit code 1: PowerShell: acesso negado",
+  );
+});
+
+test("act_type background: falha do powershell vira erro com etapa background", async () => {
+  const out = await (
+    await actingTool(shellFailing(1, "UIA: janela sumiu"), "act_type")
+  ).execute({ text: "oi", mode: "background" });
+  assert.equal(
+    out,
+    "erro em act_type (etapa: background; powershell (UIA/PostMessage)): exit code 1: UIA: janela sumiu",
+  );
+});
+
+test("act_type: segredo no stderr nao vaza na mensagem", async () => {
+  const out = await (
+    await actingTool(shellFailing(1, "falha com chave sk-abc123456789 invalida"), "act_type")
+  ).execute({ text: "oi" });
+  assert.ok(!out.includes("sk-abc123456789"), "segredo nao pode vazar");
+  assert.match(out, /\[REDACTADO\]/);
+});
+
+test("act_key foreground: falha do powershell vira erro com causa redigida", async () => {
+  const out = await (
+    await actingTool(shellFailing(2, "keybd_event falhou (chave sk-abc123456789)"), "act_key")
+  ).execute({ keys: "enter" });
+  assert.equal(
+    out,
+    "erro em act_key (etapa: foreground; powershell (keybd_event)): exit code 2: keybd_event falhou (chave [REDACTADO])",
+  );
+  assert.ok(!out.includes("sk-abc123456789"), "segredo nao pode vazar");
+});
+
+test("act_key background: falha do powershell vira erro com causa", async () => {
+  const out = await (
+    await actingTool(shellFailing(1, "PostMessage: handle invalido"), "act_key")
+  ).execute({ keys: "enter", mode: "background" });
+  assert.equal(
+    out,
+    "erro em act_key (etapa: background; powershell (PostMessage)): exit code 1: PostMessage: handle invalido",
+  );
+});
+
+test("act_open: falha do Start-Process vira erro com alvo e causa redigida", async () => {
+  const out = await (
+    await actingTool(shellFailing(1, "Start-Process falhou (chave AKIAIOSFODNN7EXAMPLE)"), "act_open")
+  ).execute({ target: "https://x" });
+  assert.equal(
+    out,
+    "erro em act_open (etapa: abrir alvo; Start-Process https://x): exit code 1: Start-Process falhou (chave [REDACTADO])",
+  );
+  assert.ok(!out.includes("AKIAIOSFODNN7EXAMPLE"), "segredo nao pode vazar");
+});
+
+test("act_click: falha do mouse vira erro com causa redigida", async () => {
+  const out = await (
+    await actingTool(shellFailing(1, "SetCursorPos negado (token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789)"), "act_click")
+  ).execute({ x: -1, y: -1 });
+  assert.equal(
+    out,
+    "erro em act_click (etapa: clicar; powershell (SetCursorPos/mouse_event)): exit code 1: SetCursorPos negado (token [REDACTADO])",
+  );
+  assert.ok(!out.includes("ghp_ABCDEF"), "segredo nao pode vazar");
+});
+
+test("win_list: falha do powershell vira erro com causa redigida", async () => {
+  const out = await (
+    await actingTool(shellFailing(1, "EnumWindows negado: Authorization Bearer abc.def"), "win_list")
+  ).execute({});
+  assert.equal(
+    out,
+    "erro em win_list (etapa: listar janelas; powershell (EnumWindows)): exit code 1: EnumWindows negado: Authorization Bearer [REDACTADO]",
+  );
+  assert.ok(!out.includes("abc.def"), "segredo nao pode vazar");
 });

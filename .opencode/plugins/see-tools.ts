@@ -1,5 +1,7 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
+import { formatToolError } from "../lib/tool-error.ts";
+
 // Tool de visao do agente `chat`: tira um print da tela (Windows) e devolve a
 // descricao via o modelo de visao. Delega pro CLI `./jarvis --see-text`, que ja
 // encapsula captura + modelo (agente TOOL-LESS `vision`).
@@ -17,7 +19,13 @@ export const SeeTools: Plugin = async ({ $ }) => ({
           (args.prompt ?? "").trim() || "Descreva o que esta na tela.";
         const root = process.env.JARVIS_PROJECT_ROOT ?? process.cwd();
         const launcher = `${root}/jarvis`;
-        return (await $`${launcher} --see-text ${q}`).text();
+        // #26: falha do launcher nunca vaza crua — vira "erro em see_screen (etapa: ...)".
+        // O prompt NAO entra no detalhe (pode conter conteudo do usuario).
+        try {
+          return (await $`${launcher} --see-text ${q}`).text();
+        } catch (err) {
+          return formatToolError({ tool: "see_screen", step: "capturar e descrever tela", detail: "./jarvis --see-text" }, err);
+        }
       },
     }),
   },

@@ -30,6 +30,14 @@ function stripAnsi(text: string): string {
   return text.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
 }
 
+// stderr/stdout do ShellError do Bun vem como Buffer (Uint8Array), nao string:
+// sem isto a causa cairia no message generico ("Failed with exit code: 1").
+function comoTexto(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (v instanceof Uint8Array) return new TextDecoder().decode(v);
+  return "";
+}
+
 // Colapsa espacos/newlines em um espaco simples.
 function collapse(text: string): string {
   return text.replace(/\s+/g, " ").trim();
@@ -54,8 +62,8 @@ function causaBruta(err: unknown): string {
   if (typeof err === "string") return err;
   if (err && typeof err === "object") {
     const o = err as Record<string, unknown>;
-    const stderr = typeof o.stderr === "string" ? o.stderr : "";
-    const stdout = typeof o.stdout === "string" ? o.stdout : "";
+    const stderr = comoTexto(o.stderr);
+    const stdout = comoTexto(o.stdout);
     const exitCode = typeof o.exitCode === "number" ? o.exitCode : undefined;
     const corpo = stderr.trim() ? stderr : stdout;
     if (exitCode !== undefined || corpo.trim()) {

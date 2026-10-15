@@ -15,7 +15,24 @@ from dataclasses import dataclass
 
 
 class WinContextError(Exception):
-    """Falha ao obter contexto do Windows."""
+    """Falha ao obter contexto do Windows.
+
+    Carrega a causa crua do subprocesso (exit_code/stderr/stdout) para o
+    server formatar com `tool_error.format_tool_error` (#26).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        exit_code: int | None = None,
+        stderr: str = "",
+        stdout: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.exit_code = exit_code
+        self.stderr = stderr
+        self.stdout = stdout
 
 
 # P/Invoke minimo (equal ao WIN32_SNIPPET do win.ts) para enumerar janelas.
@@ -89,7 +106,13 @@ def _default_run(script: str) -> str:
     except (OSError, subprocess.SubprocessError) as exc:
         raise WinContextError(f"falha ao rodar powershell.exe: {exc}") from exc
     if proc.returncode != 0:
-        raise WinContextError(f"powershell falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
+        # #26: preserva exit code + stderr crus; o server formata (redigido).
+        raise WinContextError(
+            "powershell falhou",
+            exit_code=proc.returncode,
+            stderr=proc.stderr or "",
+            stdout=proc.stdout or "",
+        )
     return proc.stdout
 
 

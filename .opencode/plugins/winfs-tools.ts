@@ -1,7 +1,7 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
 import { encode } from "../act/ps.ts";
-import { extractCause } from "../lib/tool-error.ts";
+import { formatToolError } from "../lib/tool-error.ts";
 import {
   buildWriteScript,
   isAllowedWrite,
@@ -47,7 +47,8 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
             return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(script)}`).text();
           });
         } catch (e) {
-          return `erro ao ler ${p}: ${extractCause(e)}`;
+          // #26: falha do shell nunca vaza crua — vira "erro em win_read (etapa: ...)".
+          return formatToolError({ tool: "win_read", step: "ler arquivo", detail: p }, e);
         }
       },
     }),
@@ -72,10 +73,15 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
             : `recusado: ${p} fora da allowlist (${allow.join(", ")})\n${ALLOW_HINT}`;
         }
         const win = toWindowsPath(p);
-        const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(
-          buildWriteScript(win, String(args.content ?? ""), args.append === true),
-        )}`).text();
-        return `${args.append === true ? "concatenado" : "escrito"}: ${p}${out.trim() ? ` (${out.trim()})` : ""}`;
+        // #26: falha do shell nunca vaza crua — vira "erro em win_write (etapa: ...)".
+        try {
+          const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(
+            buildWriteScript(win, String(args.content ?? ""), args.append === true),
+          )}`).text();
+          return `${args.append === true ? "concatenado" : "escrito"}: ${p}${out.trim() ? ` (${out.trim()})` : ""}`;
+        } catch (err) {
+          return formatToolError({ tool: "win_write", step: "escrever arquivo", detail: p }, err);
+        }
       },
     }),
   },

@@ -1,6 +1,8 @@
 import base64
 import re
 
+import pytest
+
 import context as ctx
 
 
@@ -61,3 +63,32 @@ def test_clipboard_write_script_nao_vaza_texto_cru():
     script = ctx.clipboard_write_script("rm -rf / e senha hunter2")
     assert "rm -rf" not in script
     assert "hunter2" not in script
+
+
+# --- #26: _default_run preserva a causa real (exit code + stderr) ------------
+
+
+class _Proc:
+    def __init__(self, returncode, stdout="", stderr=""):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def test_default_run_falha_preserva_exit_code_e_stderr(monkeypatch):
+    monkeypatch.setattr(ctx.subprocess, "run", lambda *a, **k: _Proc(1, stderr="Erro: janela nao encontrada\n"))
+    with pytest.raises(ctx.WinContextError) as ei:
+        ctx._default_run("script")
+    assert ei.value.exit_code == 1
+    assert "janela nao encontrada" in ei.value.stderr
+
+
+def test_default_run_sem_powershell_vira_erro_com_mensagem(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("powershell.exe nao encontrado")
+
+    monkeypatch.setattr(ctx.subprocess, "run", boom)
+    with pytest.raises(ctx.WinContextError) as ei:
+        ctx._default_run("script")
+    assert ei.value.exit_code is None
+    assert "falha ao rodar powershell.exe" in str(ei.value)

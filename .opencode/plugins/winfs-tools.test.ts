@@ -83,3 +83,44 @@ test("win_write fora da allowlist lista os diretorios e como ajustar", async () 
     assert.match(out, /local\.conf/);
   });
 });
+
+// --- #26: falha de subprocesso vira mensagem com etapa, alvo e stderr --------
+
+// Shell que falha como o do Bun: a promessa rejeita com {exitCode, stderr, stdout}.
+function shellFailing(exitCode: number, stderr: string) {
+  return (() => Promise.reject({ exitCode, stderr, stdout: "" })) as never;
+}
+
+type ExecTool = { execute: (a: Record<string, unknown>) => Promise<string> };
+
+test("win_read: falha do powershell vira erro com causa redigida e caminho", async () => {
+  const tools = await WinFsTools({
+    $: shellFailing(1, "Get-Item negado (chave sk-abc123456789)"),
+  } as never);
+  const winRead = (tools.tool as Record<string, ExecTool>).win_read;
+  const out = await winRead.execute({ path: "/mnt/c/Users/me/x.txt" });
+  assert.equal(
+    out,
+    "erro em win_read (etapa: ler arquivo; /mnt/c/Users/me/x.txt): exit code 1: Get-Item negado (chave [REDACTADO])",
+  );
+  assert.ok(!out.includes("sk-abc123456789"), "segredo nao pode vazar");
+});
+
+test("win_write: falha do powershell vira erro com causa e sem vazar segredo", async () => {
+  await comAllowlist("C:\\Users\\me\\Notas", async () => {
+    const tools = await WinFsTools({
+      $: shellFailing(1, "denied: token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 invalido"),
+    } as never);
+    const winWriteTool = (tools.tool as Record<string, ExecTool>).win_write;
+    const out = await winWriteTool.execute({
+      path: "/mnt/c/Users/me/Notas/a.txt",
+      content: "x",
+      confirm: true,
+    });
+    assert.equal(
+      out,
+      "erro em win_write (etapa: escrever arquivo; /mnt/c/Users/me/Notas/a.txt): exit code 1: denied: token [REDACTADO] invalido",
+    );
+    assert.ok(!out.includes("ghp_ABCDEF"), "token nao pode vazar");
+  });
+});
