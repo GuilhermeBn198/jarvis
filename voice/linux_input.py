@@ -107,8 +107,13 @@ def open_target(args: dict) -> dict:
     validate_action('act_open',args)
     target=args['target']
     try:
-        # Bare executable names are launched as a single argv, never shell text.
-        executable=shutil.which(target) if not urlparse(target).scheme and not os.path.exists(target) else None
+        # Executable paths and PATH names are a single argv, never shell text.
+        executable=None
+        if not urlparse(target).scheme:
+            if os.path.isfile(target) and os.access(target,os.X_OK):
+                executable=os.path.abspath(target)
+            elif not os.path.exists(target):
+                executable=shutil.which(target)
         if executable:
             subprocess.Popen([executable],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL,start_new_session=True)

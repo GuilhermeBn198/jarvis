@@ -84,3 +84,38 @@ def test_wayland_compositor_size_is_logical_not_pixel_size():
         assert portal.calls[0]==('NotifyPointerMotionAbsolute',['/session/test',{},42,75.0,25.0])
         assert portal.calls[1:]==[('NotifyPointerButton',['/session/test',{},272,1]),('NotifyPointerButton',['/session/test',{},272,0])]
     asyncio.run(run())
+
+
+def test_open_absolute_executable_launches_literal_path(tmp_path,monkeypatch):
+    import sys,time
+    from linux_input import open_target
+    marker=tmp_path/'executed'
+    executable=tmp_path/'programa ação $(literal)'
+    executable.write_text('#!'+sys.executable+'\nfrom pathlib import Path\nPath('+repr(str(marker))+').write_text("ran")\n')
+    executable.chmod(0o755)
+    # Prevent any desktop application from opening the script during RED.
+    calls=[]
+    def run(argv,**kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv,0,'','')
+    monkeypatch.setattr(subprocess,'run',run)
+    result=open_target({'target':str(executable)})
+    deadline=time.monotonic()+2
+    while not marker.exists() and not calls and time.monotonic()<deadline:time.sleep(.01)
+    assert not calls,'executable was incorrectly sent to document opener'
+    assert marker.read_text()=='ran'
+    assert result['status']=='unconfirmed'
+
+
+def test_open_document_and_url_use_desktop_opener(tmp_path,monkeypatch):
+    from linux_input import open_target
+    document=tmp_path/'documento ação.txt';document.write_text('text')
+    calls=[]
+    monkeypatch.setattr(subprocess,'Popen',lambda *a,**kw:pytest.fail('document executed'))
+    def run(argv,**kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv,0,'','')
+    monkeypatch.setattr(subprocess,'run',run)
+    for target in (str(document),'https://example.org/path?q=literal'):
+        assert open_target({'target':target})['status']=='unconfirmed'
+        assert calls[-1]==['xdg-open',target]
