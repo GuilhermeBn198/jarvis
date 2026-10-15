@@ -28,15 +28,24 @@ fi
 # Checks obrigatórios atuais: null se a branch ainda não tem proteção (404)
 # ou nenhum check configurado. Reconstruímos apenas os campos aceitos no PUT
 # (strict + checks[{context, app_id}]), sem os campos de leitura da resposta.
-CHECKS="$(gh api "repos/$REPO/branches/$BRANCH/protection" \
+ERR="$(mktemp)"
+BODY="$(mktemp)"
+trap 'rm -f "$BODY" "$ERR"' EXIT
+
+if ! CHECKS="$(gh api "repos/$REPO/branches/$BRANCH/protection" \
   --jq '.required_status_checks | if . == null then null else
         {strict: .strict,
          checks: [.checks[] | {context: .context} + (if .app_id == null then {} else {app_id: .app_id} end)]}
-        end' 2>/dev/null || echo null)"
+        end' 2>"$ERR")"; then
+  if grep -q "HTTP 404" "$ERR"; then
+    CHECKS="null"
+  else
+    cat "$ERR" >&2
+    echo "erro: falha ao consultar a proteção de $REPO@$BRANCH; abortando sem PUT para não zerar os checks obrigatórios" >&2
+    exit 1
+  fi
+fi
 CHECKS="${CHECKS:-null}"
-
-BODY="$(mktemp)"
-trap 'rm -f "$BODY"' EXIT
 cat > "$BODY" <<JSON
 {
   "required_status_checks": $CHECKS,

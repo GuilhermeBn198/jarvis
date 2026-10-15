@@ -334,6 +334,22 @@ test("isExecutionTarget: alvo com args embutidos no proprio target", () => {
   assert.equal(isExecutionTarget("C:\\Program Files\\app.exe --flag"), false);
 });
 
+test("isExecutionTarget: normaliza pontos/espacos a direita (resolucao do Windows)", () => {
+  const alvos = [
+    "cmd.",
+    "cmd.exe.",
+    "cmd. ",
+    "cmd.exe. ",
+    " CMD. ",
+    "C:\\Windows\\System32\\cmd.exe.",
+    "x.bat.",
+    "script.ps1 ",
+  ];
+  for (const t of alvos) assert.equal(isExecutionTarget(t), true, t);
+  assert.equal(isExecutionTarget(" cmd "), true);
+  assert.equal(isExecutionTarget("notepad.exe."), false);
+});
+
 test("act_open mapeia target + args no padrao (comando completo)", () => {
   const a = actionFromToolCall("act_open", {
     target: "app.exe",

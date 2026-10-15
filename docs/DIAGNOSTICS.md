@@ -69,13 +69,13 @@ Statuses semânticos (`confirmed`/`unconfirmed`/`ambiguous`, `recusado:`, `erro 
 - **Workaround**: aguarde o retorno da chamada (demora não significa falha; não repita às cegas); `append=true` concatena em vez de substituir.
 - **Issue**: [#28](https://github.com/GuilhermeBn198/jarvis/issues/28) — aberta.
 
-### `act_key` em background: sintaxe própria e hotkeys do sistema
+### `act_key` em background: sintaxe natural e hotkeys do sistema
 
-- **Sintoma**: teclas enviadas em background às vezes não têm efeito; `Win+R` não abre o Executar; combinações como `ctrl+v` não funcionam como no caminho em foco.
-- **Repro**: `act_key { window: "Notepad", keys: "^v" }` (equivalente a Ctrl+V em background) vs. `act_key { window: ..., keys: "win+r" }` (sem efeito).
-- **Causa**: o background posta `WM_KEYDOWN`/`WM_KEYUP` com um parser estilo SendKeys (`^` Ctrl, `%` Alt, `+` Shift, `{ENTER}`/`{TAB}`/...); hotkeys globais (`Win+R`, `Alt+Tab`) são resolvidas pelo sistema e não chegam por `PostMessage`. A verificação de efeito é indisponível: a tool reporta "teclas enviadas em segundo plano" — e, quando não há controle de edição exposto (`noset`, típico de terminais/Electron), avisa que as teclas podem não ter efeito e orienta perguntar antes de ir para foreground.
-- **Workaround**: use a sintaxe SendKeys (`^v`, `{ENTER}`) nos apps que aceitam background; para hotkeys do sistema ou combos, use `mode="foreground"`.
-- **Issue**: [#19](https://github.com/GuilhermeBn198/jarvis/issues/19) — aberta.
+- **Sintoma**: teclas enviadas em background às vezes não têm efeito; `Win+R` não abre o Executar; combos com `ctrl`/`alt` podem ser ignorados por apps que consultam `GetKeyState`.
+- **Repro**: `act_key { window: "Notepad", keys: "ctrl+v" }` (Ctrl+V em background) vs. `act_key { window: ..., keys: "win+r" }` (sem efeito).
+- **Causa**: o background posta `WM_KEYDOWN`/`WM_KEYUP` a partir da sintaxe natural e case-insensitive (`ctrl+v`, `enter`, `ctrl+shift+esc`, acordes separados por espaço/vírgula); a sintaxe antiga estilo SendKeys (`^v`, `{ENTER}`) foi substituída e hoje dá erro de tecla desconhecida. Hotkeys globais (`Win+R`, `Alt+Tab`) são resolvidas pelo sistema e não chegam por `PostMessage`. A verificação de efeito é indisponível: a tool reporta "teclas enviadas em segundo plano" — e, quando não há controle de edição exposto (`noset`, típico de terminais/Electron), avisa que as teclas podem não ter efeito e orienta perguntar antes de ir para foreground.
+- **Workaround**: use a sintaxe natural (`ctrl+v`, `enter`) nos apps que aceitam background; para hotkeys do sistema ou combos, use `mode="foreground"`.
+- **Issue**: [#19](https://github.com/GuilhermeBn198/jarvis/issues/19) — corrigido na `main` (sintaxe natural em foreground/background).
 
 ### `act_click` só em foreground
 
@@ -91,7 +91,14 @@ Statuses semânticos (`confirmed`/`unconfirmed`/`ambiguous`, `recusado:`, `erro 
 - **Repro**: `act_open { target: "cmd" }` (ou `powershell`, `wsl`, `wt`, `mshta`, `rundll32`, `.bat`, `.ps1`, `.vbs`, `.js`, ...) sem `confirm`.
 - **Causa**: política da #23 — alvos que abrem caminho de execução exigem consentimento explícito; o `confirm=true` só deve ser usado depois do "sim" do usuário. Não é defeito.
 - **Workaround**: confirme com o usuário e repita com `confirm=true`; padrões destrutivos/credenciais continuam bloqueados mesmo com confirm (SafetyGate sobre target + args).
-- **Issue**: [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) — corrigido nesta branch.
+- **Issue**: [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) — corrigido na `main`.
+
+### Alvo de execução via outro alvo não passa pelo consentimento
+
+- **Sintoma**: abrir um alvo benigno que repassa a execução para outro alvo (ex.: `act_open { target: "explorer", args: ["C:\\x\\run.bat"] }`) não responde `recusado` — o gate olha apenas o alvo direto.
+- **Causa**: política por alvo (lista fixa da #23); classificar toda a cadeia de handlers do Windows (explorer, "abrir com", associações de arquivo) é inviável — é o limite do modelo de política, não um defeito do gate.
+- **Mitigação**: o conteúdo (`target` + `args`) continua passando por DENY/CREDENTIAL; ao pedir abertura de um script por outro app, trate como execução e prefira o alvo direto (ex.: `target: "run.bat"`), que o gate recusa sem `confirm=true`.
+- **Issue**: — (limitação de política; documentada).
 
 ### Latência das tools `act_*`: cada chamada sobe um PowerShell
 
@@ -104,13 +111,12 @@ Statuses semânticos (`confirmed`/`unconfirmed`/`ambiguous`, `recusado:`, `erro 
 
 ## Arquivos do Windows (`winfs`)
 
-### `win_read`: só caminhos do Windows (e sem listagem de diretórios)
+### `win_read`: lê arquivos e lista diretórios (WSL e Windows)
 
-- **Sintoma**: ler um caminho do WSL (ex.: `/home/<voce>/...`) responde "apenas caminhos do Windows (/mnt/<drive>/...) sao aceitos"; passar um diretório devolve erro cru (exit 1).
-- **Repro**: `win_read { path: "/etc/hostname" }`.
-- **Causa**: a versão atual roteia tudo para o PowerShell com guard `/mnt/`; leitura WSL e listagem estão na issue.
-- **Workaround**: use `/mnt/c/...` para arquivos do Windows; para arquivos do WSL, leia pelo próprio terminal/agente no WSL.
-- **Issue**: [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) — aberta.
+- **Sintoma** (histórica): ler um caminho do WSL (ex.: `/home/<voce>/...`) respondia "apenas caminhos do Windows (/mnt/<drive>/...) sao aceitos"; passar um diretório devolvia erro cru (exit 1).
+- **Repro**: `win_read { path: "/etc/hostname" }` — hoje devolve o conteúdo; `win_read { path: "/home/<voce>" }` devolve a listagem em JSON-lines.
+- **Causa** (histórica): a versão anterior roteava tudo para o PowerShell com guard `/mnt/`.
+- **Status**: corrigido na [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) (na `main`) — roteamento por forma do caminho (`/mnt/<letra>/...` e `C:\...` → PowerShell; absoluto Unix → `fs` nativo); arquivo vira texto e diretório vira JSON-lines `{"name","type","size"}`, com cap de 200 entradas (`…N omitidas`).
 
 ### `win_write`: exige allowlist + `confirm=true`
 
@@ -134,12 +140,11 @@ Statuses semânticos (`confirmed`/`unconfirmed`/`ambiguous`, `recusado:`, `erro 
 
 ## Contexto do Windows (`win_*` / MCP `win_context`)
 
-### Tools de contexto ainda não liberadas no `chat`
+### Tools de contexto liberadas no `chat`
 
-- **Sintoma**: o agente `chat` não vê `win_list_text`/`win_tree_text`/`win_clipboard_text`/`win_processes_text`.
-- **Causa**: a config do `chat` nega tudo (`"*": "deny"`) e só habilita `act_*`/`win_list`/`win_read`/`win_write`/`see_screen`; a liberação das tools do MCP está na issue.
-- **Workaround**: use `win_list` (já liberada no chat) e `see_screen` como fallback; a leitura de contexto estruturado chega na issue.
-- **Issue**: [#25](https://github.com/GuilhermeBn198/jarvis/issues/25) — aberta.
+- **Sintoma** (histórica): o agente `chat` não via `win_context_win_list_text`/`_win_tree_text`/`_win_clipboard_text`/`_win_processes_text`.
+- **Causa**: a config do `chat` nega tudo (`"*": "deny"`); a liberação dependia de allow explícito.
+- **Status**: corrigido na [#25](https://github.com/GuilhermeBn198/jarvis/issues/25) (na `main`) — allow explícito das cinco tools `win_context_win_*` no `opencode.json` (a última regra vence); a escrita no clipboard exige `confirm=true` e o conteúdo passa pelo SafetyGate.
 
 ### UIA vazia em apps Electron
 
@@ -201,13 +206,19 @@ Statuses semânticos (`confirmed`/`unconfirmed`/`ambiguous`, `recusado:`, `erro 
 
 | Issue | Tema | Status |
 |---|---|---|
+| [#19](https://github.com/GuilhermeBn198/jarvis/issues/19) | `act_key` com sintaxe natural e teclas de verdade | **corrigido** (na `main`) |
+| [#20](https://github.com/GuilhermeBn198/jarvis/issues/20) | `act_type` preserva barras invertidas | aberta (aguardando retorno do dono; diagnóstico com `JARVIS_ACT_DEBUG=1`) |
 | [#21](https://github.com/GuilhermeBn198/jarvis/issues/21) | `see_screen` (modelo + erro real) | **corrigido** (na `main`) |
+| [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) | allowlist de escrita documentada (+ parser) | **corrigido** (na `main`) |
+| [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) | `act_open` com argumentos (consentimento) | **corrigido** (na `main`) |
+| [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) | `win_read` lê WSL e lista diretórios | **corrigido** (na `main`) |
+| [#25](https://github.com/GuilhermeBn198/jarvis/issues/25) | clipboard/contexto Windows no `chat` | **corrigido** (na `main`) |
+| [#26](https://github.com/GuilhermeBn198/jarvis/issues/26) | erro real com causa em todas as tools | **corrigido** (na `main`) |
+| [#27](https://github.com/GuilhermeBn198/jarvis/issues/27) | lint + formatter baseline (ruff + Biome) | **corrigido** (na `main`) |
+| [#28](https://github.com/GuilhermeBn198/jarvis/issues/28) | mensagens de background por causa | aberta (aguardando retorno do dono) |
 | [#29](https://github.com/GuilhermeBn198/jarvis/issues/29) | CI roda os testes em todo PR | **corrigido** (na `main`) |
-| [#19](https://github.com/GuilhermeBn198/jarvis/issues/19) | `act_key` envia teclas de verdade | aberta |
-| [#20](https://github.com/GuilhermeBn198/jarvis/issues/20) | `act_type` preserva barras invertidas | aberta (diagnóstico: `JARVIS_ACT_DEBUG=1`) |
-| [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) | allowlist de escrita documentada (+ parser) | aberta |
-| [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) | `act_open` com argumentos | **corrigido** (nesta branch) |
-| [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) | `win_read` lê WSL e lista diretórios | aberta |
-| [#25](https://github.com/GuilhermeBn198/jarvis/issues/25) | clipboard/contexto Windows no `chat` | aberta |
-| [#26](https://github.com/GuilhermeBn198/jarvis/issues/26) | erro real com causa em todas as tools | **corrigido** (nesta branch) |
-| [#28](https://github.com/GuilhermeBn198/jarvis/issues/28) | mensagens de background por causa | aberta (mensagens por causa nesta branch; validação do dono pendente) |
+| [#30](https://github.com/GuilhermeBn198/jarvis/issues/30) | CI: lint e checagem de tipos no pipeline | aberta (P2, pós-onda) |
+| [#31](https://github.com/GuilhermeBn198/jarvis/issues/31) | pre-commit hooks (lint/format) | aberta (P2, pós-onda) |
+| [#32](https://github.com/GuilhermeBn198/jarvis/issues/32) | `DIAGNOSTICS.md` com limitações conhecidas | **corrigido** (na `main`) |
+| [#40](https://github.com/GuilhermeBn198/jarvis/issues/40) | voz: barge-in (interromper a fala) | aberta (P2/P3) |
+| [#47](https://github.com/GuilhermeBn198/jarvis/issues/47) | voz: executar ações no WSL via bash com SafetyGate | aberta (P2, pós-onda) |
