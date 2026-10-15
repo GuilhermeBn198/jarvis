@@ -23,7 +23,7 @@ def prepare(prefix: str,destdir: str,overlay: str,python: str,opencode: str,whee
     if version_output!='1.18.23':raise ValueError('versao do agente difere do manifesto fixado')
     runtime=app/'python'
     report=app/'python-build-report.json'
-    argv=[python,'-m','pip','install','--disable-pip-version-check','--target',str(runtime),
+    argv=[python,'-m','pip','install','--disable-pip-version-check','--no-compile','--target',str(runtime),
           '--report',str(report),'-r',str(ROOT/'voice/requirements-linux.txt'),
           '-r',str(ROOT/'mcp_servers/win_context/requirements.txt'),
           '-r',str(ROOT/'mcp_servers/delegate_local/requirements.txt')]
@@ -43,7 +43,7 @@ def prepare(prefix: str,destdir: str,overlay: str,python: str,opencode: str,whee
     version=subprocess.check_output([python,'-c','import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")'],text=True).strip()
     files=sorted(str(path.relative_to(output)) for path in output.rglob('*') if path.is_file() or path.is_symlink())
     (app/'install-manifest.json').write_text(json.dumps({'prefix':prefix,'python_abi':version,'files':files},indent=2)+'\n')
-    env=dict(os.environ,PATH=str(app/'bin')+os.pathsep+str(runtime/'bin')+os.pathsep+os.environ.get('PATH',''),PYTHONPATH=str(runtime),JARVIS_PROJECT_ROOT=str(app),JARVIS_PLATFORM='linux')
+    env=dict(os.environ,PATH=str(app/'bin')+os.pathsep+str(runtime/'bin')+os.pathsep+os.environ.get('PATH',''),PYTHONPATH=str(runtime),PYTHONDONTWRITEBYTECODE='1',JARVIS_PROJECT_ROOT=str(app),JARVIS_PLATFORM='linux')
     subprocess.run([python,str(app/'voice/loop.py'),'--doctor'],env=env,check=True)
     subprocess.run([python,'-c','import faster_whisper,piper,mcp,httpx,dbus_next;print("native runtime imports passed")'],env=env,check=True)
 

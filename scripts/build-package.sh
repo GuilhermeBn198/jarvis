@@ -19,7 +19,31 @@ if [ "$task_arch" != "$(uname -m)" ]; then
     exit 2
 fi
 mkdir -p "$task_output"
+task_output=$(CDPATH= cd -P "$task_output" && pwd)
 case "$task_target" in
+    debian)
+        . /etc/os-release
+        [ "$ID" = 'debian' ] || { echo 'Alvo debian exige ambiente Debian.' >&2; exit 2; }
+        command -v dpkg-buildpackage >/dev/null
+        task_build=$(mktemp -d "$task_output/.debian-build-XXXXXX")
+        python3 "$task_root/scripts/source-archive.py" --output "$task_build/jarvis-0.1.0.tar.gz"
+        tar -xzf "$task_build/jarvis-0.1.0.tar.gz" -C "$task_build"
+        cd "$task_build/jarvis-0.1.0"
+        cp -a packaging/debian debian
+        dpkg-buildpackage -us -uc -b
+        find "$task_build" -maxdepth 1 -name '*.deb' -type f -exec cp '{}' "$task_output/" \;
+        ;;
+    fedora)
+        . /etc/os-release
+        [ "$ID" = 'fedora' ] || { echo 'Alvo fedora exige ambiente Fedora.' >&2; exit 2; }
+        command -v rpmbuild >/dev/null
+        task_build=$(mktemp -d "$task_output/.fedora-build-XXXXXX")
+        mkdir -p "$task_build/SOURCES" "$task_build/SPECS"
+        python3 "$task_root/scripts/source-archive.py" --output "$task_build/SOURCES/jarvis-0.1.0.tar.gz"
+        cp "$task_root/packaging/rpm/fedora/jarvis-assistant.spec" "$task_build/SPECS/"
+        rpmbuild --define "_topdir $task_build" -ba "$task_build/SPECS/jarvis-assistant.spec"
+        find "$task_build/RPMS" "$task_build/SRPMS" -name '*.rpm' -type f -exec cp '{}' "$task_output/" \;
+        ;;
     arch)
         command -v makepkg >/dev/null
         . /etc/os-release

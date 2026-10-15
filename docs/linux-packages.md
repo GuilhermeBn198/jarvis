@@ -48,3 +48,28 @@ Os downloads do agente usam URLs e integridade SHA512 fixadas em
 `packaging/opencode-sources.json`. As dependências Python são resolvidas durante
 o build e registradas no relatório instalado; ainda não há lock completo de
 wheels para builds reproduzíveis entre datas diferentes.
+
+## Fedora
+
+A receita local Fedora está em `packaging/rpm/fedora/jarvis-assistant.spec`.
+Ela usa as dependências Fedora GTK3/WebKit4.1 e `ffmpeg-free`, compila o overlay
+no alvo e inclui um runtime Python privado vinculado ao ABI do sistema.
+O RPM e o SRPM podem ser construídos no próprio Fedora:
+
+```sh
+scripts/build-package.sh --target fedora --arch x86_64 --output "$PWD/dist/native"
+```
+
+Há também um ambiente de build Fedora 44:
+
+```sh
+docker build -f packaging/rpm/fedora/Dockerfile -t jarvis-linux-fedora:local .
+mkdir -p dist/native
+docker run --rm -v "$PWD/dist/native:/out" jarvis-linux-fedora:local
+```
+
+O build real está em andamento. Não há RPM publicado ou teste de desktop Fedora
+concluído. O arquivo `packaging/targets.json` registra as famílias previstas,
+separa receita disponível de validação e marca explicitamente os alvos cuja
+implementação ainda está pendente. Suporte ARM64 declarado é um alvo de build,
+não evidência de execução nessa arquitetura.

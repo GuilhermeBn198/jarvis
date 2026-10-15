@@ -47,3 +47,14 @@ def test_packaged_python_directory_is_used_after_relocation(tmp_path):
     assert result.returncode==0,result.stderr
     assert (relocated/'lib/jarvis/runtime-used').read_text()=='yes'
     assert json.loads(result.stdout)['project_root']==str(relocated/'lib/jarvis')
+
+
+def test_private_runtime_does_not_write_bytecode_into_installed_tree(tmp_path):
+    import os
+    prefix=tmp_path/'installed'
+    binary=tmp_path/'overlay';binary.write_text('#!/bin/sh\nexit 0\n');binary.chmod(0o755)
+    subprocess.run(['python3',str(ROOT/'scripts/stage-linux.py'),'--prefix',str(prefix),'--overlay',str(binary)],check=True,capture_output=True,text=True)
+    (prefix/'lib/jarvis/python').mkdir()
+    env=dict(os.environ);env.pop('JARVIS_PROJECT_ROOT',None);env.pop('JARVIS_PYTHON',None)
+    subprocess.run([str(prefix/'bin/jarvis'),'--doctor'],env=env,capture_output=True,text=True,check=True)
+    assert not list((prefix/'lib/jarvis').rglob('__pycache__'))

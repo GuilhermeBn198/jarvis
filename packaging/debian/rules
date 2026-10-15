@@ -16,5 +16,15 @@ override_dh_auto_install:
 override_dh_shlibdeps:
 	dh_shlibdeps -Xusr/lib/jarvis/python
 
+# Wheels and the downloaded agent are already built; do not rewrite their ELF.
+override_dh_dwz:
+	dh_dwz -Xusr/lib/jarvis
+
+override_dh_strip:
+	dh_strip -Xusr/lib/jarvis
+
+override_dh_python3:
+	dh_python3 -Xusr/lib/jarvis
+
 override_dh_auto_clean:
 	rm -f debian/opencode

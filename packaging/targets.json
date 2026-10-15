@@ -1,0 +1,182 @@
+{
+  "arch": {
+    "distro": "arch",
+    "version": "rolling",
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "pkg.tar.zst",
+    "recipe": "packaging/arch/PKGBUILD",
+    "implementation": "recipe",
+    "validation": "extracted-smoke"
+  },
+  "debian": {
+    "distro": "debian",
+    "version": "13",
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "deb",
+    "recipe": "packaging/debian/control",
+    "implementation": "recipe",
+    "validation": "unverified"
+  },
+  "fedora": {
+    "distro": "fedora",
+    "version": "44",
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "rpm",
+    "recipe": "packaging/rpm/fedora/jarvis-assistant.spec",
+    "implementation": "recipe",
+    "validation": "unverified"
+  },
+  "ubuntu": {
+    "distro": "ubuntu",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "deb",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "suse": {
+    "distro": "opensuse",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "rpm",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "rhel": {
+    "distro": "rhel",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "rpm",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "alpine": {
+    "distro": "alpine",
+    "version": null,
+    "libc": "musl",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "apk",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "void-glibc": {
+    "distro": "void",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "xbps",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "void-musl": {
+    "distro": "void",
+    "version": null,
+    "libc": "musl",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "xbps",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "gentoo": {
+    "distro": "gentoo",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "ebuild",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "nix": {
+    "distro": "nixos",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "nix",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "guix": {
+    "distro": "guix",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "guix",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "slackware": {
+    "distro": "slackware",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64"
+    ],
+    "format": "txz",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  },
+  "solus": {
+    "distro": "solus",
+    "version": null,
+    "libc": "glibc",
+    "architectures": [
+      "x86_64"
+    ],
+    "format": "eopkg",
+    "recipe": null,
+    "implementation": "pending",
+    "validation": "unverified"
+  }
+}
