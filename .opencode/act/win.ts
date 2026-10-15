@@ -73,7 +73,11 @@ export function parseWinList(stdout: string): WinInfo[] {
 }
 
 export type ActStatus = "confirmed" | "unconfirmed" | "ambiguous" | "error";
-export type ActResult = { status: ActStatus; detail: string };
+// #28: codigo de razao estruturado do unconfirmed, para as tools comporem a
+// mensagem POR CAUSA (noset/set/timeout/sent) sem inferir pelo texto livre
+// do detail (acoplamento apontado no review da #19).
+export type ActReason = "noset" | "set" | "timeout" | "sent";
+export type ActResult = { status: ActStatus; reason?: ActReason; detail: string };
 
 const UIA_SETUP = `
 Add-Type -AssemblyName UIAutomationClient
@@ -139,7 +143,7 @@ $done = Wait-Job $job -Timeout 5
 if (-not $done) {
   Stop-Job $job -ErrorAction SilentlyContinue
   Remove-Job $job -Force -ErrorAction SilentlyContinue
-  Write-Output 'JARVIS_RESULT=unconfirmed|UIA timeout (janela nao respondeu em 5s)'
+  Write-Output 'JARVIS_RESULT=unconfirmed|timeout|UIA timeout (janela nao respondeu em 5s)'
   exit 0
 }
 $res = @(Receive-Job $job)
@@ -147,9 +151,9 @@ Remove-Job $job -Force -ErrorAction SilentlyContinue
 $state = $res[0]
 $native = if ($res.Count -gt 1) { [int64]$res[1] } else { 0 }
 if ($state -eq 'confirmed') { Write-Output 'JARVIS_RESULT=confirmed|digitado' }
-elseif ($state -eq 'set') { Write-Output 'JARVIS_RESULT=unconfirmed|sem confirmacao' }
+elseif ($state -eq 'set') { Write-Output 'JARVIS_RESULT=unconfirmed|set|sem confirmacao' }
 else {
-  Write-Output 'JARVIS_RESULT=unconfirmed|sem controle de edicao (WM_CHAR no topo)'
+  Write-Output 'JARVIS_RESULT=unconfirmed|noset|sem controle de edicao (WM_CHAR no topo)'
 }
 `;
 }
@@ -219,22 +223,32 @@ $done = Wait-Job $job -Timeout 5
 if (-not $done) {
   Stop-Job $job -ErrorAction SilentlyContinue
   Remove-Job $job -Force -ErrorAction SilentlyContinue
-  Write-Output 'JARVIS_RESULT=unconfirmed|timeout (janela nao respondeu em 5s)'
+  Write-Output 'JARVIS_RESULT=unconfirmed|timeout|janela nao respondeu em 5s'
   exit 0
 }
 $res = @(Receive-Job $job)
 Remove-Job $job -Force -ErrorAction SilentlyContinue
 $native = if ($res.Count -gt 0) { [int64]$res[0] } else { 0 }
 $alvo = if ($native -gt 0) { 'controle de edicao' } else { 'topo da janela (sem controle de edicao)' }
-# Detalhe e SO o alvo (a tool compoe a mensagem); win+r appendado quando usado.
-Write-Output ('JARVIS_RESULT=unconfirmed|' + $alvo + '${hasWin ? " — win+r nao funciona em background" : ""}')
+$reason = if ($native -gt 0) { 'sent' } else { 'noset' }
+# Detalhe e SO o alvo (a tool compoe a mensagem POR CAUSA via $reason);
+# win+r appendado quando usado.
+Write-Output ('JARVIS_RESULT=unconfirmed|' + $reason + '|' + $alvo + '${hasWin ? " — win+r nao funciona em background" : ""}')
 `;
 }
 
 export function parseActResult(stdout: string): ActResult {
   for (const line of stdout.split(/\r?\n/)) {
-    const m = line.trim().match(/^JARVIS_RESULT=(confirmed|unconfirmed|ambiguous|error)\|(.*)$/);
-    if (m) return { status: m[1] as ActStatus, detail: m[2] };
+    // Formato atual: status|reason|detail; formato antigo (sem reason) segue
+    // valido — so nao traz a causa.
+    const m = line
+      .trim()
+      .match(/^JARVIS_RESULT=(confirmed|unconfirmed|ambiguous|error)\|(?:(noset|set|timeout|sent)\|)?(.*)$/);
+    if (m) {
+      const r: ActResult = { status: m[1] as ActStatus, detail: m[3] };
+      if (m[2]) r.reason = m[2] as ActReason;
+      return r;
+    }
   }
   return { status: "error", detail: (stdout || "").trim().slice(0, 300) || "sem saida" };
 }
