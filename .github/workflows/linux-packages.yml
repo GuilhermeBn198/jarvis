@@ -1,0 +1,58 @@
+name: Linux native packages
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/linux-port, main]
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'opencode.json', '.github/workflows/linux-packages.yml']
+  pull_request:
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'opencode.json', '.github/workflows/linux-packages.yml']
+permissions:
+  contents: read
+concurrency:
+  group: linux-packages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  package:
+    name: ${{ matrix.family }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {family: debian, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/debian/Dockerfile, image: 'debian:trixie', pattern: 'jarvis-assistant_*.deb'}
+          - {family: debian, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/debian/Dockerfile, image: 'debian:trixie', pattern: 'jarvis-assistant_*.deb'}
+          - {family: fedora, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.x86_64.rpm'}
+          - {family: fedora, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.aarch64.rpm'}
+          - {family: arch, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/arch/Dockerfile, image: 'archlinux:base', pattern: 'jarvis-assistant-*.pkg.tar.zst'}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build in target distribution
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          test "$(uname -m)" = "$ARCH"
+          docker build --progress=plain -f "$DOCKERFILE" -t jarvis-package .
+      - name: Export packages and checksums
+        run: |
+          mkdir -p dist/native
+          docker run --rm -v "$PWD/dist/native:/out" jarvis-package
+          sha256sum dist/native/* > dist/native/SHA256SUMS
+      - name: Install, inspect and remove in clean target
+        env:
+          FAMILY: ${{ matrix.family }}
+          IMAGE: ${{ matrix.image }}
+          PATTERN: ${{ matrix.pattern }}
+        run: |
+          package=$(find dist/native -maxdepth 1 -type f -name "$PATTERN" -print -quit)
+          test -n "$package"
+          docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
+            sh /checks/test-native-package.sh "$FAMILY" "/packages/$(basename "$package")"
+      - name: Upload experimental package artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: jarvis-${{ matrix.family }}-${{ matrix.arch }}
+          path: dist/native/
+          retention-days: 7
+          if-no-files-found: error

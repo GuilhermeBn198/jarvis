@@ -33,14 +33,18 @@ mkdir -p dist/native
 docker run --rm -v "$PWD/dist/native:/out" jarvis-linux-debian:local
 ```
 
-O build Debian está em andamento. Instalação, atualização, remoção e uso gráfico
-ainda precisam ser verificados antes de tratar o DEB como release.
+O DEB x86_64 foi compilado no Debian 13 e passou pela instalação com apt,
+diagnóstico, imports, verificação de arquivos e remoção em container limpo,
+preservando o dado de usuário usado no teste. Atualização de versão e uso
+gráfico ainda precisam ser verificados antes de tratar o DEB como release.
 
 ## Estado da validação
 
 Foi gerado um pacote Arch x86_64 e verificado, após extração, o launcher, o
-agente 1.18.23 e os imports de voz/MCP. Isso não substitui a instalação pelo
-pacman em um sistema limpo. As demais receitas, Flatpak, ARM64 e a matriz de
+agente 1.18.23 e os imports de voz/MCP. Também passaram, em container Arch limpo, a instalação com pacman,
+a verificação de 8135 arquivos sem alterações e a remoção, preservando o dado de
+usuário usado no teste. Atualização de versão e execução gráfica instalada
+ainda estão pendentes. As demais receitas, Flatpak, ARM64 e a matriz de
 ambientes gráficos continuam pendentes. Veja também `linux-verification.md`
 em `docs/notes` para os testes reais já executados.
 
@@ -68,7 +72,9 @@ mkdir -p dist/native
 docker run --rm -v "$PWD/dist/native:/out" jarvis-linux-fedora:local
 ```
 
-O build real está em andamento. Não há RPM publicado ou teste de desktop Fedora
+O RPM Fedora 44 x86_64 passou pela instalação com dnf, doctor, imports, versão
+do agente, presença de pactl, verificação rpm e remoção com preservação do dado
+de usuário usado no teste. Não há RPM publicado ou teste gráfico Fedora
 concluído. O arquivo `packaging/targets.json` registra as famílias previstas,
 separa receita disponível de validação e marca explicitamente os alvos cuja
 implementação ainda está pendente. Suporte ARM64 declarado é um alvo de build,

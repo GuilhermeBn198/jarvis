@@ -1,0 +1,110 @@
+{
+  "id": "com.jarvis.overlay",
+  "branch": "stable",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "49",
+  "sdk": "org.gnome.Sdk",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable"
+  ],
+  "command": "jarvis-overlay",
+  "rename-icon": "jarvis",
+  "finish-args": [
+    "--share=network",
+    "--share=ipc",
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--socket=pulseaudio",
+    "--device=dri",
+    "--talk-name=org.a11y.Bus"
+  ],
+  "build-options": {
+    "append-path": "/usr/lib/sdk/rust-stable/bin",
+    "env": {
+      "CARGO_HOME": "/run/build/jarvis/.cargo",
+      "PYTHONDONTWRITEBYTECODE": "1"
+    }
+  },
+  "modules": [
+    {
+      "name": "libXmu",
+      "buildsystem": "simple",
+      "build-commands": [
+        "autoreconf -fi",
+        "./configure --prefix=/app --disable-static --disable-docs --without-xmlto --without-fop",
+        "make -j$FLATPAK_BUILDER_N_JOBS",
+        "make install"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://gitlab.freedesktop.org/xorg/lib/libxmu/-/archive/libXmu-1.3.1/libxmu-libXmu-1.3.1.tar.gz",
+          "sha256": "a38bff41f609e2ea887c05fb4a31e926a03ba1d69ddda9423682e198839f2355"
+        }
+      ]
+    },
+    {
+      "name": "xclip",
+      "buildsystem": "simple",
+      "build-commands": [
+        "autoreconf -fi",
+        "./configure --prefix=/app",
+        "make -j$FLATPAK_BUILDER_N_JOBS",
+        "make install"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://codeload.github.com/astrand/xclip/tar.gz/refs/tags/0.13",
+          "sha256": "ca5b8804e3c910a66423a882d79bf3c9450b875ac8528791fb60ec9de667f758",
+          "archive-type": "tar-gzip"
+        }
+      ]
+    },
+    {
+      "name": "xdotool",
+      "buildsystem": "simple",
+      "build-commands": [
+        "make -j$FLATPAK_BUILDER_N_JOBS PREFIX=/app WITHOUT_RPATH_FIX=1",
+        "make PREFIX=/app WITHOUT_RPATH_FIX=1 install"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://codeload.github.com/jordansissel/xdotool/tar.gz/refs/tags/v4.20260303.1",
+          "sha256": "c1f971a384da588eb99ca0755fc4300316d49c1e612537e3f1de52215e104fa3",
+          "archive-type": "tar-gzip"
+        }
+      ]
+    },
+    {
+      "name": "wl-clipboard",
+      "buildsystem": "meson",
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://codeload.github.com/bugaevc/wl-clipboard/tar.gz/refs/tags/v2.3.0",
+          "sha256": "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402",
+          "archive-type": "tar-gzip"
+        }
+      ],
+      "config-opts": [
+        "-Dfishcompletiondir=/app/share/fish/vendor_completions.d"
+      ]
+    },
+    {
+      "name": "jarvis",
+      "buildsystem": "simple",
+      "build-commands": [
+        "cargo build --offline --release --locked --manifest-path gui/src-tauri/Cargo.toml",
+        "python3 scripts/prepare-package.py --prefix /app --destdir / --overlay gui/src-tauri/target/release/jarvis-overlay --python /usr/bin/python3 --opencode flatpak-agent --wheelhouse wheels",
+        "install -Dm644 packaging/flatpak/com.jarvis.overlay.metainfo.xml /app/share/metainfo/com.jarvis.overlay.metainfo.xml"
+      ],
+      "sources": [],
+      "build-options": {
+        "no-debuginfo": true,
+        "strip": false
+      }
+    }
+  ]
+}

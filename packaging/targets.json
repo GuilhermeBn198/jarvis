@@ -10,7 +10,10 @@
     "format": "pkg.tar.zst",
     "recipe": "packaging/arch/PKGBUILD",
     "implementation": "recipe",
-    "validation": "extracted-smoke"
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "debian": {
     "distro": "debian",
@@ -23,7 +26,10 @@
     "format": "deb",
     "recipe": "packaging/debian/control",
     "implementation": "recipe",
-    "validation": "unverified"
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "fedora": {
     "distro": "fedora",
@@ -36,7 +42,10 @@
     "format": "rpm",
     "recipe": "packaging/rpm/fedora/jarvis-assistant.spec",
     "implementation": "recipe",
-    "validation": "unverified"
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "ubuntu": {
     "distro": "ubuntu",
@@ -49,7 +58,8 @@
     "format": "deb",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "suse": {
     "distro": "opensuse",
@@ -62,7 +72,8 @@
     "format": "rpm",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "rhel": {
     "distro": "rhel",
@@ -75,7 +86,8 @@
     "format": "rpm",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "alpine": {
     "distro": "alpine",
@@ -88,7 +100,8 @@
     "format": "apk",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "void-glibc": {
     "distro": "void",
@@ -101,7 +114,8 @@
     "format": "xbps",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "void-musl": {
     "distro": "void",
@@ -114,7 +128,8 @@
     "format": "xbps",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "gentoo": {
     "distro": "gentoo",
@@ -127,7 +142,8 @@
     "format": "ebuild",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "nix": {
     "distro": "nixos",
@@ -140,7 +156,8 @@
     "format": "nix",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "guix": {
     "distro": "guix",
@@ -153,7 +170,8 @@
     "format": "guix",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "slackware": {
     "distro": "slackware",
@@ -165,7 +183,8 @@
     "format": "txz",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   },
   "solus": {
     "distro": "solus",
@@ -177,6 +196,7 @@
     "format": "eopkg",
     "recipe": null,
     "implementation": "pending",
-    "validation": "unverified"
+    "validation": "unverified",
+    "validated_architectures": []
   }
 }

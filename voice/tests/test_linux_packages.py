@@ -108,7 +108,10 @@ def test_target_catalog_records_recipe_and_validation_separately():
         else:
             assert item['implementation']=='pending'
     assert catalog['void-musl']['libc']=='musl'
-    assert catalog['fedora']['validation']=='unverified'
+    for item in catalog.values():
+        assert set(item['validated_architectures']) <= set(item['architectures'])
+        if item['validation']=='unverified':assert not item['validated_architectures']
+        else:assert item['validated_architectures']
 
 
 def test_native_driver_resolves_relative_output_before_changing_directory(tmp_path):

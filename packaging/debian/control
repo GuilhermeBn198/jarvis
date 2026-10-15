@@ -9,7 +9,7 @@ Homepage: https://github.com/GuilhermeBn198/jarvis
 
 Package: jarvis-assistant
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${jarvis:Python}, ffmpeg, python3-gi, gir1.2-atspi-2.0, libx11-6, libpulse0, libstdc++6, libgcc-s1, libgomp1, xdotool, wl-clipboard, xclip, alsa-utils
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${jarvis:Python}, ffmpeg, python3-gi, gir1.2-atspi-2.0, libx11-6, libpulse0, pulseaudio-utils, libstdc++6, libgcc-s1, libgomp1, xdotool, wl-clipboard, xclip, alsa-utils
 Description: Assistente pessoal por voz com overlay Linux
  Conversa por voz, captura de tela autorizada e controle do desktop.
  Inclui runtime Python privado e agente; modelos e autenticacao pertencem

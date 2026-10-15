@@ -135,3 +135,24 @@ Flatpak e pacotes/matriz de distros. As evidências acima não concluem o porte.
 
 Flatpak, formatos nativos, aarch64 e matriz de demais distros permanecem
 pendentes. Nada acima comprova conclusão desses entregáveis.
+
+## Pacotes, 2026-10-15
+
+- Arch rolling x86_64: pacote construído com makepkg; instalado com pacman em
+  container archlinux:base. Launcher/doctor, agente 1.18.23 e imports de voz/MCP
+  passaram. `pacman -Qkk` verificou 8135 arquivos, zero alterados. Remoção passou
+  e o dado de usuário usado no teste foi preservado. A configuração NoExtract
+  padrão do container foi removida para incluir a documentação no teste.
+- Debian 13 x86_64: compilação no próprio Debian trixie com Rust 1.95; instalação
+  com apt em container limpo, doctor, agente, imports e `dpkg -V` passaram, assim
+  como remoção e preservação do dado de usuário. Uma dependência ausente para
+  listagem de microfones, pulseaudio-utils, foi adicionada; o DEB foi reconstruído,
+  instalado e removido novamente no container de teste, e pactl está presente.
+- A suíte de voz após o início do Flatpak passou em 416 testes, com um teste GUI
+  opt-in ignorado. Isso não substitui testes de voz/GUI dos pacotes instalados.
+
+Atualização entre versões, ARM64, execução gráfica dos pacotes e as demais
+famílias de distribuição continuam sem validação completa. O Flatpak passou
+pela compilação, mas o primeiro teste instalado encontrou corrupção do agente
+pela extração automática de símbolos; uma reconstrução com o binário preservado
+está em validação. O primeiro bundle não deve ser usado como release.
