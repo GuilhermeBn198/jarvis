@@ -127,7 +127,7 @@ test("act_open confirm=false explicito tambem recusa", async () => {
   assert.equal(calls.length, 0);
 });
 
-test("act_open recusa alvos de execucao (nome, caminho e extensao) sem confirm", async () => {
+test("act_open recusa alvos de execucao (nome, caminho, extensao e normalizacao Windows) sem confirm", async () => {
   const alvos = [
     "powershell.exe",
     "wsl",
@@ -137,6 +137,8 @@ test("act_open recusa alvos de execucao (nome, caminho e extensao) sem confirm",
     "C:\\x\\s.ps1",
     "a.vbs",
     "app.js",
+    "cmd.",
+    "cmd.exe.",
   ];
   for (const target of alvos) {
     const { shell, calls } = recordingShell();

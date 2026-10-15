@@ -53,7 +53,7 @@ function baseName(p: string): string {
 }
 
 function isExecName(token: string): boolean {
-  const base = baseName(token.trim().toLowerCase());
+  const base = baseName(token.trim().toLowerCase()).replace(/[.\s]+$/, "");
   if (EXEC_TARGETS.has(base.replace(/\.exe$/, ""))) return true;
   return EXEC_EXTENSIONS.some((ext) => base.endsWith(ext));
 }
