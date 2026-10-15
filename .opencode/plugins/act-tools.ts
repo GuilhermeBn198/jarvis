@@ -1,7 +1,9 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
+import { parseKeys } from "../act/keys.ts";
 import { buildPsScript, encode, toArgList } from "../act/ps.ts";
 import { buildWinListScript, chooseActScript, parseActResult, type ActResult } from "../act/win.ts";
+import { formatToolError } from "../lib/tool-error.ts";
 import { isExecutionTarget } from "../safety/rules.ts";
 
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
@@ -54,14 +56,21 @@ export const ActTools: Plugin = async ({ $ }) => ({
       async execute(args) {
         debugRawTypeArgs(args);
         const bg = chooseActScript("act_type", args);
-        if (!bg) {
-          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`).text();
+        // #26: falha do shell nunca vaza crua — vira "erro em act_type (etapa: ...)".
+        try {
+          if (!bg) {
+            return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`).text();
+          }
+          const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
+          const r = parseActResult(out);
+          if (r.status === "unconfirmed") return unconfirmedTypeMessage(r);
+          if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
+          return `${r.status}: ${r.detail}`;
+        } catch (err) {
+          const etapa = bg ? "background" : "foreground";
+          const comando = bg ? "powershell (UIA/PostMessage)" : "powershell (SendKeys)";
+          return formatToolError({ tool: "act_type", step: etapa, detail: comando }, err);
         }
-        const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
-        const r = parseActResult(out);
-        if (r.status === "unconfirmed") return unconfirmedTypeMessage(r);
-        if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
-        return `${r.status}: ${r.detail}`;
       },
     }),
     act_key: tool({
@@ -80,8 +89,15 @@ export const ActTools: Plugin = async ({ $ }) => ({
         hwnd: tool.schema.number().optional(),
       },
       async execute(args) {
+        // Sintaxe invalida falha no parser, antes de qualquer script rodar.
         try {
-          const bg = chooseActScript("act_key", args);
+          parseKeys(String(args.keys ?? ""));
+        } catch (err) {
+          return formatToolError({ tool: "act_key", step: "validar sintaxe" }, err);
+        }
+        const bg = chooseActScript("act_key", args);
+        // #26: falha do shell nunca vaza crua — vira "erro em act_key (etapa: ...)".
+        try {
           if (!bg) {
             return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`).text();
           }
@@ -100,8 +116,9 @@ export const ActTools: Plugin = async ({ $ }) => ({
           }
           return `teclas enviadas em segundo plano (confirmacao indisponivel) — ${r.detail}`;
         } catch (err) {
-          // Sintaxe invalida falha no parser, antes de qualquer script rodar.
-          return `erro: ${err instanceof Error ? err.message : String(err)}`;
+          const etapa = bg ? "background" : "foreground";
+          const comando = bg ? "powershell (PostMessage)" : "powershell (keybd_event)";
+          return formatToolError({ tool: "act_key", step: etapa, detail: comando }, err);
         }
       },
     }),
@@ -122,21 +139,36 @@ export const ActTools: Plugin = async ({ $ }) => ({
           const extra = argv.length > 0 ? ` com os argumentos [${argv.join(", ")}]` : "";
           return `recusado: "${target}" abre caminho de execucao${extra} e exige confirm=true — PERGUNTE ao usuario antes ("quer que eu abra ${target} para executar?") e repita com confirm=true somente apos o ok`;
         }
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
+        // #26: falha do Start-Process vira mensagem com alvo e causa real.
+        try {
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
+        } catch (err) {
+          return formatToolError({ tool: "act_open", step: "abrir alvo", detail: `Start-Process ${target}` }, err);
+        }
       },
     }),
     act_click: tool({
       description: "Move o mouse para (x,y) e clica (left/right).",
       args: { x: tool.schema.number(), y: tool.schema.number(), button: tool.schema.string().optional() },
       async execute(args) {
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
+        // #26: falha do clique vira mensagem com etapa e causa real.
+        try {
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
+        } catch (err) {
+          return formatToolError({ tool: "act_click", step: "clicar", detail: "powershell (SetCursorPos/mouse_event)" }, err);
+        }
       },
     }),
     win_list: tool({
       description: "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
       args: {},
       async execute() {
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
+        // #26: falha do EnumWindows vira mensagem com etapa e causa real.
+        try {
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
+        } catch (err) {
+          return formatToolError({ tool: "win_list", step: "listar janelas", detail: "powershell (EnumWindows)" }, err);
+        }
       },
     }),
   },

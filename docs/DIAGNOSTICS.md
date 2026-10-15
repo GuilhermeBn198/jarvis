@@ -19,6 +19,19 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 5. **Plugins/tools do opencode**: `opencode run --print-logs "responda apenas: ok"` mostra falha de carregamento de plugin.
 6. **`act_type` com `JARVIS_ACT_DEBUG=1`** — log opt-in em stderr com os **argumentos brutos** recebidos pela tool (antes de montar o script), para decidir se um `\` perdido chegou até o `execute` ou se a perda é a montante ([#20](https://github.com/GuilhermeBn198/jarvis/issues/20)). O log **pode conter o texto digitado** — ligue só durante a coleta e revise antes de compartilhar. A env é lida pelo processo que hospeda as tools: o serve do opencode é reutilizado, então **encerre-o e relance** depois de ligar a env (ex.: `JARVIS_ACT_DEBUG=1` no `local.conf` + `./jarvis`).
 
+### Formato padrão de erro das tools
+
+Quando o subprocesso falha (PowerShell das tools `act_*`/`win_*`, launcher da visão, MCP `win_context`), a tool devolve — em vez do `exit code 1` cru — uma mensagem no formato ([#26](https://github.com/GuilhermeBn198/jarvis/issues/26)):
+
+    erro em <tool> (etapa: <etapa>; <comando/alvo>): <causa>
+
+- `<etapa>`: onde falhou (ex.: `foreground`/`background` no `act_type`/`act_key`, `validar sintaxe` no `act_key`, `powershell` no `win_context`);
+- `<comando/alvo>`: resumo curto (ex.: `powershell (SendKeys)`, `Start-Process <alvo>`, o caminho lido/escrito);
+- `<causa>`: `exit code N: <stderr>` (stdout como fallback), sem ANSI, com espaços colapsados e truncada em ~400 caracteres;
+- **nada sensível aparece**: tokens (`sk-…`, `ghp_…`, `AKIA…`, `Bearer …`) e o blob de `-EncodedCommand` viram `[REDACTADO]`; texto de clipboard, conteúdo de arquivo e o prompt da visão não entram na mensagem.
+
+Statuses semânticos (`confirmed`/`unconfirmed`/`ambiguous`, `recusado:`, `erro ao ler …: caminho não existe`) **não** são falha de subprocesso e continuam como retorno normal da tool.
+
 ### Checklist de coleta (para reportar)
 
 - Versão: `git rev-parse --short HEAD` (e a branch, se não for `main`).
@@ -196,4 +209,5 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 | [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) | `act_open` com argumentos | **corrigido** (nesta branch) |
 | [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) | `win_read` lê WSL e lista diretórios | aberta |
 | [#25](https://github.com/GuilhermeBn198/jarvis/issues/25) | clipboard/contexto Windows no `chat` | aberta |
+| [#26](https://github.com/GuilhermeBn198/jarvis/issues/26) | erro real com causa em todas as tools | **corrigido** (nesta branch) |
 | [#28](https://github.com/GuilhermeBn198/jarvis/issues/28) | mensagens de background por causa | aberta (mensagens por causa nesta branch; validação do dono pendente) |

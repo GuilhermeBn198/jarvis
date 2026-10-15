@@ -63,6 +63,11 @@ test("extractCause: exitCode sem stderr", () => {
   assert.equal(extractCause({ exitCode: 127 }), "exit code 127");
 });
 
+test("extractCause: stderr como Buffer (ShellError do Bun) e decodificado", () => {
+  const err = { exitCode: 1, stderr: Buffer.from("boom do powershell\n"), stdout: Buffer.alloc(0) };
+  assert.equal(extractCause(err), "exit code 1: boom do powershell");
+});
+
 test("extractCause: usa stdout quando stderr vazio", () => {
   const err = { exitCode: 1, stderr: "", stdout: "saida util" };
   assert.equal(extractCause(err), "exit code 1: saida util");
