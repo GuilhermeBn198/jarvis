@@ -30,10 +30,11 @@ export type PsRunner = (script: string) => Promise<string>;
 
 // Politica: escrita so dentro da allowlist (dirs do Windows). Leitura livre
 // (o SafetyGate ainda nega credenciais). Allowlist vem do ambiente, separada
-// por ';' ou ':', em formato Windows OU WSL (normalizado).
+// por ';' ou ':': ';' sempre separa; ':' so quando nao esta colado numa barra
+// (senao 'C:\' / 'C:/' viraria dois itens). Formatos Windows OU WSL.
 export function parseAllowlist(raw: string): string[] {
   return (raw || "")
-    .split(/[;:](?![\\/])\s*/)
+    .split(/(?:;|:(?![\\/]))\s*/)
     .map((p) => normalizeWinPath(p.trim()))
     .filter((p) => p.length > 0);
 }

@@ -18,6 +18,15 @@ import {
 //
 // ATENCAO: o loader invoca toda funcao exportada como factory; exporte APENAS
 // o plugin.
+const ALLOW_HINT = [
+  "para autorizar, defina no local.conf (raiz do repo, gitignored):",
+  '  JARVIS_WIN_ALLOW_WRITE="C:\\Users\\<voce>\\Notas"',
+  "aceita formato Windows ou WSL (/mnt/c/Users/<voce>/Notas);",
+  "varios diretorios separados por ';'; o diretorio precisa existir",
+  "NAO aponte o drive inteiro (C:\\ ou /mnt/c): use apenas pastas de trabalho",
+  "reinicie o cerebro (./jarvis) para a nova env valer",
+].join("\n");
+
 export const WinFsTools: Plugin = async ({ $ }) => ({
   tool: {
     win_read: tool({
@@ -58,8 +67,8 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
         }
         if (!isAllowedWrite(p, allow)) {
           return allow.length === 0
-            ? "recusado: JARVIS_WIN_ALLOW_WRITE vazio (nenhum diretorio autorizado)"
-            : `recusado: ${p} fora da allowlist (${allow.join(", ")})`;
+            ? `recusado: JARVIS_WIN_ALLOW_WRITE vazio (nenhum diretorio autorizado)\n${ALLOW_HINT}`
+            : `recusado: ${p} fora da allowlist (${allow.join(", ")})\n${ALLOW_HINT}`;
         }
         const win = toWindowsPath(p);
         const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(

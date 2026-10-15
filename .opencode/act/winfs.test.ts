@@ -36,6 +36,19 @@ test("parseAllowlist aceita ; e : sem quebrar letra de drive", () => {
   assert.deepEqual(parseAllowlist(""), []);
 });
 
+test("parseAllowlist separa por ; mesmo colado no proximo / (regressao #22)", () => {
+  assert.deepEqual(parseAllowlist("/mnt/c/Users/me/a;/mnt/c/Users/me/b"), [
+    "/mnt/c/Users/me/a",
+    "/mnt/c/Users/me/b",
+  ]);
+  assert.deepEqual(parseAllowlist("C:\\a;C:\\b"), ["/mnt/c/a", "/mnt/c/b"]);
+});
+
+test("parseAllowlist: ':' separa fora de letra de drive (com e sem espaco)", () => {
+  assert.deepEqual(parseAllowlist("C:\\a:D:\\b"), ["/mnt/c/a", "/mnt/d/b"]);
+  assert.deepEqual(parseAllowlist("/mnt/c/a: /mnt/c/b"), ["/mnt/c/a", "/mnt/c/b"]);
+});
+
 test("isUnder e prefixo de diretorio, nao de string", () => {
   assert.equal(isUnder("/mnt/c/Users/me/proj/a.txt", "/mnt/c/Users/me/proj"), true);
   assert.equal(isUnder("/mnt/c/Users/me/projX/a", "/mnt/c/Users/me/proj"), false);

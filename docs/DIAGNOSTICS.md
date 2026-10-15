@@ -103,10 +103,10 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 - **Sintoma**: `win_write` responde `recusado: JARVIS_WIN_ALLOW_WRITE vazio (nenhum diretorio autorizado)` mesmo com `confirm=true`; ou `fora da allowlist`.
 - **Repro**: `win_write { path: "/mnt/c/Users/<voce>/notas.txt", content: "x", confirm: true }` sem allowlist configurada.
 - **Causa**: por padrão nada é autorizado (allowlist vazia) e a escrita também exige `confirm=true` (escopo explícito e auditável).
-- **Configuração/workaround**: aponte `JARVIS_WIN_ALLOW_WRITE` para uma **pasta de trabalho** (nunca o drive inteiro), em formato Windows (`C:\Users\<voce>\Notas`) ou WSL (`/mnt/c/Users/<voce>/Notas`); separe múltiplos diretórios com `;`/`:` **seguidos de espaço** (o parser atual não separa quando o próximo caminho começa com `/` — ex.: dois caminhos WSL colados; correção prevista na [#22](https://github.com/GuilhermeBn198/jarvis/issues/22)). O diretório precisa existir.
+- **Configuração/workaround**: aponte `JARVIS_WIN_ALLOW_WRITE` para uma **pasta de trabalho** (nunca o drive inteiro), em formato Windows (`C:\Users\<voce>\Notas`) ou WSL (`/mnt/c/Users/<voce>/Notas`); separe múltiplos diretórios com `;` (também aceita `:`, exceto colado na barra — protege a letra de drive). O diretório precisa existir. Detalhes na seção *Allowlist de escrita* do [README](../README.md#allowlist-de-escrita-win_write).
   - O plugin lê a env do processo que roda o opencode. Na prática: `local.conf` na raiz do repo (gitignored) é carregado pelo launcher `./jarvis` com `set -a` e herdado pelo loop → opencode.
-  - **Trocar a env exige reiniciar o cérebro** (o plugin lê no startup do opencode).
-- **Issue**: [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) (documentar + corrigir o parser) — aberta.
+  - **Trocar a env exige reiniciar o cérebro** (o `opencode` herda o ambiente no start).
+- **Issue**: [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) — corrigido: `;/` sem espaço agora separa (regressão testada) e a allowlist está documentada no README.
 
 ### Caminhos do Windows hardcoded nos defaults
 

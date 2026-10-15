@@ -267,6 +267,24 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 
 Detalhes e a lista completa: [`voice/README.md`](voice/README.md).
 
+### Allowlist de escrita (`win_write`)
+
+`win_write` só grava dentro dos diretórios autorizados em `JARVIS_WIN_ALLOW_WRITE` (default **vazio**: nada autorizado) e **sempre** exige `confirm=true`. A cadeia do env até o plugin:
+
+`local.conf` (raiz do repo, gitignored) → launcher `./jarvis` carrega com `set -a` → loop Python → `opencode serve`/`run` (herdam o ambiente) → plugin lê `process.env` a cada chamada.
+
+O valor que vale é o do `local.conf` (carregado depois do ambiente do shell); o que ele não definir segue o ambiente. **Trocar a allowlist exige reiniciar o cérebro** — o processo do `opencode` herda a env no start (o menu do overlay → *Iniciar|Reiniciar cérebro* já reinicia).
+
+```bash
+# local.conf (raiz do repo; NAO versionado) — use UMA das linhas:
+JARVIS_WIN_ALLOW_WRITE="C:\Users\<voce>\Notas"               # uma pasta
+JARVIS_WIN_ALLOW_WRITE="C:\Users\<voce>\Notas;D:\rascunhos"  # varias (separador ';')
+```
+
+Aceita formato Windows (`C:\...`) ou WSL (`/mnt/c/...`); basta o caminho estar sob **qualquer** diretório da lista. `;` separa sempre; `:` também separa, exceto quando colado na barra (protege a letra de drive: `C:\` e `C:/` continuam inteiros).
+
+> **Aviso:** aponte apenas **pastas de trabalho** — nunca o drive inteiro (`C:\`, `/mnt/c`) nem o perfil do usuário. O diretório precisa **existir** (a escrita não cria pastas); destrutivo/credencial seguem bloqueados pelo SafetyGate.
+
 ---
 
 ## Limitações conhecidas
