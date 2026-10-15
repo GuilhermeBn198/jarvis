@@ -41,7 +41,16 @@ fn main() {
             window.always_on_top = false;
         }
     }
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "linux")]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+    builder
         .manage(Brain::default())
         .invoke_handler(tauri::generate_handler![
             brain::start_brain,

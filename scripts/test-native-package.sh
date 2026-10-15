@@ -4,6 +4,7 @@ set -eu
 [ -f /.dockerenv ] || [ -f /run/.containerenv ] || { echo 'Execute apenas em container descartavel.' >&2; exit 2; }
 task_family=${1:?familia obrigatoria}
 task_package=${2:?artefato obrigatorio}
+task_checks=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
 . /etc/os-release
 task_user_data=$(mktemp -d)
 export XDG_DATA_HOME=$task_user_data
@@ -11,9 +12,10 @@ export PYTHONDONTWRITEBYTECODE=1
 mkdir -p "$XDG_DATA_HOME/jarvis"
 printf '%s\n' preserved > "$XDG_DATA_HOME/jarvis/package-test"
 case "$task_family:$ID" in
-    debian:debian|ubuntu:ubuntu) apt-get update; apt-get install -y --no-install-recommends -o "Dpkg::Options::=--path-include=/usr/share/doc/*" "$task_package" ;;
-    fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" ;;
-    arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm; pacman -U --noconfirm "$task_package" ;;
+    debian:debian|ubuntu:ubuntu) apt-get update; apt-get install -y --no-install-recommends -o "Dpkg::Options::=--path-include=/usr/share/doc/*" "$task_package" xvfb dbus-daemon ;;
+    fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" xorg-x11-server-Xvfb dbus-daemon ;;
+    suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1 ;;
+    arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
     *) echo 'Familia e ambiente nao correspondem.' >&2; exit 2 ;;
 esac
 test "$(cat "$XDG_DATA_HOME/jarvis/package-test")" = preserved
@@ -43,6 +45,7 @@ for task_tool in ffmpeg ffplay pactl arecord xdotool wl-paste xclip; do command 
 ffmpeg -version >/dev/null
 ffplay -version >/dev/null
 pactl --version
+python3 "$task_checks/test-overlay-instance.py" /usr/bin/jarvis-overlay
 case "$task_family" in
     debian|ubuntu)
         task_verify_status=0
@@ -53,10 +56,11 @@ case "$task_family" in
         apt-get remove -y jarvis-assistant
         ;;
     fedora) rpm -V jarvis-assistant; dnf remove -y jarvis-assistant ;;
+    suse) rpm -V jarvis-assistant; zypper --non-interactive remove jarvis-assistant ;;
     arch) pacman -Qkk jarvis-assistant; pacman -R --noconfirm jarvis-assistant ;;
 esac
 test ! -e /usr/bin/jarvis
 test ! -e /usr/bin/jarvis-overlay
 test ! -e /usr/lib/jarvis
 test "$(cat "$XDG_DATA_HOME/jarvis/package-test")" = preserved
-printf '%s\n' 'PASS: package install/resources/imports/integrity/remove/data preservation (headless only)'
+printf '%s\n' 'PASS: package lifecycle/imports/integrity/data preservation and isolated X11 relaunch (full desktop/audio pending)'
