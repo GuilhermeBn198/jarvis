@@ -88,9 +88,9 @@ test("parseKeys: token desconhecido falha com erro didatico (exemplos)", () => {
   assert.throws(() => parseKeys("ctrl"), /ctrl\+/i);
 });
 
-test("buildForegroundKeyScript: keybd_event, nao SendKeys", () => {
+test("buildForegroundKeyScript: [W.K]::keybd_event, nao SendKeys", () => {
   const s = buildForegroundKeyScript("ctrl+c");
-  assert.match(s, /keybd_event/);
+  assert.match(s, /\[W\.K\]::keybd_event\(/);
   assert.doesNotMatch(s, /SendKeys/);
   // Sem roubo de foco: keybd_event age na janela em foco, nao a forcamos.
   assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos/);
@@ -98,17 +98,17 @@ test("buildForegroundKeyScript: keybd_event, nao SendKeys", () => {
 
 test("buildForegroundKeyScript: mods down, tecla, mods up (ordem)", () => {
   const s = buildForegroundKeyScript("ctrl+shift+esc");
-  const iCtrl = s.indexOf(`keybd_event(0x11`);
-  const iShift = s.indexOf(`keybd_event(0x10`);
-  const iEscDown = s.indexOf("keybd_event(0x1B, 0, 0, 0)");
-  const iEscUp = s.indexOf("keybd_event(0x1B, 0, 2, 0)");
+  const iCtrl = s.indexOf(`[W.K]::keybd_event(0x11`);
+  const iShift = s.indexOf(`[W.K]::keybd_event(0x10`);
+  const iEscDown = s.indexOf("[W.K]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero)");
+  const iEscUp = s.indexOf("[W.K]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero)");
   assert.ok(iCtrl >= 0 && iShift >= 0 && iEscDown >= 0 && iEscUp >= 0);
   assert.ok(iCtrl < iShift, "ctrl down antes de shift down");
   assert.ok(iShift < iEscDown, "shift down antes da tecla");
   assert.ok(iEscDown < iEscUp, "down antes de up");
   // Mods sobem em ordem reversa: shift up antes de ctrl up.
-  const iShiftUp = s.indexOf(`keybd_event(0x10, 0, 2, 0)`);
-  const iCtrlUp = s.indexOf(`keybd_event(0x11, 0, 2, 0)`);
+  const iShiftUp = s.indexOf(`[W.K]::keybd_event(0x10, 0, 2, [UIntPtr]::Zero)`);
+  const iCtrlUp = s.indexOf(`[W.K]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)`);
   assert.ok(iEscUp < iShiftUp && iShiftUp < iCtrlUp, "mods up em ordem reversa");
 });
 
@@ -116,8 +116,8 @@ test("buildForegroundKeyScript: letra manda down+up (onlyDown e mitigacao so do 
   // Em FG (keybd_event) down+up e digitacao normal; a duplicacao medida em
   // RichEdit foi no caminho BG (PostMessage), que segue com down-only.
   const s = buildForegroundKeyScript("b");
-  assert.match(s, /keybd_event\(0x42, 0, 0, 0\)/);
-  assert.match(s, /keybd_event\(0x42, 0, 2, 0\)/);
+  assert.match(s, /\[W\.K\]::keybd_event\(0x42, 0, 0, \[UIntPtr\]::Zero\)/);
+  assert.match(s, /\[W\.K\]::keybd_event\(0x42, 0, 2, \[UIntPtr\]::Zero\)/);
 });
 
 test("encodeKeyChords: onlyDown viaja no payload do background", () => {
@@ -128,22 +128,47 @@ test("encodeKeyChords: onlyDown viaja no payload do background", () => {
 
 test("buildForegroundKeyScript: tecla especial manda down+up", () => {
   const s = buildForegroundKeyScript("enter");
-  assert.match(s, /keybd_event\(0x0D, 0, 0, 0\)/);
-  assert.match(s, /keybd_event\(0x0D, 0, 2, 0\)/);
+  assert.match(s, /\[W\.K\]::keybd_event\(0x0D, 0, 0, \[UIntPtr\]::Zero\)/);
+  assert.match(s, /\[W\.K\]::keybd_event\(0x0D, 0, 2, \[UIntPtr\]::Zero\)/);
 });
 
 test("buildForegroundKeyScript: acorde multiplo gera multiplas sequencias", () => {
   const s = buildForegroundKeyScript("a b");
-  assert.equal(s.match(/keybd_event\(0x41, 0, 0, 0\)/g).length, 1);
-  assert.equal(s.match(/keybd_event\(0x42, 0, 0, 0\)/g).length, 1);
-  assert.ok(s.indexOf("keybd_event(0x41, 0, 0, 0)") < s.indexOf("keybd_event(0x42, 0, 0, 0)"));
+  assert.equal(s.match(/\[W\.K\]::keybd_event\(0x41, 0, 0, \[UIntPtr\]::Zero\)/g).length, 1);
+  assert.equal(s.match(/\[W\.K\]::keybd_event\(0x42, 0, 0, \[UIntPtr\]::Zero\)/g).length, 1);
+  assert.ok(
+    s.indexOf("[W.K]::keybd_event(0x41, 0, 0, [UIntPtr]::Zero)") <
+      s.indexOf("[W.K]::keybd_event(0x42, 0, 0, [UIntPtr]::Zero)"),
+  );
 });
 test("buildForegroundKeyScript: sem SetForegroundWindow e sem vazamento de aspas", () => {
   const s = buildForegroundKeyScript("plus");
-  assert.match(s, /keybd_event\(0xBB, 0, 0, 0\)/);
+  assert.match(s, /\[W\.K\]::keybd_event\(0xBB, 0, 0, \[UIntPtr\]::Zero\)/);
   assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos/);
   // Token com aspas nem chega ao script: falha no parser (antes de executar).
   assert.throws(() => buildForegroundKeyScript("a'b"), /desconhecid/i);
+});
+
+test("buildForegroundKeyScript: guarda contra regressao — chamadas qualificadas e UIntPtr (#19)", () => {
+  const s = buildForegroundKeyScript("ctrl+c");
+  // O -MemberDefinition contem "keybd_event(byte bVk..." — o guard olha so o
+  // BODY do script, tudo apos o ultimo separador "'; '".
+  const SEP = "'; ";
+  const body = s.slice(s.lastIndexOf(SEP) + SEP.length);
+  const chamadas = body.match(/keybd_event\(/g) ?? [];
+  const qualificadas = body.match(/\[W\.K\]::keybd_event\(/g) ?? [];
+  assert.ok(chamadas.length > 0, "o body deve chamar keybd_event");
+  assert.equal(
+    chamadas.length,
+    qualificadas.length,
+    "nenhuma chamada nua no body: sem [W.K]:: o PowerShell trata como comando e falha",
+  );
+  // ULONG_PTR exige UIntPtr no P/Invoke (int truncaria em 64 bits). Na PS 5.1
+  // o binder nao converte `0` (Int32) para UIntPtr — o script quebra em
+  // runtime; a forma que funciona e [UIntPtr]::Zero (sonda vk=0, exit 0).
+  assert.match(s, /UIntPtr dwExtraInfo/);
+  const comZero = body.match(/\[UIntPtr\]::Zero\)/g) ?? [];
+  assert.equal(comZero.length, chamadas.length, "toda chamada passa [UIntPtr]::Zero");
 });
 
 test("MOD_VK: mapa publico dos modificadores", () => {

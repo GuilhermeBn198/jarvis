@@ -138,19 +138,29 @@ function hex2(vk: number): string {
 // entao `onlyDown` e mitigacao SO do background. NUNCA chama
 // SetForegroundWindow: o envio vai para a janela em foco (a sintaxe natural
 // substitui o SendKeys, que interpretava `ctrl+v` como "ctrl" + Shift(v)).
+//
+// Detalhes que soam cosmeticos mas derrubam o script (#19):
+// - chamada QUALIFICADA `[W.K]::keybd_event(...)`: em PowerShell, nome nu
+//   seguido de parenteses e invocacao de comando -> CommandNotFound e nada e
+//   enviado;
+// - quarto argumento `[UIntPtr]::Zero`, nao `0`: `dwExtraInfo` e ULONG_PTR
+//   (UIntPtr) e o binder da PS 5.1 NAO converte o literal 0 (Int32) para
+//   UIntPtr — o script morre em MethodException antes do primeiro envio.
 export function buildForegroundKeyScript(keys: string): string {
   const chords = parseKeys(keys);
+  const chamada = (vk: number, flags: 0 | 2) =>
+    `[W.K]::keybd_event(${hex2(vk)}, 0, ${flags}, [UIntPtr]::Zero)`;
   const body = chords
     .map((c) => {
-      const lines = c.mods.map((m) => `keybd_event(${hex2(MOD_VK[m])}, 0, 0, 0)`);
-      lines.push(`keybd_event(${hex2(c.vk)}, 0, 0, 0)`);
+      const lines = c.mods.map((m) => chamada(MOD_VK[m], 0));
+      lines.push(chamada(c.vk, 0));
       lines.push(`Start-Sleep -Milliseconds 20`);
-      lines.push(`keybd_event(${hex2(c.vk)}, 0, 2, 0)`);
-      for (const m of [...c.mods].reverse()) lines.push(`keybd_event(${hex2(MOD_VK[m])}, 0, 2, 0)`);
+      lines.push(chamada(c.vk, 2));
+      for (const m of [...c.mods].reverse()) lines.push(chamada(MOD_VK[m], 2));
       return lines.join("; ");
     })
     .join("; Start-Sleep -Milliseconds 30; ");
-  return `Add-Type -Namespace W -Name K -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, int dwExtraInfo);'; ${body}`;
+  return `Add-Type -Namespace W -Name K -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);'; ${body}`;
 }
 
 // Payload do background: acordes validados serializados para o script.
