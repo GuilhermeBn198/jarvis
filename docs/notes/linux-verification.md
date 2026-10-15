@@ -183,3 +183,21 @@ está em validação. O primeiro bundle não deve ser usado como release.
 Ainda faltam atualização entre versões, a matriz gráfica instalada, ARM64 do
 Flatpak e os demais formatos/famílias previstos no plano. Evidência de container
 não substitui áudio, permissões de portal ou desktop real na distribuição alvo.
+
+### Correções confirmadas nesta continuação
+
+- Execução CI 38764598505 concluída com sucesso nos cinco jobs: Arch x86_64,
+  Debian x86_64/ARM64 e Fedora x86_64/ARM64. Fedora passou pela importação AT-SPI
+  após declarar gobject-introspection, além dos demais testes de pacote.
+- Flatpak instalado, com identidade GTK correta e `WEBKIT_FORCE_SANDBOX=1`
+  aplicado na execução: AT-SPI acessou a interface; mudo e pausa alteraram o
+  estado HTTP, configurações abriram e Sair encerrou o cérebro. Um servidor
+  OpenCode real iniciado em porta exclusiva estava saudável e foi encerrado
+  junto com o overlay. Nenhum servidor preexistente foi encerrado pelo teste.
+- O teste encontrou o botão de fechar configurações fora da janela (`y=-30`).
+  CSS limitado ao viewport e rolagem corrigiram o posicionamento (`y=19.015625`)
+  em renderização real WebKit 2.54.1 do SDK, janela 280×470. O build instalado
+  com o manifesto e CSS corrigidos ainda precisa repetir o fluxo completo.
+- Pins ARM64 consultados no Flathub para SDK/Platform GNOME 49 e Rust 25.08;
+  o driver seleciona commits e nome do bundle por arquitetura. Workflow manual
+  prepara builds nativos x86_64/ARM64. Isso ainda não prova que ARM64 compila.

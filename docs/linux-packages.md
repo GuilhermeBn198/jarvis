@@ -97,6 +97,6 @@ não evidência de execução nessa arquitetura.
 
 A CI acrescentou um teste de importação do AT-SPI que revelou a ausência de
 `DBus-1.0.typelib` nas instalações mínimas Fedora x86_64 e ARM64. A receita
-agora exige `gobject-introspection`; a correção precisa passar novamente pela
-instalação limpa. O smoke anterior não incluía esse teste e não comprova que
+agora exige `gobject-introspection`; a correção passou pela instalação limpa, importação AT-SPI,
+integridade e remoção em Fedora 44 x86_64 e ARM64 na execução CI 38764598505. O smoke anterior não incluía esse teste e não comprova que
 a acessibilidade estava funcional.
