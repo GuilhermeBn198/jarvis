@@ -78,7 +78,8 @@ def test_wl_clipboard_completions_stay_inside_application_prefix():
 
 
 @pytest.mark.parametrize('arch',['x86_64','aarch64'])
-def test_build_refreshes_manifest_when_prepared_sources_are_reused(tmp_path,arch):
+@pytest.mark.parametrize('builder',['app','host'])
+def test_build_refreshes_manifest_when_prepared_sources_are_reused(tmp_path,arch,builder):
     import os,subprocess,sys
     output=tmp_path/'build';sources=output/'sources';sources.mkdir(parents=True)
     (sources/'jarvis-sources.tar.gz').write_bytes(b'prepared source')
@@ -103,8 +104,11 @@ elif sys.argv[1]=='run':
 else:sys.exit(5)
 ''')
     flatpak.chmod(0o755)
-    result=subprocess.run([str(ROOT/'scripts/build-flatpak.sh'),str(output)],env=dict(os.environ,TEST_ARCH=arch,PATH=str(tools)+os.pathsep+os.environ['PATH']),capture_output=True,text=True)
-    assert result.returncode==77,result.stderr
+    host_builder=tools/'flatpak-builder'
+    host_builder.write_text('#!'+sys.executable+'\nimport json,sys\nmanifest=json.load(open(sys.argv[-1]));sys.exit(78 if "modules" in manifest and "stale" not in manifest else 4)\n')
+    host_builder.chmod(0o755)
+    result=subprocess.run([str(ROOT/'scripts/build-flatpak.sh'),str(output)],env=dict(os.environ,JARVIS_FLATPAK_BUILDER=builder,TEST_ARCH=arch,PATH=str(tools)+os.pathsep+os.environ['PATH']),capture_output=True,text=True)
+    assert result.returncode==({'app':77,'host':78}[builder]),result.stderr
 
 
 def test_prebuilt_agent_is_not_rewritten_during_debug_extraction():

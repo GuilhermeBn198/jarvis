@@ -18,6 +18,12 @@ resultado do build real. Não reutilize artefatos x86_64 nessa arquitetura.
 scripts/build-flatpak.sh "$PWD/dist/flatpak"
 ```
 
+O padrão usa o aplicativo `org.flatpak.Builder`. Em ambientes com
+`flatpak-builder` instalado diretamente, use
+`JARVIS_FLATPAK_BUILDER=host scripts/build-flatpak.sh "$PWD/dist/flatpak"`.
+A compilação continua no SDK fixado; a CI usa esse modo para acessar os
+runtimes instalados no próprio runner.
+
 Se o preparo for interrompido antes de criar o manifesto, continue explicitamente:
 
 ```sh

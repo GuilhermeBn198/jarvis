@@ -24,7 +24,12 @@ if [ ! -f "$task_output/sources/com.jarvis.overlay.json" ]; then
     python3 "$task_root/scripts/prepare-flatpak.py" --output "$task_output/sources"
 fi
 python3 "$task_root/scripts/prepare-flatpak.py" --manifest-only "$task_output/sources/jarvis-sources.tar.gz" --output "$task_output/sources"
-flatpak run org.flatpak.Builder --user --force-clean --repo="$task_output/repo" \
+case "${JARVIS_FLATPAK_BUILDER:-app}" in
+    app) set -- flatpak run org.flatpak.Builder ;;
+    host) command -v flatpak-builder >/dev/null; set -- flatpak-builder ;;
+    *) echo 'JARVIS_FLATPAK_BUILDER deve ser app ou host.' >&2; exit 2 ;;
+esac
+"$@" --user --force-clean --repo="$task_output/repo" \
     --state-dir="$task_output/state" "$task_output/build" "$task_output/sources/com.jarvis.overlay.json"
 task_agent_version=$(flatpak build "$task_output/build" /app/lib/jarvis/bin/opencode --version)
 [ "$task_agent_version" = '1.18.23' ] || { echo "Agente foi alterado pelo empacotamento: $task_agent_version" >&2; exit 2; }

@@ -25,11 +25,12 @@ jobs:
         run: |
           test "$(uname -m)" = "$ARCH"
           sudo apt-get update
-          sudo apt-get install -y flatpak
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak-builder --version
           rustup toolchain install 1.95.0 --profile minimal
           rustup default 1.95.0
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user --noninteractive flathub org.flatpak.Builder org.gnome.Sdk//49 org.gnome.Platform//49 org.freedesktop.Sdk.Extension.rust-stable//25.08
+          flatpak install --user --noninteractive flathub org.gnome.Sdk//49 org.gnome.Platform//49 org.freedesktop.Sdk.Extension.rust-stable//25.08
           python3 - <<'PY' > /tmp/jarvis-runtime-pins
           import json,platform
           for ref,commit in json.load(open('packaging/flatpak/runtime-pins.json'))[platform.machine()].items():
@@ -39,6 +40,8 @@ jobs:
             flatpak update --user --noninteractive --commit="$commit" "$ref"
           done < /tmp/jarvis-runtime-pins
       - name: Prepare and build native architecture bundle
+        env:
+          JARVIS_FLATPAK_BUILDER: host
         run: scripts/build-flatpak.sh "$PWD/dist/flatpak"
       - name: Install and inspect bundled runtime
         env:
