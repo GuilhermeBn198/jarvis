@@ -1,4 +1,6 @@
+import base64
 import importlib
+import re
 
 import pytest
 
@@ -55,3 +57,46 @@ def test_clipboard_vazio_mensagem(monkeypatch):
     s = _server()
     monkeypatch.setattr(ctx, "_default_run", lambda script: "")
     assert s.win_clipboard_text() == "(clipboard vazio)"
+
+
+def _nao_deve_rodar(_script):
+    raise AssertionError("script nao deveria ser executado")
+
+
+def test_clipboard_write_recusa_sem_confirm(monkeypatch):
+    s = _server()
+    monkeypatch.setattr(ctx, "_default_run", _nao_deve_rodar)
+    out = s.win_clipboard_write("ola")
+    assert out.startswith("recusado:")
+    assert "confirm=true" in out
+
+
+def test_clipboard_write_recusa_texto_vazio(monkeypatch):
+    s = _server()
+    monkeypatch.setattr(ctx, "_default_run", _nao_deve_rodar)
+    out = s.win_clipboard_write("", confirm=True)
+    assert out.startswith("recusado:")
+
+
+def test_clipboard_write_envia_base64_utf8(monkeypatch):
+    s = _server()
+    seen = {}
+    monkeypatch.setattr(ctx, "_default_run", lambda script: seen.setdefault("s", script) or "")
+    out = s.win_clipboard_write("Ola 🚀 acao", confirm=True)
+    script = seen["s"]
+    assert "Ola" not in script
+    m = re.search(r"\$b\s*=\s*'([A-Za-z0-9+/=]+)'", script)
+    assert m, script
+    assert base64.b64decode(m.group(1)).decode("utf-8") == "Ola 🚀 acao"
+    assert out.startswith("escrito")
+
+
+def test_clipboard_write_erro_vira_runtime(monkeypatch):
+    s = _server()
+
+    def boom(_script):
+        raise ctx.WinContextError("sem powershell")
+
+    monkeypatch.setattr(ctx, "_default_run", boom)
+    with pytest.raises(RuntimeError):
+        s.win_clipboard_write("ola", confirm=True)

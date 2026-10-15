@@ -48,6 +48,11 @@ export function actionFromToolCall(
   if (tool === "win_write") {
     return { type: "winwrite", pattern: typeof a.path === "string" ? a.path : undefined };
   }
+  // Escrita no clipboard (confirm=true na tool): o CONTEUDO vira padrao para
+  // as regras de DENY/CREDENTIAL rodarem sobre o texto que sera colado.
+  if (tool === "win_context_win_clipboard_write") {
+    return { type: "clipwrite", pattern: typeof a.text === "string" ? a.text : undefined };
+  }
   return { type: tool };
 }
 

@@ -27,6 +27,20 @@ test("mapping: tool sem padrão relevante fica só com o tipo", () => {
   assert.deepEqual(actionFromToolCall("grep", { include: "*.ts" }), { type: "grep" });
 });
 
+test("mapping: win_context clipboard_write usa o texto como pattern", () => {
+  assert.deepEqual(
+    actionFromToolCall("win_context_win_clipboard_write", { text: "ola mundo", confirm: true }),
+    { type: "clipwrite", pattern: "ola mundo" },
+  );
+});
+
+test("mapping: win_context clipboard_write sem texto fica sem pattern", () => {
+  assert.deepEqual(actionFromToolCall("win_context_win_clipboard_write", {}), {
+    type: "clipwrite",
+    pattern: undefined,
+  });
+});
+
 test("beforeToolCall: bash destrutivo -> throw (deny)", () => {
   assert.throws(() => beforeToolCall("bash", { command: "rm -rf /" }), /SafetyGate bloqueou/);
 });
@@ -65,5 +79,25 @@ test("beforeToolCall: act_open com deny -> throw", () => {
   assert.throws(
     () => beforeToolCall("act_open", { target: "diskpart" }),
     /SafetyGate bloqueou/,
+  );
+});
+
+test("beforeToolCall: clipboard_write destrutivo -> throw (deny)", () => {
+  assert.throws(
+    () => beforeToolCall("win_context_win_clipboard_write", { text: "rm -rf /", confirm: true }),
+    /SafetyGate bloqueou/,
+  );
+});
+
+test("beforeToolCall: clipboard_write de credencial -> throw (deny)", () => {
+  assert.throws(
+    () => beforeToolCall("win_context_win_clipboard_write", { text: "cat ~/.ssh/id_rsa", confirm: true }),
+    /SafetyGate bloqueou/,
+  );
+});
+
+test("beforeToolCall: clipboard_write benigno -> não throw (allow)", () => {
+  assert.doesNotThrow(() =>
+    beforeToolCall("win_context_win_clipboard_write", { text: "ola mundo", confirm: true }),
   );
 });

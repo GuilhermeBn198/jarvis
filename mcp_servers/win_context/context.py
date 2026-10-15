@@ -98,6 +98,21 @@ def _encode(script: str) -> str:
     return base64.b64encode(script.encode("utf-16le")).decode("ascii")
 
 
+def clipboard_write_script(text: str) -> str:
+    """Script que escreve `text` no clipboard via Set-Clipboard.
+
+    O texto viaja em base64 UTF-8 DENTRO do script (nunca interpolado cru):
+    elimina injecao de comando, problemas de quoting e corrupcao de Unicode.
+    """
+    import base64
+    b64 = base64.b64encode(text.encode("utf-8")).decode("ascii")
+    return (
+        f"$b='{b64}'\n"
+        "$t=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b))\n"
+        "Set-Clipboard -Value $t\n"
+    )
+
+
 def list_windows(run=_default_run) -> list[Window]:
     script = _WIN32 + "\n(Get-JarvisWindows | ForEach-Object { $_ | ConvertTo-Json -Compress })"
     return parse_windows(run(script))

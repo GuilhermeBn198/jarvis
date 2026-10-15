@@ -43,8 +43,20 @@ const ASK: Array<[RegExp, string]> = [
 // `winlist` cobre a tool win_list (apenas lista janelas; so le).
 // `winread` cobre win_read (le arquivo do Windows; so le).
 // `see` cobre a tool see_screen (so le a tela; o conteudo NAO roda tools).
+// `clipwrite` cobre win_context_win_clipboard_write (allow com confirm=true
+// obrigatorio na tool; o conteudo passa por DENY/CREDENTIAL antes do allow).
 // `winwrite` NAO entra aqui: escrita nunca e allow automatico (cai em ask).
-const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act", "see", "winlist", "winread"]);
+const ALLOW_TYPES = new Set([
+  "read",
+  "glob",
+  "grep",
+  "list",
+  "act",
+  "see",
+  "winlist",
+  "winread",
+  "clipwrite",
+]);
 const ALLOW_CMD = [
   /^\s*git\s+(status|diff|log|show)(\s|$)/,
   /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,
