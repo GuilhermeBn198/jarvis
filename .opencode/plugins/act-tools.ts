@@ -1,7 +1,8 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
-import { buildPsScript, encode } from "../act/ps.ts";
+import { buildPsScript, encode, toArgList } from "../act/ps.ts";
 import { buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
+import { isExecutionTarget } from "../safety/rules.ts";
 
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
 // plugin. Este arquivo exporta APENAS `ActTools`; os helpers puros ficam em
@@ -68,9 +69,22 @@ export const ActTools: Plugin = async ({ $ }) => ({
       },
     }),
     act_open: tool({
-      description: "Abre uma URL, arquivo ou aplicativo (Start-Process).",
-      args: { target: tool.schema.string() },
+      description:
+        "Abre uma URL, arquivo ou aplicativo (Start-Process). args (opcional) sao repassados ao alvo com quoting Windows. " +
+        "Alvos de execucao — terminais/interpretadores/scripts (cmd, powershell, pwsh, wsl, wt, wscript, cscript, mshta, rundll32, regsvr32, .bat/.cmd/.ps1/.vbs/.js) — " +
+        "exigem confirm=true: sem ele a tool recusa — PERGUNTE ao usuario (\"quer que eu abra X para executar Y?\") antes de repetir com confirm=true.",
+      args: {
+        target: tool.schema.string(),
+        args: tool.schema.array(tool.schema.string()).optional(),
+        confirm: tool.schema.boolean().optional(),
+      },
       async execute(args) {
+        const target = String(args.target ?? "");
+        if (isExecutionTarget(target) && args.confirm !== true) {
+          const argv = toArgList(args.args);
+          const extra = argv.length > 0 ? ` com os argumentos [${argv.join(", ")}]` : "";
+          return `recusado: "${target}" abre caminho de execucao${extra} e exige confirm=true — PERGUNTE ao usuario antes ("quer que eu abra ${target} para executar?") e repita com confirm=true somente apos o ok`;
+        }
         return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
       },
     }),

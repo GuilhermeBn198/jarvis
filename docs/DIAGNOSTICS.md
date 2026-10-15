@@ -71,13 +71,13 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 - **Workaround**: garanta que o alvo esteja visível e clique por coordenadas; prefira atalhos (`act_key`) quando possível.
 - **Issue**: — (limitação de v1).
 
-### `act_open` ainda não aceita argumentos
+### `act_open` de execução exige consentimento
 
-- **Sintoma**: só é possível abrir um alvo (app/arquivo/URL), sem passar argumentos.
-- **Repro**: abrir um app com flags (ex.: VS Code numa pasta específica) não é suportado.
-- **Causa**: a tool chama `Start-Process '<target>'` sem lista de argumentos.
-- **Workaround**: abra o app e complete com `act_type`/`act_key`; ou faça pelo Terminal em foreground.
-- **Issue**: [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) — aberta.
+- **Sintoma**: pedir para abrir terminal/interpretador/script (ex.: `act_open { target: "cmd", args: ["/c", "dir"] }`) responde `recusado: ... exige confirm=true`.
+- **Repro**: `act_open { target: "cmd" }` (ou `powershell`, `wsl`, `wt`, `mshta`, `rundll32`, `.bat`, `.ps1`, `.vbs`, `.js`, ...) sem `confirm`.
+- **Causa**: política da #23 — alvos que abrem caminho de execução exigem consentimento explícito; o `confirm=true` só deve ser usado depois do "sim" do usuário. Não é defeito.
+- **Workaround**: confirme com o usuário e repita com `confirm=true`; padrões destrutivos/credenciais continuam bloqueados mesmo com confirm (SafetyGate sobre target + args).
+- **Issue**: [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) — corrigido nesta branch.
 
 ### Latência das tools `act_*`: cada chamada sobe um PowerShell
 
@@ -192,7 +192,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 | [#19](https://github.com/GuilhermeBn198/jarvis/issues/19) | `act_key` envia teclas de verdade | aberta |
 | [#20](https://github.com/GuilhermeBn198/jarvis/issues/20) | `act_type` preserva barras invertidas | aberta |
 | [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) | allowlist de escrita documentada (+ parser) | aberta |
-| [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) | `act_open` com argumentos | aberta |
+| [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) | `act_open` com argumentos | **corrigido** (nesta branch) |
 | [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) | `win_read` lê WSL e lista diretórios | aberta |
 | [#25](https://github.com/GuilhermeBn198/jarvis/issues/25) | clipboard/contexto Windows no `chat` | aberta |
 | [#28](https://github.com/GuilhermeBn198/jarvis/issues/28) | mensagens de background por causa | aberta |
