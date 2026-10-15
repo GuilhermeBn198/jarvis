@@ -15,7 +15,7 @@ Assistente pessoal por voz, **sempre ligado**, que roda no seu PC: o "cérebro" 
 - [Instalação](#instalação)
 - [Como usar](#como-usar)
 - [Configuração (variáveis de ambiente)](#configuração-variáveis-de-ambiente)
-- [Limitações conhecidas](#limitações-conhecidas)
+- [Limitações conhecidas](#limitações-conhecidas) · [Diagnóstico das tools](docs/DIAGNOSTICS.md)
 - [Aprimoramentos planejados](#aprimoramentos-planejados)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Testes](#testes)
@@ -271,15 +271,16 @@ Detalhes e a lista completa: [`voice/README.md`](voice/README.md).
 
 ## Limitações conhecidas
 
-- **Latência**: um turno conversacional via `serve`+`piper` fica na casa de poucos segundos. O **streaming de TTS** foi implementado, mas o ganho medido foi **modesto** (~7–20%) porque o tempo até o primeiro token domina e o modelo/API costuma entregar a resposta em poucos blocos grandes. `first_audio_s`/`stream` ficam no `convlog` para acompanhar.
-- **Caminhos do Windows hardcoded** nos defaults (`ffmpeg`, `piper`, `shot.png`, etc.) — precisam ser ajustados por env em outra máquina.
-- **Microfone "preso"** (issue [#4](https://github.com/GuilhermeBn198/jarvis/issues/4)): a captura `dshow` pode segurar o dispositivo, deixando o mic indisponível para outros apps (ex.: Discord). Mitigado por: não rodar headless sem overlay (`JARVIS_REQUIRE_GUI`), trava de instância única (`JARVIS_VOICE_LOCK`) e limpeza do `ffmpeg`. **Se o mic sumir em outros apps:** em *Configurações de Som → Microfone → Propriedades → Avançado*, **desmarque** "Permitir que os aplicativos tenham controle exclusivo" e, se preciso, reinicie o dispositivo/PC.
+- **Latência**: um turno conversacional via `serve`+`piper` fica na casa de poucos segundos; o **streaming de TTS** dá ganho modesto (~7–20%) porque o tempo até o primeiro token domina. `first_audio_s`/`stream` ficam no `convlog`.
+- **Microfone "preso"** (issue [#4](https://github.com/GuilhermeBn198/jarvis/issues/4), mitigado): a captura `dshow` pode segurar o dispositivo. Mitigado por `JARVIS_REQUIRE_GUI`, trava de instância (`JARVIS_VOICE_LOCK`) e limpeza do `ffmpeg`. **Se o mic sumir em outros apps:** em *Configurações de Som → Microfone → Propriedades → Avançado*, **desmarque** "Permitir que os aplicativos tenham controle exclusivo".
 - **Sem wake word no modo `free` (default)**: a entrada é VAD/PTT — ruído pode disparar. Use `VOICE_ACTIVATION=wake` para exigir a palavra-gatilho (`triggers.json`).
-- **Sem barge-in**: não dá para interromper a fala do Jarvis falando por cima.
+- **Sem barge-in** ([#40](https://github.com/GuilhermeBn198/jarvis/issues/40)): não dá para interromper a fala do Jarvis falando por cima.
 - **Streaming só na conversa**: visão (`--see`) e ações (`--do`) usam o caminho bloqueante.
 - **Dependência do `serve`**: `opencode serve`/modelo são externos; sem eles, cai para `run` (lento) ou falha.
-- **Visão e ações** são v1: tela inteira, sem região/janela ativa; ações dependem do SafetyGate e das regras de segurança.
+- **Visão e ações são v1**: tela inteira (sem região/janela ativa); ações dependem do SafetyGate.
 - **Overlay é Windows-only** (Tauri) e exige Rust/MSVC/WebView2.
+
+> **Diagnóstico das tools**: sintoma, repro, causa e workaround de `act_*`, `win_*`, visão e áudio/loop ficam em [`docs/DIAGNOSTICS.md`](docs/DIAGNOSTICS.md).
 
 ---
 
@@ -326,6 +327,7 @@ jarvis/
 │   └── win_context/       # MCP de contexto do Windows em texto (UIA/clipboard/processos)
 ├── docs/
 │   ├── backlog.md
+│   ├── DIAGNOSTICS.md     # diagnóstico e limitações conhecidas das tools
 │   └── superpowers/       # specs e planos de cada fase
 └── opencode.json          # agentes e MCP
 ```
@@ -348,6 +350,7 @@ node --test '.opencode/**/*.test.ts'   # SafetyGate + tools act_*
 ## Documentação
 
 - **Backlog**: `docs/backlog.md`
+- **Diagnóstico e limitações das tools**: `docs/DIAGNOSTICS.md`
 - **Specs/design**: `docs/superpowers/specs/`
 - **Planos de implementação**: `docs/superpowers/plans/`
 - **Voz (detalhes de env, modos e dependências)**: `voice/README.md`
