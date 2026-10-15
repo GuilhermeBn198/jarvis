@@ -105,7 +105,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 - **Causa**: por padrão nada é autorizado (allowlist vazia) e a escrita também exige `confirm=true` (escopo explícito e auditável).
 - **Configuração/workaround**: aponte `JARVIS_WIN_ALLOW_WRITE` para uma **pasta de trabalho** (nunca o drive inteiro), em formato Windows (`C:\Users\<voce>\Notas`) ou WSL (`/mnt/c/Users/<voce>/Notas`); separe múltiplos diretórios com `;` (também aceita `:`, exceto colado na barra — protege a letra de drive). O diretório precisa existir. Detalhes na seção *Allowlist de escrita* do [README](../README.md#allowlist-de-escrita-win_write).
   - O plugin lê a env do processo que roda o opencode. Na prática: `local.conf` na raiz do repo (gitignored) é carregado pelo launcher `./jarvis` com `set -a` e herdado pelo loop → opencode.
-  - **Trocar a env exige reiniciar o cérebro** (o `opencode` herda o ambiente no start).
+  - **Trocar a env exige encerrar o `opencode serve` e reiniciar o cérebro** — o `serve` roda destacado (`start_new_session`) e é reaproveitado enquanto saudável, então reiniciar só o loop/overlay **não** recarrega a env. Rode `pkill -f '[o]pencode serve'` antes de reiniciar.
 - **Issue**: [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) — corrigido: `;/` sem espaço agora separa (regressão testada) e a allowlist está documentada no README.
 
 ### Caminhos do Windows hardcoded nos defaults

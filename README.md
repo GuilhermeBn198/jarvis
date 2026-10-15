@@ -273,7 +273,7 @@ Detalhes e a lista completa: [`voice/README.md`](voice/README.md).
 
 `local.conf` (raiz do repo, gitignored) → launcher `./jarvis` carrega com `set -a` → loop Python → `opencode serve`/`run` (herdam o ambiente) → plugin lê `process.env` a cada chamada.
 
-O valor que vale é o do `local.conf` (carregado depois do ambiente do shell); o que ele não definir segue o ambiente. **Trocar a allowlist exige reiniciar o cérebro** — o processo do `opencode` herda a env no start (o menu do overlay → *Iniciar|Reiniciar cérebro* já reinicia).
+O valor que vale é o do `local.conf` (carregado depois do ambiente do shell); o que ele não definir segue o ambiente. **Trocar a allowlist exige encerrar o `opencode serve` e reiniciar o cérebro** — o `serve` é spawnado destacado (`start_new_session`) e reaproveitado enquanto saudável, então reiniciar só o loop/overlay **não** recarrega a env. Rode `pkill -f '[o]pencode serve'` e então reinicie o cérebro (menu do overlay → *Iniciar|Reiniciar cérebro*).
 
 ```bash
 # local.conf (raiz do repo; NAO versionado) — use UMA das linhas:

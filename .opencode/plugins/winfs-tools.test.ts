@@ -54,7 +54,7 @@ test("win_write recusa sem confirm=true e nao toca na allowlist", async () => {
   });
 });
 
-test("win_write com allowlist vazia ensina a configurar (local.conf, restart, aviso)", async () => {
+test("win_write com allowlist vazia ensina a configurar (local.conf, pkill do serve, aviso)", async () => {
   await comAllowlist("", async () => {
     const out = await (await winWrite()).execute({
       path: "/mnt/c/Users/Public/x.txt",
@@ -63,6 +63,7 @@ test("win_write com allowlist vazia ensina a configurar (local.conf, restart, av
     });
     assert.match(out, /JARVIS_WIN_ALLOW_WRITE/);
     assert.match(out, /local\.conf/);
+    assert.match(out, /pkill -f '\[o\]pencode serve'/);
     assert.match(out, /reinicie/i);
     assert.match(out, /drive inteiro/i);
     assert.match(out, /;/);

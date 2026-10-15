@@ -24,7 +24,8 @@ const ALLOW_HINT = [
   "aceita formato Windows ou WSL (/mnt/c/Users/<voce>/Notas);",
   "varios diretorios separados por ';'; o diretorio precisa existir",
   "NAO aponte o drive inteiro (C:\\ ou /mnt/c): use apenas pastas de trabalho",
-  "reinicie o cerebro (./jarvis) para a nova env valer",
+  "o 'opencode serve' guarda a env antiga; para valer: pkill -f '[o]pencode serve'",
+  "e reinicie o cerebro (./jarvis)",
 ].join("\n");
 
 export const WinFsTools: Plugin = async ({ $ }) => ({
