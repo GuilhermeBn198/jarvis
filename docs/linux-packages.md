@@ -45,6 +45,27 @@ diagnóstico, imports, verificação de arquivos e remoção em container limpo,
 preservando o dado de usuário usado no teste. Atualização de versão e uso
 gráfico ainda precisam ser verificados antes de tratar o DEB como release.
 
+## Ubuntu 24.04
+
+A receita usa o mesmo controle Debian, mas compila o overlay e prepara os
+wheels no Ubuntu 24.04, com o ABI Python 3.12 dessa distribuição. O toolchain
+Rust oficial é fornecido separadamente; os binários do aplicativo são produzidos
+no Ubuntu. Build e instalação limpa ainda estão em validação.
+
+```sh
+docker build -f packaging/ubuntu/Dockerfile -t jarvis-linux-ubuntu:local .
+mkdir -p dist/ubuntu
+docker run --rm -v "$PWD/dist/ubuntu:/out" jarvis-linux-ubuntu:local
+sudo apt install ./dist/ubuntu/jarvis-assistant_0.1.0-1_amd64.deb
+jarvis --doctor
+jarvis-overlay
+```
+
+O runner ARM64 produz `_arm64.deb`. A CI constrói cada arquitetura no alvo,
+instala com apt e verifica recursos, imports, integridade e remoção. O comando
+`scripts/build-package.sh --target ubuntu --arch x86_64` exige um ambiente
+Ubuntu com as dependências de build e Rust compatível já instalados.
+
 ## Estado da validação
 
 Foi gerado um pacote Arch x86_64 e verificado, após extração, o launcher, o

@@ -51,15 +51,15 @@
   },
   "ubuntu": {
     "distro": "ubuntu",
-    "version": null,
+    "version": "24.04",
     "libc": "glibc",
     "architectures": [
       "x86_64",
       "aarch64"
     ],
     "format": "deb",
-    "recipe": null,
-    "implementation": "pending",
+    "recipe": "packaging/ubuntu/Dockerfile",
+    "implementation": "recipe",
     "validation": "unverified",
     "validated_architectures": []
   },

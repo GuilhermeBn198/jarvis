@@ -11,7 +11,7 @@ export PYTHONDONTWRITEBYTECODE=1
 mkdir -p "$XDG_DATA_HOME/jarvis"
 printf '%s\n' preserved > "$XDG_DATA_HOME/jarvis/package-test"
 case "$task_family:$ID" in
-    debian:debian) apt-get update; apt-get install -y --no-install-recommends -o "Dpkg::Options::=--path-include=/usr/share/doc/*" "$task_package" ;;
+    debian:debian|ubuntu:ubuntu) apt-get update; apt-get install -y --no-install-recommends -o "Dpkg::Options::=--path-include=/usr/share/doc/*" "$task_package" ;;
     fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" ;;
     arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm; pacman -U --noconfirm "$task_package" ;;
     *) echo 'Familia e ambiente nao correspondem.' >&2; exit 2 ;;
@@ -44,7 +44,7 @@ ffmpeg -version >/dev/null
 ffplay -version >/dev/null
 pactl --version
 case "$task_family" in
-    debian)
+    debian|ubuntu)
         task_verify_status=0
         task_verify=$(dpkg -V jarvis-assistant) || task_verify_status=$?
         printf '%s\n' "$task_verify"

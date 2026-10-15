@@ -21,11 +21,15 @@ fi
 mkdir -p "$task_output"
 task_output=$(CDPATH= cd -P "$task_output" && pwd)
 case "$task_target" in
-    debian)
+    debian|ubuntu)
         . /etc/os-release
-        [ "$ID" = 'debian' ] || { echo 'Alvo debian exige ambiente Debian.' >&2; exit 2; }
+        case "$task_target:$ID" in
+            debian:debian|ubuntu:ubuntu) ;;
+            debian:*) echo 'Alvo debian exige ambiente Debian.' >&2; exit 2 ;;
+            ubuntu:*) echo 'Alvo ubuntu exige ambiente Ubuntu.' >&2; exit 2 ;;
+        esac
         command -v dpkg-buildpackage >/dev/null
-        task_build=$(mktemp -d "$task_output/.debian-build-XXXXXX")
+        task_build=$(mktemp -d "$task_output/.$task_target-build-XXXXXX")
         python3 "$task_root/scripts/source-archive.py" --output "$task_build/jarvis-0.1.0.tar.gz"
         tar -xzf "$task_build/jarvis-0.1.0.tar.gz" -C "$task_build"
         cd "$task_build/jarvis-0.1.0"

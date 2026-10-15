@@ -22,6 +22,8 @@ jobs:
         include:
           - {family: debian, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/debian/Dockerfile, image: 'debian:trixie', pattern: 'jarvis-assistant_*.deb'}
           - {family: debian, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/debian/Dockerfile, image: 'debian:trixie', pattern: 'jarvis-assistant_*.deb'}
+          - {family: ubuntu, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/ubuntu/Dockerfile, image: 'ubuntu:24.04', pattern: 'jarvis-assistant_*.deb'}
+          - {family: ubuntu, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/ubuntu/Dockerfile, image: 'ubuntu:24.04', pattern: 'jarvis-assistant_*.deb'}
           - {family: fedora, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.x86_64.rpm'}
           - {family: fedora, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.aarch64.rpm'}
           - {family: arch, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/arch/Dockerfile, image: 'archlinux:base', pattern: 'jarvis-assistant-*.pkg.tar.zst'}
