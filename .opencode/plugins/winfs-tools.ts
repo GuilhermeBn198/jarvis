@@ -1,12 +1,16 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
 import { encode } from "../act/ps.ts";
+import { extractCause } from "../lib/tool-error.ts";
 import {
-  buildReadScript,
   buildWriteScript,
   isAllowedWrite,
   normalizeWinPath,
   parseAllowlist,
+  readWindowsPath,
+  readWslPath,
+  routeRead,
+  toWindowsPath,
 } from "../act/winfs.ts";
 
 // Tools de leitura/escrita de arquivos do Windows (sub-projeto C). O cerebro
@@ -18,13 +22,23 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
   tool: {
     win_read: tool({
       description:
-        "Le um arquivo do Windows como texto (via /mnt/c). Aceita caminho WSL ou Windows. Sem abrir editor/terminal.",
+        "Le um arquivo como texto ou lista um diretorio (JSON-lines com nome/tipo/tamanho). Aceita caminho do WSL (/home/...) ou do Windows (/mnt/<drive>/... ou C:\\...). Sem abrir editor/terminal.",
       args: { path: tool.schema.string() },
       async execute(args) {
-        const p = normalizeWinPath(String(args.path ?? ""));
-        if (!p.startsWith("/mnt/")) return "apenas caminhos do Windows (/mnt/<drive>/...) sao aceitos";
-        const win = toWindowsPath(p);
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildReadScript(win))}`).text();
+        const bruto = String(args.path ?? "").trim();
+        const p = normalizeWinPath(bruto);
+        const rota = routeRead(bruto);
+        if (rota === "invalid") {
+          return "informe um caminho absoluto: WSL (/home/...) ou Windows (/mnt/c/... ou C:\\...)";
+        }
+        try {
+          if (rota === "wsl") return await readWslPath(bruto);
+          return await readWindowsPath(p, async (script) => {
+            return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(script)}`).text();
+          });
+        } catch (e) {
+          return `erro ao ler ${p}: ${extractCause(e)}`;
+        }
       },
     }),
     win_write: tool({
@@ -56,10 +70,3 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
     }),
   },
 });
-
-// /mnt/c/Users/me/a.txt -> C:\Users\me\a.txt (para o PowerShell).
-function toWindowsPath(p: string): string {
-  const m = p.match(/^\/mnt\/([a-z])\/(.*)$/);
-  if (!m) return p;
-  return `${m[1].toUpperCase()}:\\${m[2].replace(/\//g, "\\")}`;
-}
