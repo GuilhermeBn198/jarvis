@@ -2,11 +2,13 @@
 """Exercise installed GTK relaunches on an isolated X11 display and D-Bus."""
 import json
 import configparser
+import ctypes
 import os
 from pathlib import Path
 import select
 import shlex
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -36,11 +38,43 @@ def stop(process):
             process.wait(timeout=5)
 
 
+def reap_helpers(excluded):
+    deadline = time.monotonic() + 5
+    while True:
+        children = []
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit() or int(entry.name) in excluded:
+                continue
+            try:
+                fields = (entry / "stat").read_text().rsplit(")", 1)[1].split()
+                if int(fields[1]) == os.getpid():
+                    children.append(int(entry.name))
+            except (OSError, ValueError, IndexError):
+                continue
+        if not children:
+            return
+        for pid in children:
+            try:
+                # Unreaped direct children cannot have their PIDs reused.
+                if os.waitpid(pid, os.WNOHANG)[0] == 0 and time.monotonic() >= deadline:
+                    os.kill(pid, signal.SIGKILL)
+            except (ChildProcessError, ProcessLookupError):
+                continue
+        assert time.monotonic() < deadline + 5, "test helpers did not terminate"
+        time.sleep(0.05)
+
+
 def inside_session(binary):
     import gi
     gi.require_version("Atspi", "2.0")
     from gi.repository import Atspi
     Atspi.set_timeout(500, 1000)
+    # Own orphaned WebKit helpers as well, so cache writers are reaped before
+    # removing the private data tree. This affects this fixture process only.
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.prctl.argtypes = [ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong]
+    if libc.prctl(36, 1, 0, 0, 0) != 0:  # PR_SET_CHILD_SUBREAPER
+        raise OSError(ctypes.get_errno(), "cannot own test helper processes")
 
     def owned_frame(pid):
         desktop = Atspi.get_desktop(0)
@@ -101,11 +135,15 @@ def inside_session(binary):
                 wait_for(lambda: button(first.pid, name), [first, registry])
                 assert button(first.pid, name).get_action_iface().do_action(0)
             assert first.wait(timeout=10) == 0, "primary did not close cleanly"
-            print("PASS: second launch exits and installed primary window survives")
         finally:
-            for process in reversed(processes):
+            for process in reversed(processes[1:]):
                 stop(process)
+            reap_helpers({registry.pid} if processes else set())
+            if processes:
+                stop(processes[0])
+            reap_helpers(set())
             reservation.close()
+    print("PASS: second launch exits and installed primary window survives")
 
 
 def main():
