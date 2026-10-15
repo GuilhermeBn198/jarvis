@@ -6,5 +6,7 @@ RUN zypper --non-interactive install --no-recommends \
     zypper clean --all
 WORKDIR /build/jarvis
 COPY . .
-RUN scripts/build-package.sh --target suse --output /dist
+# The source archiver inventories Git files; Docker intentionally omits .git.
+# A local empty index preserves its allowlist and ignore rules for this context.
+RUN git init --quiet && scripts/build-package.sh --target suse --output /dist
 CMD ["sh", "-c", "cp /dist/*.rpm /out/"]
