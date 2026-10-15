@@ -1,0 +1,16 @@
+Source: jarvis-assistant
+Section: utils
+Priority: optional
+Maintainer: Jarvis contributors <noreply@github.com>
+Build-Depends: debhelper-compat (= 13), pkg-config, libgtk-3-dev, libwebkit2gtk-4.1-dev, python3, python3-pip, python3-venv, nodejs, npm
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/GuilhermeBn198/jarvis
+
+Package: jarvis-assistant
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${jarvis:Python}, ffmpeg, python3-gi, gir1.2-atspi-2.0, libx11-6, libpulse0, libstdc++6, libgcc-s1, libgomp1, xdotool, wl-clipboard, xclip, alsa-utils
+Description: Assistente pessoal por voz com overlay Linux
+ Conversa por voz, captura de tela autorizada e controle do desktop.
+ Inclui runtime Python privado e agente; modelos e autenticacao pertencem
+ ao usuario e sao configurados apos a instalacao.

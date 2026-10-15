@@ -22,8 +22,11 @@ def diagnose(config) -> dict:
                     'reason': 'servidor/device precisa de teste de gravacao'},
         'tts': {'available': dependencies['piper']['available'] and model_exists and dependencies['ffplay']['available'],
                 'backend': config.tts_backend, 'reason': 'presenca de dependencias; sintese nao verificada'},
-        'desktop': {'available': False, 'backend': session,
-                    'reason': 'sem sessao grafica' if session == 'headless' else 'backend Linux ainda nao implementado' if config.platform == 'linux' else 'backend Windows exige validacao de runtime'},
+        'desktop': {'available': False, 'backend': session, 'validation': 'not_run',
+                    'reason': 'sem sessao grafica' if session == 'headless' else
+                    ('portal Wayland exige autorizacao; controle e AT-SPI precisam de teste na sessao' if session == 'wayland' else
+                     'controle X11 exige xdotool; controle e AT-SPI precisam de teste na sessao')
+                    if config.platform == 'linux' else 'backend Windows exige validacao de runtime'},
     }
     if config.tts_backend == 'sapi':
         found = shutil.which(config.powershell_exe)

@@ -25,3 +25,23 @@ def test_doctor_cli_prints_json_without_starting_agent():
     proc = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / 'loop.py'), '--doctor'], capture_output=True, text=True, timeout=10)
     assert proc.returncode == 0
     assert json.loads(proc.stdout)['platform'] == 'linux'
+
+
+def test_doctor_wayland_reports_authorization_requirement(monkeypatch):
+    monkeypatch.setenv('WAYLAND_DISPLAY','wayland-test')
+    cfg=load_config({'JARVIS_PLATFORM':'linux'})
+    desktop=diagnose(cfg)['capabilities']['desktop']
+    assert desktop['backend']=='wayland'
+    assert desktop['validation']=='not_run'
+    assert 'autorizacao' in desktop['reason']
+    assert 'nao implementado' not in desktop['reason']
+
+
+def test_doctor_x11_reports_runtime_requirement(monkeypatch):
+    monkeypatch.delenv('WAYLAND_DISPLAY',raising=False)
+    monkeypatch.setenv('XDG_SESSION_TYPE','x11')
+    monkeypatch.setenv('DISPLAY',':99')
+    cfg=load_config({'JARVIS_PLATFORM':'linux'})
+    desktop=diagnose(cfg)['capabilities']['desktop']
+    assert desktop['validation']=='not_run'
+    assert 'xdotool' in desktop['reason']

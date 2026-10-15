@@ -1,0 +1,30 @@
+# Local release build: run scripts/build-package.sh --target arch --arch x86_64.
+pkgname=jarvis-assistant
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Assistente pessoal por voz com overlay e controle nativo Linux'
+arch=('x86_64' 'aarch64')
+url='https://github.com/GuilhermeBn198/jarvis'
+license=('Apache-2.0' 'MIT' 'GPL-3.0-or-later')
+depends=('python' 'gtk3' 'webkit2gtk-4.1' 'ffmpeg' 'libpulse' 'libx11' 'xdotool' 'wl-clipboard' 'xclip' 'python-gobject' 'at-spi2-core' 'alsa-utils')
+makedepends=('rust' 'cargo' 'pkgconf' 'python-pip' 'nodejs' 'npm')
+options=('!strip' '!debug')
+
+build() {
+    : "${JARVIS_SOURCE_ROOT:?use scripts/build-package.sh or set JARVIS_SOURCE_ROOT}"
+    cd "$JARVIS_SOURCE_ROOT"
+    cargo build --release --locked --manifest-path gui/src-tauri/Cargo.toml
+    npm ci --prefix .opencode --ignore-scripts
+    python scripts/fetch-opencode.py --target "$CARCH-glibc" --output "$srcdir/opencode"
+}
+
+package() {
+    cd "$JARVIS_SOURCE_ROOT"
+    python scripts/prepare-package.py --prefix /usr --destdir "$pkgdir" \
+        --overlay "$JARVIS_SOURCE_ROOT/gui/src-tauri/target/release/jarvis-overlay" \
+        --python /usr/bin/python3 --opencode "$srcdir/opencode"
+    # Private compiled Python wheels must match the target Python minor ABI.
+    local task_major task_minor
+    read -r task_major task_minor < <(python -c 'import sys;print(sys.version_info.major,sys.version_info.minor)')
+    depends+=("python>=${task_major}.${task_minor}" "python<${task_major}.$((task_minor+1))")
+}

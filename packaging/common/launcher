@@ -33,6 +33,13 @@ if [ "${1:-}" = "--mcp" ]; then
 else
     task_entry=$task_app_root/voice/loop.py
 fi
+PATH="$task_app_root/bin:$PATH"
+export PATH
+if [ -d "$task_app_root/python" ]; then
+    PYTHONPATH="$task_app_root/python${PYTHONPATH:+:$PYTHONPATH}"
+    PATH="$task_app_root/python/bin:$PATH"
+    export PYTHONPATH PATH
+fi
 case "$task_python" in */*) PATH="$(dirname "$task_python"):$PATH"; export PATH ;; esac
 cd "$task_app_root"
 exec "$task_python" "$task_entry" "$@"

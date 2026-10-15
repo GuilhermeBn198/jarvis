@@ -39,3 +39,12 @@ def test_backend_platform_validation():
         load_config({'JARVIS_PLATFORM': 'linux', 'AUDIO_BACKEND': 'dshow'})
     assert load_config({'JARVIS_PLATFORM': 'wsl'}).audio_backend == 'dshow'
     assert load_config({'JARVIS_PLATFORM': 'linux', 'AUDIO_BACKEND': 'alsa'}).audio_backend == 'alsa'
+
+
+def test_native_agent_resolves_packaged_path_before_legacy_default(tmp_path):
+    executable=tmp_path/'opencode'
+    executable.write_text('#!/bin/sh\nexit 0\n');executable.chmod(0o755)
+    cfg=load_config({'JARVIS_PLATFORM':'linux','PATH':str(tmp_path)})
+    assert cfg.opencode_bin==str(executable)
+    cfg=load_config({'JARVIS_PLATFORM':'linux','PATH':str(tmp_path),'OPENCODE_BIN':'/custom/opencode'})
+    assert cfg.opencode_bin=='/custom/opencode'

@@ -1,4 +1,5 @@
 import os
+import shutil
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -238,7 +239,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         triggers_override = triggers_user
     triggers_override = triggers_override or None
     return Config(
-        opencode_bin=e.get("OPENCODE_BIN", DEFAULT_OPENCODE_BIN),
+        opencode_bin=e.get("OPENCODE_BIN", (shutil.which("opencode", path=e.get("PATH")) or DEFAULT_OPENCODE_BIN) if linux else DEFAULT_OPENCODE_BIN),
         timeout_s=timeout_s,
         project_root=e.get("JARVIS_PROJECT_ROOT", DEFAULT_PROJECT_ROOT),
         platform=selected_platform,

@@ -31,3 +31,19 @@ def test_destdir_stage_keeps_target_prefix(tmp_path):
     assert (stage/'usr/bin/jarvis').is_symlink()
     assert (stage/'usr/bin/jarvis-overlay').is_file()
     assert (stage/'usr/lib/jarvis/mcp_servers/win_context/server.py').is_file()
+
+
+def test_packaged_python_directory_is_used_after_relocation(tmp_path):
+    import shutil,os
+    prefix=tmp_path/'build-prefix'
+    binary=tmp_path/'overlay';binary.write_text('#!/bin/sh\nexit 0\n');binary.chmod(0o755)
+    subprocess.run(['python3',str(ROOT/'scripts/stage-linux.py'),'--prefix',str(prefix),'--overlay',str(binary)],check=True,capture_output=True,text=True)
+    python_directory=prefix/'lib/jarvis/python';python_directory.mkdir()
+    (python_directory/'sitecustomize.py').write_text("from pathlib import Path\nPath(__file__).parent.parent.joinpath('runtime-used').write_text('yes')\n")
+    relocated=tmp_path/'installed elsewhere ação'
+    shutil.move(prefix,relocated)
+    env=dict(os.environ);env.pop('JARVIS_PROJECT_ROOT',None);env.pop('JARVIS_PYTHON',None)
+    result=subprocess.run([str(relocated/'bin/jarvis'),'--doctor'],env=env,cwd=tmp_path,capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
+    assert (relocated/'lib/jarvis/runtime-used').read_text()=='yes'
+    assert json.loads(result.stdout)['project_root']==str(relocated/'lib/jarvis')

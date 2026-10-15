@@ -1,0 +1,15 @@
+.git
+.worktrees
+.superpowers
+**/.venv
+**/node_modules
+**/target
+**/__pycache__
+**/.pytest_cache
+dist
+.env
+.env.*
+local.conf
+*.log
+jarvis-config.json
+settings.json

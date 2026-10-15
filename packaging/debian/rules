@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+include /usr/share/dpkg/architecture.mk
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release --locked --manifest-path gui/src-tauri/Cargo.toml
+	npm ci --prefix .opencode --ignore-scripts
+	python3 scripts/fetch-opencode.py --target $(if $(filter arm64,$(DEB_HOST_ARCH)),aarch64,x86_64)-glibc --output debian/opencode
+
+override_dh_auto_install:
+	python3 scripts/prepare-package.py --prefix /usr --destdir debian/jarvis-assistant --overlay gui/src-tauri/target/release/jarvis-overlay --python /usr/bin/python3 --opencode debian/opencode
+	python3 -c 'import sys; v=sys.version_info; print("jarvis:Python=python3 (>= %d.%d), python3 (<< %d.%d)" % (v.major,v.minor,v.major,v.minor+1))' >> debian/jarvis-assistant.substvars
+
+override_dh_shlibdeps:
+	dh_shlibdeps -Xusr/lib/jarvis/python
+
+override_dh_auto_clean:
+	rm -f debian/opencode
