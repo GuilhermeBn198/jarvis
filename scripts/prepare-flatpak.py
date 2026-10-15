@@ -27,7 +27,7 @@ def write_manifest(source: Path,output: Path):
     output.write_text(json.dumps(manifest,indent=2)+'\n')
 
 
-def prepare(output: Path,resume: bool=False):
+def prepare(output: Path,resume: bool=False,wheelhouse: Path | None=None):
     output=output.resolve();output.mkdir(parents=True,exist_ok=True)
     source=output/'source'
     if source.exists() and not resume:raise ValueError('preparacao existente; use --resume para continuar sem sobrescrever o checkout')
@@ -42,10 +42,17 @@ def prepare(output: Path,resume: bool=False):
     (source/'.cargo/config.toml').write_text('[source.crates-io]\nreplace-with="vendored-sources"\n[source.vendored-sources]\ndirectory="cargo-vendor"\n')
     subprocess.run(['npm','ci','--prefix',str(source/'.opencode'),'--ignore-scripts'],check=True)
     wheels=source/'wheels';wheels.mkdir(exist_ok=True)
-    subprocess.run(['flatpak','run','--share=network','--filesystem='+str(source),'--command=python3','org.gnome.Sdk//49',
+    permissions=['--filesystem='+str(source)]
+    offline=[]
+    if wheelhouse:
+        wheelhouse=wheelhouse.resolve()
+        if not wheelhouse.is_dir():raise ValueError('wheelhouse ausente')
+        permissions.append('--filesystem='+str(wheelhouse)+':ro')
+        offline=['--no-index','--find-links',str(wheelhouse)]
+    subprocess.run(['flatpak','run','--share=network',*permissions,'--command=python3','org.gnome.Sdk//49',
                     '-m','pip','download','--only-binary=:all:','--dest',str(wheels),
                     '-r',str(source/'voice/requirements-linux.txt'),'-r',str(source/'mcp_servers/win_context/requirements.txt'),
-                    '-r',str(source/'mcp_servers/delegate_local/requirements.txt')],check=True)
+                    '-r',str(source/'mcp_servers/delegate_local/requirements.txt'),*offline],check=True)
     arch=platform.machine()
     if arch not in ('x86_64','aarch64'):raise ValueError('arquitetura nao suportada')
     subprocess.run(['python3',str(ROOT/'scripts/fetch-opencode.py'),'--target',arch+'-glibc','--output',str(source/'flatpak-agent')],check=True)
@@ -64,6 +71,7 @@ if __name__=='__main__':
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--manifest-only',type=Path)
     parser.add_argument('--resume',action='store_true')
+    parser.add_argument('--wheelhouse',type=Path)
     args=parser.parse_args()
     if args.manifest_only:write_manifest(args.manifest_only,args.output/'com.jarvis.overlay.json')
-    else:prepare(args.output,args.resume)
+    else:prepare(args.output,args.resume,args.wheelhouse)

@@ -5,6 +5,7 @@ import time
 import urllib.request
 
 from config import Config, serve_port
+from platforms import xdg_path
 
 HEALTH_TIMEOUT_S = 2
 POLL_INTERVAL_S = 0.5
@@ -23,23 +24,29 @@ def is_healthy(server_url: str, timeout: int = HEALTH_TIMEOUT_S) -> bool:
 
 def _spawn(cfg: Config) -> bool:
     port = serve_port(cfg.server_url)
-    log_path = os.environ.get("SERVE_LOG", DEFAULT_LOG_PATH)
+    default_log = str(xdg_path("state", os.environ) / "serve.log") if cfg.platform == "linux" else DEFAULT_LOG_PATH
+    log_path = os.environ.get("SERVE_LOG", default_log)
     sink = subprocess.DEVNULL
     try:
         d = os.path.dirname(log_path)
         if d:
-            os.makedirs(d, exist_ok=True)
-        sink = open(log_path, "ab")
+            os.makedirs(d, mode=0o700, exist_ok=True)
+        if cfg.platform == "linux":
+            flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+            sink = os.fdopen(os.open(log_path, flags, 0o600), "ab")
+        else:
+            sink = open(log_path, "ab")
     except OSError:
         sink = subprocess.DEVNULL
     try:
+        supervised = cfg.platform == "linux" and os.environ.get("JARVIS_REQUIRE_GUI") == "1"
         subprocess.Popen(
             [cfg.opencode_bin, "serve", "--port", str(port)],
             stdin=subprocess.DEVNULL,
             stdout=sink,
             stderr=sink,
             cwd=cfg.project_root,
-            start_new_session=True,
+            start_new_session=not supervised,
         )
         return True
     except OSError:

@@ -21,7 +21,7 @@ BuildRequires:  python3 python3-pip python3-rpm-macros
 BuildRequires:  nodejs npm
 Requires:       python(abi) = %{python3_version}
 Requires:       gtk3 webkit2gtk4.1 ffmpeg-free pulseaudio-libs pulseaudio-utils libX11
-Requires:       python3-gobject at-spi2-core alsa-utils xdotool wl-clipboard xclip
+Requires:       python3-gobject gobject-introspection at-spi2-core alsa-utils xdotool wl-clipboard xclip
 Requires:       libstdc++ libgcc libgomp
 
 %description

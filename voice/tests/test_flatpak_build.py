@@ -105,3 +105,20 @@ def test_prebuilt_agent_is_not_rewritten_during_debug_extraction():
     options=module.get('build-options',{})
     assert options.get('no-debuginfo') is True
     assert options.get('strip') is False
+
+
+def test_preparation_accepts_verified_offline_wheelhouse(tmp_path,monkeypatch):
+    import pytest
+    spec=importlib.util.spec_from_file_location('prepare_flatpak_offline',ROOT/'scripts/prepare-flatpak.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    (tmp_path/'source').mkdir()
+    wheelhouse=tmp_path/'cached wheels';wheelhouse.mkdir()
+    calls=[]
+    class StopBeforeDownload(Exception):pass
+    def run(argv,**kwargs):
+        if argv[0]=='flatpak':calls.append(argv);raise StopBeforeDownload()
+    monkeypatch.setattr(module.subprocess,'run',run)
+    with pytest.raises(StopBeforeDownload):module.prepare(tmp_path,resume=True,wheelhouse=wheelhouse)
+    assert '--no-index' in calls[0]
+    assert calls[0][calls[0].index('--find-links')+1]==str(wheelhouse.resolve())
+    assert '--filesystem='+str(wheelhouse.resolve())+':ro' in calls[0]
