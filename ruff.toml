@@ -1,0 +1,13 @@
+# Config unica do ruff para todo o repo (lint + format dos .py).
+# Rode via ./scripts/lint.sh (o TS do .opencode fica com o Biome).
+target-version = "py310"
+line-length = 100
+
+# O ruff tambem formata code blocks Python dentro de .md (planos/docs):
+# docs nao entram no lint/format.
+extend-exclude = ["**/*.md"]
+
+[lint]
+select = ["E", "F", "I", "UP", "B"]
+# Ha strings longas (PowerShell/comandos do Windows) que estouram 100 colunas.
+ignore = ["E501"]

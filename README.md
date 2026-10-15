@@ -363,6 +363,8 @@ cd ..
 node --test '.opencode/**/*.test.ts'   # SafetyGate + tools act_*
 ```
 
+**Qualidade de código (lint/formatação):** `./scripts/lint.sh` roda ruff (Python) + Biome (TS/JSON do `.opencode`) de uma vez; `--fix` aplica correções e formatação. Setup uma vez: `voice/.venv/bin/pip install -r requirements-dev.txt` e `(cd .opencode && npm ci)`.
+
 ---
 
 ## Documentação

@@ -33,6 +33,26 @@ Externos contribuem por PR; quem tem acesso de escrita também passa por PR.
 4. Descreva o que mudou, por quê e como reproduzir/testar.
 5. Espere a revisão do dono (`CODEOWNERS`). PRs que não seguem esta política podem ser fechados sem merge.
 
+## Lint e formatação
+
+Um comando único roda o lint + formatação do repo inteiro (Python com **ruff**;
+TS/JSON do `.opencode` com **Biome**):
+
+```bash
+./scripts/lint.sh          # verifica tudo (não altera arquivos)
+./scripts/lint.sh --fix    # aplica correções e formatação
+```
+
+Setup das ferramentas:
+
+```bash
+voice/.venv/bin/pip install -r requirements-dev.txt   # ruff (raiz do repo)
+(cd .opencode && npm ci)                              # Biome (devDependency)
+```
+
+As regras ficam em `ruff.toml` (raiz) e `.opencode/biome.json`. Rode `--fix`
+antes de abrir o PR para deixar qualquer mudança no padrão.
+
 ## CI
 
 Todo PR e todo push na `main` rodam esses 4 conjuntos de teste em
