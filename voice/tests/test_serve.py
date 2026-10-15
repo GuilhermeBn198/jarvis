@@ -184,3 +184,39 @@ def test_linux_server_log_uses_private_xdg_state(monkeypatch,tmp_path):
     assert path.is_file()
     assert stat.S_IMODE(path.stat().st_mode)==0o600
     assert not (tmp_path/'legacy').exists()
+
+
+def test_linux_default_wait_accepts_cold_server_after_twenty_seconds(monkeypatch):
+    from dataclasses import replace
+    now = [0.0]
+    monkeypatch.setattr(serve, '_spawn', lambda cfg: True)
+    monkeypatch.setattr(serve.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(serve.time, 'sleep', lambda seconds: now.__setitem__(0, now[0] + seconds))
+    monkeypatch.setattr(serve, 'is_healthy', lambda url: now[0] >= 21)
+    assert serve.ensure_server(replace(CFG, platform='linux')) is True
+    assert now[0] == 21
+
+
+def test_linux_cold_start_still_has_a_bounded_deadline(monkeypatch):
+    from dataclasses import replace
+    now = [0.0]
+    monkeypatch.setattr(serve, '_spawn', lambda cfg: True)
+    monkeypatch.setattr(serve.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(serve.time, 'sleep', lambda seconds: now.__setitem__(0, now[0] + seconds))
+    monkeypatch.setattr(serve, 'is_healthy', lambda url: False)
+    assert serve.ensure_server(replace(CFG, platform='linux')) is False
+    assert now[0] == 60
+
+
+def test_explicit_startup_deadline_and_wsl_default_are_preserved(monkeypatch):
+    from dataclasses import replace
+    now = [0.0]
+    monkeypatch.setattr(serve, '_spawn', lambda cfg: True)
+    monkeypatch.setattr(serve.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(serve.time, 'sleep', lambda seconds: now.__setitem__(0, now[0] + seconds))
+    monkeypatch.setattr(serve, 'is_healthy', lambda url: now[0] >= 21)
+    assert serve.ensure_server(replace(CFG, platform='wsl')) is False
+    assert now[0] == 20
+    now[0] = 0
+    assert serve.ensure_server(replace(CFG, platform='linux'), wait_s=3) is False
+    assert now[0] == 3

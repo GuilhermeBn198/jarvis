@@ -128,7 +128,11 @@ a acessibilidade estava funcional.
 
 A receita própria está em `packaging/rpm/suse`. Ela usa WebKit 4.1 fornecido por
 `webkitgtk3-devel`, o Python padrão da distribuição e os pacotes GI/AT-SPI do
-openSUSE. O RPM ainda está em build; não há validação instalada concluída.
+openSUSE. A CI 38797751372 validou builds e instalação em x86_64 e ARM64,
+imports de voz/MCP/AT-SPI, integridade RPM, remoção e preservação de dados.
+O teste gráfico isolado confirmou que uma segunda abertura mantém a janela
+original e que a saída pela interface funciona. Voz e portais em desktops
+openSUSE completos ainda precisam de validação.
 
 ```sh
 docker build -f packaging/rpm/suse/Dockerfile -t jarvis-linux-suse:local .
@@ -141,6 +145,6 @@ O artefato ARM64 termina em `.aarch64.rpm`. No próprio Tumbleweed com as
 ferramentas de build, use `scripts/build-package.sh --target suse --arch x86_64`.
 Essa receita ainda não foi validada no openSUSE Leap.
 
-Os próximos testes dos pacotes incluem uma sessão X11 e D-Bus privadas,
+Os testes dos pacotes incluem uma sessão X11 e D-Bus privadas,
 abertura repetida do overlay e fechamento pela interface. Esse teste usa um
 launcher sem cérebro; não substitui voz, áudio e portais em GNOME/KDE reais.

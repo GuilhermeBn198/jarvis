@@ -77,8 +77,11 @@
     "format": "rpm",
     "recipe": "packaging/rpm/suse/jarvis-assistant.spec",
     "implementation": "recipe",
-    "validation": "unverified",
-    "validated_architectures": []
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64",
+      "aarch64"
+    ]
   },
   "rhel": {
     "distro": "rhel",

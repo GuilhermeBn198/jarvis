@@ -56,7 +56,11 @@ def _spawn(cfg: Config) -> bool:
             sink.close()
 
 
-def ensure_server(config: Config, wait_s: float = 20) -> bool:
+def ensure_server(config: Config, wait_s: float | None = None) -> bool:
+    # Cold CPU-only Linux starts can exceed 20s (including Flatpak on a busy
+    # host). Keep the wait bounded and preserve shorter caller deadlines.
+    if wait_s is None:
+        wait_s = 60 if config.platform == "linux" else 20
     try:
         if is_healthy(config.server_url):
             return True

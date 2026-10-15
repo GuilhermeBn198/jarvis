@@ -221,3 +221,27 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
   passaram. Os pacotes com a correção de reabertura ainda precisam repetir a CI.
 - A receita Tumbleweed foi adicionada com dependências consultadas no repositório
   nativo; o build local está em andamento. Não há RPM instalado validado ainda.
+
+- CI 38797751372: openSUSE Tumbleweed x86_64 e ARM64 passaram por build,
+  instalação RPM, imports privados de voz/MCP/AT-SPI, reabertura X11 isolada,
+  integridade RPM, remoção e preservação do dado sentinela. Os testes de sessão
+  completa GNOME/KDE, áudio e portais continuam pendentes.
+- O contexto Docker agora exclui `docs/research` e os schemas gerados do Tauri.
+  Um contexto temporário com arquivos sentinela reproduziu a inclusão com as
+  regras antigas e passou com as novas, preservando os arquivos de empacotamento.
+
+- O bundle x86_64 da CI 38793467680 teve SHA256 conferido e foi instalado
+  (commit Flatpak `233f5a21e9fc2ff4672f736e57e9fdd8128d299a8c1c46cf1145b57713aea3fd`).
+  A sessão local tem o serviço de documentos ativo, mas a montagem `doc` ausente:
+  a abertura padrão falhou antes do aplicativo (`bwrap: Can't find source path`).
+  Usando apenas `--no-documents-portal` para isolar essa falha do ambiente, o
+  teste do bundle confirmou mudo, pausa, configurações com fechar visível em
+  `y=19`, reinício com troca do cérebro/retomada HTTP e saída com HTTP parado.
+  Não foi usado override de `WEBKIT_FORCE_SANDBOX`; o manifesto fornece esse
+  valor. Isso não conclui o teste da abertura padrão nem dos portais.
+- O OpenCode instalado ficou saudável em 20,8 segundos no teste isolado.
+  O prazo anterior de 20 segundos podia provocar fallback prematuro para `run`.
+  O Linux agora espera até 60 segundos por padrão; outros sistemas mantêm 20 e
+  prazos explícitos continuam valendo. Testes com relógio controlado reproduziram
+  a falha aos 21 segundos e passaram com a mudança (16 testes de servidor).
+- Após o ajuste do prazo: suíte no venv de voz com dependências instaladas: 430 passaram, 1 teste de desktop opt-in ignorado. A integração do código de servidor atualizado com o agente do Flatpak instalado também passou (12,73 segundos).
