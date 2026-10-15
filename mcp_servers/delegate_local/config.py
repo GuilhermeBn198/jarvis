@@ -25,7 +25,7 @@ def load_config(env: dict | None = None) -> Config:
         raise ValueError("OLLAMA_HOST nao definido (ex.: 172.19.32.1:11434)")
     for scheme in ("http://", "https://"):
         if host.startswith(scheme):
-            host = host[len(scheme):]
+            host = host[len(scheme) :]
     host = host.rstrip("/")
     return Config(
         ollama_host=host,

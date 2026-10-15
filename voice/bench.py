@@ -2,6 +2,7 @@
 
 Rode com: python bench.py
 """
+
 import dataclasses
 import os
 import time
@@ -106,26 +107,18 @@ def main() -> None:
         if ensure_server(cfg):
             vision_serve = _measure(
                 "visao serve",
-                lambda: ServeClient(cfg).see(
-                    VISION_TASK, png, model_id=cfg.vision_model
-                ),
+                lambda: ServeClient(cfg).see(VISION_TASK, png, model_id=cfg.vision_model),
             )
         else:
             print("[bench] serve indisponivel; pulando visao via serve")
-        vision_run = _measure(
-            "visao run", lambda: _see_via_run(cfg, VISION_TASK, png)
-        )
+        vision_run = _measure("visao run", lambda: _see_via_run(cfg, VISION_TASK, png))
 
     sapi_cfg = dataclasses.replace(cfg, tts_backend="sapi")
     piper_cfg = dataclasses.replace(cfg, tts_backend="piper")
     sapi_out = _sibling_wav(cfg.piper_out_wav, "bench_sapi.wav")
     piper_out = _sibling_wav(cfg.piper_out_wav, "bench_piper.wav")
-    tts_sapi = _measure(
-        "tts sapi", lambda: speak(TTS_TEXT, to_file=sapi_out, config=sapi_cfg)
-    )
-    tts_piper = _measure(
-        "tts piper", lambda: speak(TTS_TEXT, to_file=piper_out, config=piper_cfg)
-    )
+    tts_sapi = _measure("tts sapi", lambda: speak(TTS_TEXT, to_file=sapi_out, config=sapi_cfg))
+    tts_piper = _measure("tts piper", lambda: speak(TTS_TEXT, to_file=piper_out, config=piper_cfg))
 
     print("# Bench de latencia - Jarvis voice")
     print()

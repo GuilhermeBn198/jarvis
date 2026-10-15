@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { SeeTools } from "./see-tools.ts";
 
 // Fake do Bun shell na forma do runtime: `$` aguardado devolve BunShellOutput,
@@ -26,7 +26,9 @@ test("plugin exporta apenas a factory", () => {
 });
 
 test("see_screen devolve a descricao do launcher no sucesso", async () => {
-  const out = await (await seeTool(shellReturning("uma tela com um editor"))).execute({ prompt: "o que ha na tela?" });
+  const out = await (await seeTool(shellReturning("uma tela com um editor"))).execute({
+    prompt: "o que ha na tela?",
+  });
   assert.equal(out, "uma tela com um editor");
 });
 

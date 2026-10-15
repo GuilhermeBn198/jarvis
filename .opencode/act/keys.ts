@@ -81,7 +81,9 @@ function isCharKey(vk: number): boolean {
 function parseChord(token: string): KeyChord {
   const parts = token.split("+").map((p) => p.trim().toLowerCase());
   if (parts.some((p) => p === "")) {
-    throw new Error(`tecla invalida "${token}": operador '+' sem tecla. Use um modificador seguido de uma tecla — ${EXAMPLES}`);
+    throw new Error(
+      `tecla invalida "${token}": operador '+' sem tecla. Use um modificador seguido de uma tecla — ${EXAMPLES}`,
+    );
   }
   const mods = new Set<ModName>();
   let key: { vk: number; extended: boolean } | null = null;
@@ -100,7 +102,9 @@ function parseChord(token: string): KeyChord {
     keyName = part;
   }
   if (!key) {
-    throw new Error(`"${token}" e so modificador: falta a tecla. Use ctrl+c, alt+f4, win+r — ${EXAMPLES}`);
+    throw new Error(
+      `"${token}" e so modificador: falta a tecla. Use ctrl+c, alt+f4, win+r — ${EXAMPLES}`,
+    );
   }
   return {
     mods: MOD_ORDER.filter((m) => mods.has(m)),
@@ -151,5 +155,7 @@ export function buildForegroundKeyScript(keys: string): string {
 
 // Payload do background: acordes validados serializados para o script.
 export function encodeKeyChords(chords: KeyChord[]): string {
-  return JSON.stringify(chords.map((c) => ({ mods: c.mods, vk: c.vk, ex: c.extended, onlyDown: c.onlyDown })));
+  return JSON.stringify(
+    chords.map((c) => ({ mods: c.mods, vk: c.vk, ex: c.extended, onlyDown: c.onlyDown })),
+  );
 }

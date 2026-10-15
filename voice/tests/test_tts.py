@@ -1,51 +1,70 @@
 import dataclasses
 import subprocess
+
 import pytest
 from config import Config
-from tts import speak, speak_piper, VoiceError
+from tts import VoiceError, speak, speak_piper
 
-CFG = Config(opencode_bin="/x/opencode", timeout_s=10, powershell_exe="pwsh.exe",
-             tts_backend="sapi")
+CFG = Config(
+    opencode_bin="/x/opencode", timeout_s=10, powershell_exe="pwsh.exe", tts_backend="sapi"
+)
 PIPER_CFG = Config(
-    opencode_bin="/x/opencode", timeout_s=10, tts_backend="piper",
-    piper_exe="/x/piper", piper_model="/x/m.onnx", ffplay_exe="/x/ffplay",
+    opencode_bin="/x/opencode",
+    timeout_s=10,
+    tts_backend="piper",
+    piper_exe="/x/piper",
+    piper_model="/x/m.onnx",
+    ffplay_exe="/x/ffplay",
     piper_out_wav=r"C:\out.wav",
 )
 
+
 def test_speak_runs_powershell_encodedcommand(monkeypatch):
     seen = {}
+
     def fake_run(cmd, **kw):
         seen["cmd"] = cmd
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
     monkeypatch.setattr(subprocess, "run", fake_run)
     speak("ola mundo", config=CFG)
     assert seen["cmd"][0] == "pwsh.exe"
     assert "-EncodedCommand" in seen["cmd"]
 
+
 def test_empty_text_is_noop(monkeypatch):
     called = {"n": 0}
-    monkeypatch.setattr(subprocess, "run", lambda *a, **k: called.__setitem__("n", called["n"]+1))
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: called.__setitem__("n", called["n"] + 1))
     speak("   ", config=CFG)
     assert called["n"] == 0
 
+
 def test_failure_raises(monkeypatch):
-    monkeypatch.setattr(subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(subprocess.SubprocessError("x")))
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(subprocess.SubprocessError("x"))
+    )
     with pytest.raises(VoiceError):
         speak("x", config=CFG)
+
 
 def test_nonzero_returncode_raises(monkeypatch):
     def fake_run(cmd, **kw):
         return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="err")
+
     monkeypatch.setattr(subprocess, "run", fake_run)
     with pytest.raises(VoiceError):
         speak("x", config=CFG)
 
+
 def test_to_file_uses_setoutputtowavefile(monkeypatch):
     import base64
+
     seen = {}
+
     def fake_run(cmd, **kw):
         seen["cmd"] = cmd
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
     monkeypatch.setattr(subprocess, "run", fake_run)
     speak("ola", to_file="/tmp/out.wav", config=CFG)
     encoded = seen["cmd"][seen["cmd"].index("-EncodedCommand") + 1]
@@ -99,15 +118,15 @@ def test_speak_piper_plays_via_ffplay_when_no_to_file(monkeypatch):
 
 def test_speak_piper_empty_is_noop(monkeypatch):
     called = {"n": 0}
-    monkeypatch.setattr(subprocess, "run",
-                        lambda *a, **k: called.__setitem__("n", called["n"] + 1))
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: called.__setitem__("n", called["n"] + 1))
     speak_piper("   ", config=PIPER_CFG)
     assert called["n"] == 0
 
 
 def test_speak_piper_failure_raises(monkeypatch):
-    monkeypatch.setattr(subprocess, "run",
-                        lambda *a, **k: (_ for _ in ()).throw(subprocess.SubprocessError("x")))
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(subprocess.SubprocessError("x"))
+    )
     with pytest.raises(VoiceError):
         speak_piper("x", to_file=r"D:\b.wav", config=PIPER_CFG)
 
@@ -121,7 +140,8 @@ def test_speak_piper_translates_wsl_paths(monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     cfg = dataclasses.replace(
-        PIPER_CFG, piper_model="/mnt/c/Users/b/m.onnx",
+        PIPER_CFG,
+        piper_model="/mnt/c/Users/b/m.onnx",
         piper_out_wav=r"C:\out.wav",
     )
     speak_piper("texto", to_file="/mnt/c/Users/b/bench.wav", config=cfg)
@@ -131,17 +151,20 @@ def test_speak_piper_translates_wsl_paths(monkeypatch):
 
 def test_speak_dispatches_to_piper(monkeypatch):
     seen = {}
-    monkeypatch.setattr("tts.speak_piper",
-                        lambda text, to_file=None, config=None: seen.update(text=text))
+    monkeypatch.setattr(
+        "tts.speak_piper", lambda text, to_file=None, config=None: seen.update(text=text)
+    )
     speak("usa piper", config=PIPER_CFG)
     assert seen["text"] == "usa piper"
 
 
 def test_speak_dispatches_to_sapi_when_configured(monkeypatch):
     seen = {}
+
     def fake_run(cmd, **kw):
         seen["cmd"] = cmd
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
     monkeypatch.setattr(subprocess, "run", fake_run)
     speak("usa sapi", config=CFG)
     assert seen["cmd"][0] == "pwsh.exe"
@@ -149,7 +172,8 @@ def test_speak_dispatches_to_sapi_when_configured(monkeypatch):
 
 def test_speak_dispatches_to_piper_by_default(monkeypatch):
     seen = {}
-    monkeypatch.setattr("tts.speak_piper",
-                        lambda text, to_file=None, config=None: seen.update(text=text))
+    monkeypatch.setattr(
+        "tts.speak_piper", lambda text, to_file=None, config=None: seen.update(text=text)
+    )
     speak("usa piper", config=Config(opencode_bin="/x/opencode", timeout_s=10))
     assert seen["text"] == "usa piper"

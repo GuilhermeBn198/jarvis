@@ -55,7 +55,9 @@ def test_schema_sets_format(monkeypatch):
 
 
 def test_schema_but_non_json_raises(monkeypatch):
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: _Resp(payload={"message": {"content": "nao json"}}))
+    monkeypatch.setattr(
+        httpx, "post", lambda *a, **k: _Resp(payload={"message": {"content": "nao json"}})
+    )
     with pytest.raises(OllamaError):
         _client().chat("x", {"type": "object"})
 

@@ -10,9 +10,8 @@ Reusa a descoberta de janelas do `win_list` (mesmo P/Invoke).
 
 from __future__ import annotations
 
-from mcp.server.mcpserver import MCPServer
-
 import context as ctx
+from mcp.server.mcpserver import MCPServer
 from tool_error import format_tool_error
 
 mcp = MCPServer("win_context")
@@ -55,7 +54,9 @@ def win_tree_text(hwnd: int, max_nodes: int = 200) -> str:
 @mcp.tool()
 def win_clipboard_text() -> str:
     """Devolve o texto atual do clipboard do Windows (vazio se não houver)."""
-    script = "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::GetText()"
+    script = (
+        "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::GetText()"
+    )
     try:
         return ctx._default_run(script).strip() or "(clipboard vazio)"
     except ctx.WinContextError as exc:
@@ -93,7 +94,7 @@ def win_processes_text(name_filter: str = "") -> str:
     script = (
         "Get-Process | Where-Object { $_.MainWindowTitle -or '$FILT' -eq '' } | "
         "Where-Object { $_.ProcessName -like '*$FILT*' } | "
-        "ForEach-Object { \"$($_.ProcessName)`t$($_.Id)`t$($_.MainWindowTitle)\" }"
+        'ForEach-Object { "$($_.ProcessName)`t$($_.Id)`t$($_.MainWindowTitle)" }'
     ).replace("$FILT", filt)
     try:
         out = ctx._default_run(script).strip()

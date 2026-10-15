@@ -1,17 +1,20 @@
 import os
 
-from config import load_config, DEFAULT_TIMEOUT_S
 import pytest
+from config import DEFAULT_TIMEOUT_S, load_config
+
 
 def test_defaults():
     cfg = load_config({})
     assert cfg.opencode_bin.endswith("/.opencode/bin/opencode")
     assert cfg.timeout_s == DEFAULT_TIMEOUT_S
 
+
 def test_env_overrides():
     cfg = load_config({"OPENCODE_BIN": "/x/opencode", "VOICE_TIMEOUT_S": "42"})
     assert cfg.opencode_bin == "/x/opencode"
     assert cfg.timeout_s == 42
+
 
 def test_invalid_timeout_raises():
     with pytest.raises(ValueError) as exc:
@@ -58,15 +61,17 @@ def test_backend_defaults():
 
 
 def test_backend_env_overrides():
-    cfg = load_config({
-        "AGENT_BACKEND": "run",
-        "TTS_BACKEND": "sapi",
-        "OPENCODE_SERVER_URL": "http://127.0.0.1:9999",
-        "PIPER_EXE": "/x/piper",
-        "PIPER_MODEL": "/x/model.onnx",
-        "FFPLAY_EXE": "/x/ffplay",
-        "PIPER_OUT_WAV": r"D:\out.wav",
-    })
+    cfg = load_config(
+        {
+            "AGENT_BACKEND": "run",
+            "TTS_BACKEND": "sapi",
+            "OPENCODE_SERVER_URL": "http://127.0.0.1:9999",
+            "PIPER_EXE": "/x/piper",
+            "PIPER_MODEL": "/x/model.onnx",
+            "FFPLAY_EXE": "/x/ffplay",
+            "PIPER_OUT_WAV": r"D:\out.wav",
+        }
+    )
     assert cfg.agent_backend == "run"
     assert cfg.tts_backend == "sapi"
     assert cfg.server_url == "http://127.0.0.1:9999"
@@ -116,6 +121,7 @@ def test_voice_input_wins_over_legacy_ptt():
 
 def test_serve_port_helper():
     from config import serve_port
+
     assert serve_port("http://127.0.0.1:4096") == 4096
     assert serve_port("http://127.0.0.1:9999") == 9999
     assert serve_port("http://127.0.0.1") == 4096
@@ -124,6 +130,7 @@ def test_serve_port_helper():
 
 def test_state_defaults():
     from config import DEFAULT_STATE_PORT
+
     cfg = load_config({})
     assert cfg.state_port == DEFAULT_STATE_PORT == 8765
     assert cfg.state_require_gui is False
@@ -146,8 +153,8 @@ def test_state_port_invalid_raises():
 
 
 def test_stream_defaults():
-    from config import (DEFAULT_STREAM_IDLE_MS, DEFAULT_STREAM_MIN_CHARS,
-                        DEFAULT_STREAM_TTS)
+    from config import DEFAULT_STREAM_IDLE_MS, DEFAULT_STREAM_MIN_CHARS, DEFAULT_STREAM_TTS
+
     cfg = load_config({})
     assert cfg.stream_tts is True
     assert cfg.stream_idle_ms == DEFAULT_STREAM_IDLE_MS == 400
@@ -156,11 +163,13 @@ def test_stream_defaults():
 
 
 def test_stream_env_overrides():
-    cfg = load_config({
-        "VOICE_STREAM_TTS": "0",
-        "VOICE_STREAM_IDLE_MS": "250",
-        "VOICE_STREAM_MIN_CHARS": "30",
-    })
+    cfg = load_config(
+        {
+            "VOICE_STREAM_TTS": "0",
+            "VOICE_STREAM_IDLE_MS": "250",
+            "VOICE_STREAM_MIN_CHARS": "30",
+        }
+    )
     assert cfg.stream_tts is False
     assert cfg.stream_idle_ms == 250
     assert cfg.stream_min_chars == 30
@@ -184,12 +193,14 @@ def test_capture_tunables_defaults():
 
 
 def test_capture_tunables_env_overrides():
-    cfg = load_config({
-        "VOICE_NOISE_DB": "-45",
-        "VOICE_SILENCE_S": "1.5",
-        "VOICE_WAIT_S": "10",
-        "VOICE_MAX_S": "20",
-    })
+    cfg = load_config(
+        {
+            "VOICE_NOISE_DB": "-45",
+            "VOICE_SILENCE_S": "1.5",
+            "VOICE_WAIT_S": "10",
+            "VOICE_MAX_S": "20",
+        }
+    )
     assert cfg.noise_db == -45
     assert cfg.silence_s == 1.5
     assert cfg.wait_s == 10.0
@@ -206,8 +217,9 @@ def test_capture_tunables_invalid_raise():
 
 
 def test_settings_supply_capture_defaults():
-    cfg = load_config({}, settings={"noise_db": -25, "silence_s": 1.5,
-                                    "min_speech_s": 0.6, "stream_tts": False})
+    cfg = load_config(
+        {}, settings={"noise_db": -25, "silence_s": 1.5, "min_speech_s": 0.6, "stream_tts": False}
+    )
     assert cfg.noise_db == -25
     assert cfg.silence_s == 1.5
     assert cfg.min_speech_s == 0.6
@@ -215,8 +227,10 @@ def test_settings_supply_capture_defaults():
 
 
 def test_env_overrides_settings():
-    cfg = load_config({"VOICE_NOISE_DB": "-40", "VOICE_STREAM_TTS": "1"},
-                      settings={"noise_db": -25, "stream_tts": False})
+    cfg = load_config(
+        {"VOICE_NOISE_DB": "-40", "VOICE_STREAM_TTS": "1"},
+        settings={"noise_db": -25, "stream_tts": False},
+    )
     assert cfg.noise_db == -40
     assert cfg.stream_tts is True
 
@@ -224,11 +238,14 @@ def test_env_overrides_settings():
 def test_settings_supply_mic_device():
     cfg = load_config({}, settings={"mic_device": "Mic X"})
     assert cfg.mic_device == "Mic X"
-    assert load_config({"MIC_DEVICE": "Mic Y"}, settings={"mic_device": "Mic X"}).mic_device == "Mic Y"
+    assert (
+        load_config({"MIC_DEVICE": "Mic Y"}, settings={"mic_device": "Mic X"}).mic_device == "Mic Y"
+    )
 
 
 def test_heartbeat_env():
     from config import DEFAULT_HEARTBEAT
+
     assert load_config({}).heartbeat is DEFAULT_HEARTBEAT is False
     for truthy in ("1", "true", "yes", "on"):
         assert load_config({"JARVIS_HEARTBEAT": truthy}).heartbeat is True
@@ -237,6 +254,7 @@ def test_heartbeat_env():
 
 def test_project_root_defaults_to_repo_root():
     from config import DEFAULT_PROJECT_ROOT
+
     cfg = load_config({})
     assert cfg.project_root == DEFAULT_PROJECT_ROOT
     # portavel a worktrees: o default e a raiz do checkout que contem voice/
@@ -253,14 +271,17 @@ def test_settings_supply_input_mode_and_tts():
 
 
 def test_env_overrides_settings_choices():
-    cfg = load_config({"VOICE_INPUT": "fixed", "TTS_BACKEND": "piper"},
-                      settings={"input_mode": "ptt", "tts_backend": "sapi"})
+    cfg = load_config(
+        {"VOICE_INPUT": "fixed", "TTS_BACKEND": "piper"},
+        settings={"input_mode": "ptt", "tts_backend": "sapi"},
+    )
     assert cfg.input_mode == "fixed"
     assert cfg.tts_backend == "piper"
 
 
 def test_activation_default_e_env():
     from config import DEFAULT_ACTIVATION
+
     assert load_config({}).activation == DEFAULT_ACTIVATION
     assert load_config({"VOICE_ACTIVATION": "WAKE"}).activation == "wake"
 

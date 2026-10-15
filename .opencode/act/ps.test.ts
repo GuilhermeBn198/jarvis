@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { buildPsScript, buildWindowsArgs, encode } from "./ps.ts";
 
 // Vetores de referencia gerados com o `subprocess.list2cmdline` do CPython
@@ -21,8 +21,8 @@ test("list2cmdline: barra invertida final dobra quando o arg e cotado", () => {
 
 test("list2cmdline: aspas internas sao escapadas com barra", () => {
   assert.equal(buildWindowsArgs(['a" b']), '"a\\" b"');
-  assert.equal(buildWindowsArgs(["a\\\"b"]), "a\\\\\\\"b");
-  assert.equal(buildWindowsArgs(["a\\\" b"]), '"a\\\\\\" b"');
+  assert.equal(buildWindowsArgs(['a\\"b']), 'a\\\\\\"b');
+  assert.equal(buildWindowsArgs(['a\\" b']), '"a\\\\\\" b"');
   assert.equal(buildWindowsArgs(['--x="a b"']), '"--x=\\"a b\\""');
 });
 
@@ -38,7 +38,10 @@ test("list2cmdline: vazio vira par de aspas; lista vazia vira string vazia", () 
 
 test("list2cmdline: multiplos args separados por um espaco", () => {
   assert.equal(buildWindowsArgs(["a", "b c"]), 'a "b c"');
-  assert.equal(buildWindowsArgs(["C:\\Program Files\\app", "--flag"]), '"C:\\Program Files\\app" --flag');
+  assert.equal(
+    buildWindowsArgs(["C:\\Program Files\\app", "--flag"]),
+    '"C:\\Program Files\\app" --flag',
+  );
   assert.equal(buildWindowsArgs(["C:\\path\\", "next"]), "C:\\path\\ next");
 });
 
@@ -53,7 +56,10 @@ test("act_open sem args mantem o script antigo (regressao)", () => {
 });
 
 test("act_open escapa apostrofo do target no caminho antigo", () => {
-  assert.equal(buildPsScript("act_open", { target: "C:\\it's\\a.bat" }), "Start-Process 'C:\\it''s\\a.bat'");
+  assert.equal(
+    buildPsScript("act_open", { target: "C:\\it's\\a.bat" }),
+    "Start-Process 'C:\\it''s\\a.bat'",
+  );
 });
 
 test("act_open com args usa FilePath + ArgumentList com a linha cotada", () => {

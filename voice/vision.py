@@ -12,19 +12,24 @@ def capture(out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
     win_path = _wsl_to_windows(out_path) if out_path else cfg.vision_png
     cmd = [
-        cfg.ffmpeg_exe, "-y", "-f", "gdigrab", "-i", "desktop",
-        "-frames:v", "1", "-update", "1", win_path,
+        cfg.ffmpeg_exe,
+        "-y",
+        "-f",
+        "gdigrab",
+        "-i",
+        "desktop",
+        "-frames:v",
+        "1",
+        "-update",
+        "1",
+        win_path,
     ]
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace", timeout=60
-        )
+        proc = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=60)
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha ao capturar a tela (FFMPEG_EXE): {exc}") from exc
     if proc.returncode != 0:
-        raise VoiceError(
-            f"ffmpeg gdigrab falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}"
-        )
+        raise VoiceError(f"ffmpeg gdigrab falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
     return _windows_to_wsl(win_path)
 
 
@@ -34,13 +39,24 @@ def _see_via_run(cfg: Config, prompt: str, png_path: str) -> str:
     NAO usar --pure e usar o agente TOOL-LESS `vision`.
     """
     cmd = [
-        cfg.opencode_bin, "run", "--agent", "vision", prompt,
-        "-m", cfg.vision_model, "-f", png_path,
+        cfg.opencode_bin,
+        "run",
+        "--agent",
+        "vision",
+        prompt,
+        "-m",
+        cfg.vision_model,
+        "-f",
+        png_path,
     ]
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace",
-            timeout=cfg.timeout_s, cwd=cfg.project_root,
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=cfg.timeout_s,
+            cwd=cfg.project_root,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha na consulta de visao: {exc}") from exc
@@ -80,6 +96,5 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
         if serve_error is None:
             raise
         raise VoiceError(
-            f"visao falhou em todas as etapas: "
-            f"serve ({serve_error}); run ({run_error})"
+            f"visao falhou em todas as etapas: serve ({serve_error}); run ({run_error})"
         ) from run_error

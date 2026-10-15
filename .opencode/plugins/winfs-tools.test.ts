@@ -1,7 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WinFsTools } from "./winfs-tools.ts";
+import { test } from "node:test";
 import { isAllowedWrite, normalizeWinPath } from "../act/winfs.ts";
+import { WinFsTools } from "./winfs-tools.ts";
 
 test("plugin exporta apenas a factory", () => {
   assert.equal(typeof WinFsTools, "function");

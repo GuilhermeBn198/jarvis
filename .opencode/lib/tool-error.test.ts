@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { extractCause, formatToolError, redact, truncate } from "./tool-error.ts";
 
 // truncate: corta em ~400 chars com sufixo explicito.
@@ -18,10 +18,7 @@ test("redact: sk-", () => {
 });
 
 test("redact: ghp_", () => {
-  assert.equal(
-    redact("token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!"),
-    "token [REDACTADO]!",
-  );
+  assert.equal(redact("token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!"), "token [REDACTADO]!");
 });
 
 test("redact: AKIA", () => {
@@ -132,7 +129,12 @@ test("formatToolError: aceita causa como string", () => {
 
 test("formatToolError: detail e action tambem sao redigidos", () => {
   const msg = formatToolError(
-    { tool: "act", step: "run", detail: "curl -H 'Bearer abc.def' ", action: "use sk-abc123456789?" },
+    {
+      tool: "act",
+      step: "run",
+      detail: "curl -H 'Bearer abc.def' ",
+      action: "use sk-abc123456789?",
+    },
     new Error("x"),
   );
   assert.ok(!msg.includes("Bearer abc.def"));

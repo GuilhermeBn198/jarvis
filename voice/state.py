@@ -54,10 +54,13 @@ def _make_handler(hub):
                     from capture import list_audio_devices
                     from config import load_config
 
-                    self._json(200, {
-                        "devices": list_audio_devices(),
-                        "current": load_config().mic_device,
-                    })
+                    self._json(
+                        200,
+                        {
+                            "devices": list_audio_devices(),
+                            "current": load_config().mic_device,
+                        },
+                    )
                 except Exception as exc:  # fronteira HTTP: nunca derruba o hub
                     self._json(200, {"devices": [], "current": None, "error": str(exc)})
             elif self.path == "/events":
@@ -87,14 +90,12 @@ def _make_handler(hub):
             q = hub.subscribe()
             last_ping = time.monotonic()
             try:
-                self.wfile.write(
-                    f"data: {json.dumps(hub.snapshot())}\n\n".encode("utf-8")
-                )
+                self.wfile.write(f"data: {json.dumps(hub.snapshot())}\n\n".encode())
                 self.wfile.flush()
                 while True:
                     try:
                         payload = q.get(timeout=SSE_POLL_S)
-                        self.wfile.write(f"data: {payload}\n\n".encode("utf-8"))
+                        self.wfile.write(f"data: {payload}\n\n".encode())
                         self.wfile.flush()
                     except queue.Empty:
                         if self._peer_closed():

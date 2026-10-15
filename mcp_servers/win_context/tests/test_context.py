@@ -1,17 +1,18 @@
 import base64
 import re
 
-import pytest
-
 import context as ctx
+import pytest
 
 
 def test_parse_windows_extrai_jsonlines_e_ignora_ruido():
-    out = "\n".join([
-        "PS> lixo",
-        '{"hwnd":111,"title":"Notepad","process":"notepad"}',
-        '{"hwnd":222,"title":"Chrome","process":"chrome"}',
-    ])
+    out = "\n".join(
+        [
+            "PS> lixo",
+            '{"hwnd":111,"title":"Notepad","process":"notepad"}',
+            '{"hwnd":222,"title":"Chrome","process":"chrome"}',
+        ]
+    )
     wins = ctx.parse_windows(out)
     assert [(w.hwnd, w.title, w.process) for w in wins] == [
         (111, "Notepad", "notepad"),
@@ -76,7 +77,9 @@ class _Proc:
 
 
 def test_default_run_falha_preserva_exit_code_e_stderr(monkeypatch):
-    monkeypatch.setattr(ctx.subprocess, "run", lambda *a, **k: _Proc(1, stderr="Erro: janela nao encontrada\n"))
+    monkeypatch.setattr(
+        ctx.subprocess, "run", lambda *a, **k: _Proc(1, stderr="Erro: janela nao encontrada\n")
+    )
     with pytest.raises(ctx.WinContextError) as ei:
         ctx._default_run("script")
     assert ei.value.exit_code == 1

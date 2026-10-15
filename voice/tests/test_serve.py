@@ -1,5 +1,3 @@
-import json
-
 import serve
 from config import Config
 
@@ -34,14 +32,13 @@ def test_is_healthy_true(monkeypatch):
 def test_is_healthy_false_on_error(monkeypatch):
     def boom(url, timeout=None):
         raise OSError("recusado")
+
     monkeypatch.setattr(serve.urllib.request, "urlopen", boom)
     assert serve.is_healthy("http://127.0.0.1:4096") is False
 
 
 def test_is_healthy_false_on_bad_json(monkeypatch):
-    monkeypatch.setattr(
-        serve.urllib.request, "urlopen", lambda url, timeout=None: _Resp(b"nope")
-    )
+    monkeypatch.setattr(serve.urllib.request, "urlopen", lambda url, timeout=None: _Resp(b"nope"))
     assert serve.is_healthy("http://127.0.0.1:4096") is False
 
 
@@ -50,6 +47,7 @@ def test_ensure_server_already_healthy(monkeypatch):
 
     def boom(*a, **k):
         raise AssertionError("nao deve subir o servidor")
+
     monkeypatch.setattr(serve.subprocess, "Popen", boom)
     assert serve.ensure_server(CFG) is True
 
@@ -61,6 +59,7 @@ def test_ensure_server_spawns_and_waits(monkeypatch, tmp_path):
     def health(url, timeout=2):
         calls["n"] += 1
         return calls["n"] >= 2
+
     monkeypatch.setattr(serve, "is_healthy", health)
     spawned = {}
 
@@ -68,6 +67,7 @@ def test_ensure_server_spawns_and_waits(monkeypatch, tmp_path):
         spawned["cmd"] = cmd
         spawned["kw"] = kw
         return object()
+
     monkeypatch.setattr(serve.subprocess, "Popen", popen)
     assert serve.ensure_server(CFG, wait_s=5) is True
     assert spawned["cmd"] == ["/x/opencode", "serve", "--port", "4096"]
@@ -81,6 +81,7 @@ def test_ensure_server_spawn_failure_returns_false(monkeypatch, tmp_path):
 
     def popen(*a, **k):
         raise OSError("binario ausente")
+
     monkeypatch.setattr(serve.subprocess, "Popen", popen)
     assert serve.ensure_server(CFG, wait_s=1) is False
 
@@ -101,7 +102,8 @@ def test_spawn_handles_log_without_directory(monkeypatch, tmp_path):
     monkeypatch.setattr(serve, "is_healthy", lambda url, timeout=2: False)
     spawned = {}
     monkeypatch.setattr(
-        serve.subprocess, "Popen",
+        serve.subprocess,
+        "Popen",
         lambda cmd, **kw: spawned.update(kw) or object(),
     )
     monkeypatch.setattr(serve.time, "sleep", lambda s: None)
@@ -114,14 +116,15 @@ def test_spawn_handles_log_without_directory(monkeypatch, tmp_path):
 def test_ensure_server_never_raises(monkeypatch):
     def boom(url, timeout=2):
         raise RuntimeError("kaboom")
+
     monkeypatch.setattr(serve, "is_healthy", boom)
     assert serve.ensure_server(CFG) is False
 
 
 def test_spawn_sets_project_root_cwd(monkeypatch):
     import serve as s
+
     seen = {}
-    monkeypatch.setattr(s.subprocess, "Popen",
-                        lambda cmd, **kw: seen.update(kw=kw) or object())
+    monkeypatch.setattr(s.subprocess, "Popen", lambda cmd, **kw: seen.update(kw=kw) or object())
     s._spawn(Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo"))
     assert seen["kw"]["cwd"] == "/repo"

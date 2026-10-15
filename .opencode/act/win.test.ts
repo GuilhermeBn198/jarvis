@@ -1,6 +1,13 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWinListScript, parseWinList, buildBackgroundTypeScript, buildBackgroundKeyScript, parseActResult, chooseActScript } from "./win.ts";
+import { test } from "node:test";
+import {
+  buildBackgroundKeyScript,
+  buildBackgroundTypeScript,
+  buildWinListScript,
+  chooseActScript,
+  parseActResult,
+  parseWinList,
+} from "./win.ts";
 
 test("win_list script usa EnumWindows e nao rouba foco", () => {
   const s = buildWinListScript();
@@ -136,7 +143,10 @@ test("background key mira o controle de edicao via UIA (I3), com fallback no top
 
 test("background key: char manda so keydown; tecla especial down+up", () => {
   const s = buildBackgroundKeyScript({ keys: "b enter", hwnd: 42 });
-  assert.match(s, /if \(\$c\.onlyDown\) \{ \[void\]\[W\.Win\]::PostMessageW\(\$h, 0x0100, \[IntPtr\]\$vk, \[IntPtr\]\$lpDown\) \}/);
+  assert.match(
+    s,
+    /if \(\$c\.onlyDown\) \{ \[void\]\[W\.Win\]::PostMessageW\(\$h, 0x0100, \[IntPtr\]\$vk, \[IntPtr\]\$lpDown\) \}/,
+  );
   assert.match(s, /"onlyDown":true/);
   assert.match(s, /"onlyDown":false/);
 });
@@ -169,7 +179,8 @@ test("background key escapa aspas simples em keys", () => {
 
 test("parseActResult le marcadores", () => {
   assert.deepEqual(parseActResult("ruido\nJARVIS_RESULT=confirmed|digitado"), {
-    status: "confirmed", detail: "digitado",
+    status: "confirmed",
+    detail: "digitado",
   });
   assert.equal(parseActResult("JARVIS_RESULT=unconfirmed|sem confirmacao").status, "unconfirmed");
   assert.equal(parseActResult("JARVIS_RESULT=ambiguous|[]").status, "ambiguous");
@@ -179,17 +190,26 @@ test("parseActResult le marcadores", () => {
 test("parseActResult le o codigo de razao e mantem o formato antigo (#28)", () => {
   // Formato novo: status|reason|detail.
   assert.deepEqual(parseActResult("JARVIS_RESULT=unconfirmed|set|sem confirmacao"), {
-    status: "unconfirmed", reason: "set", detail: "sem confirmacao",
+    status: "unconfirmed",
+    reason: "set",
+    detail: "sem confirmacao",
   });
   // Formato antigo (sem reason) continua parseavel: reason fica ausente.
   assert.deepEqual(parseActResult("JARVIS_RESULT=unconfirmed|sem confirmacao"), {
-    status: "unconfirmed", detail: "sem confirmacao",
+    status: "unconfirmed",
+    detail: "sem confirmacao",
   });
 });
 
 test("mode foreground explicito forca foreground mesmo com window", () => {
-  assert.equal(chooseActScript("act_type", { text: "oi", mode: "foreground", window: "Notepad" }), "");
-  assert.equal(chooseActScript("act_key", { keys: "ctrl+s", mode: "foreground", window: "Notepad" }), "");
+  assert.equal(
+    chooseActScript("act_type", { text: "oi", mode: "foreground", window: "Notepad" }),
+    "",
+  );
+  assert.equal(
+    chooseActScript("act_key", { keys: "ctrl+s", mode: "foreground", window: "Notepad" }),
+    "",
+  );
 });
 
 test("hwnd sozinho entra em background", () => {

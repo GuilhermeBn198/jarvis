@@ -9,7 +9,6 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 
 from agent_client import AgentError, RunClient, make_client, strip_opencode_noise
-from triggers import Target, load_registry, match as match_trigger, with_vision_trigger
 from capture import (
     QuitRequested,
     list_audio_devices,
@@ -23,16 +22,19 @@ from convlog import log_turn
 from sanitize import speechify
 from serve import ensure_server
 from state import StateHub
-from stt import transcribe
 from stream import SentenceChunker, Speaker
+from stt import transcribe
+from triggers import Target, load_registry, with_vision_trigger
+from triggers import match as match_trigger
 from tts import VoiceError, speak
 from vision import capture, see
 
 DEFAULT_TARGET = Target("agent", "chat")
 
 
-def gui_lost(require_gui: bool, subscribers: int, last_gui_ts: float,
-             now: float, timeout: float) -> bool:
+def gui_lost(
+    require_gui: bool, subscribers: int, last_gui_ts: float, now: float, timeout: float
+) -> bool:
     if not require_gui:
         return False
     if subscribers > 0:
@@ -150,8 +152,9 @@ def _stream_turn(client, text, cfg, hub, muted, t0, err) -> StreamResult:
     # cai no ask() bloqueante (nao ha re-pergunta indevida).
     answer = answer or raw_text or None
     streamed = failed is None and answer is not None
-    return StreamResult(answer, spoken, _first_audio(speaker, t0), streamed, failed,
-                        gen_done_s, voice_error)
+    return StreamResult(
+        answer, spoken, _first_audio(speaker, t0), streamed, failed, gen_done_s, voice_error
+    )
 
 
 def _measure_mic(cfg, hub, err) -> None:
@@ -212,8 +215,7 @@ class Heartbeat:
                     stage = self._stage
                 if idle >= self._watchdog_s:
                     self._write(
-                        f"[watchdog] sem progresso por {idle:.0f}s "
-                        f"(ultimo estagio: {stage})"
+                        f"[watchdog] sem progresso por {idle:.0f}s (ultimo estagio: {stage})"
                     )
 
         threading.Thread(target=_watchdog, daemon=True).start()
@@ -222,9 +224,16 @@ class Heartbeat:
         self._stop.set()
 
 
-def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = None,
-               config=None, err=None, max_consecutive_errors: int = 3,
-               hub=None, orphan_timeout_s: float = 15.0) -> None:
+def voice_loop(
+    client=None,
+    iterations: int = 0,
+    record_seconds: float | None = None,
+    config=None,
+    err=None,
+    max_consecutive_errors: int = 3,
+    hub=None,
+    orphan_timeout_s: float = 15.0,
+) -> None:
     cfg = config or load_config()
     err = err if err is not None else sys.stderr
     if client is None:
@@ -301,10 +310,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
         err.flush()
         consecutive_errors += 1
         if consecutive_errors >= max_consecutive_errors:
-            err.write(
-                f"[erro] voz: {consecutive_errors} falhas seguidas "
-                f"({exc}); abortando\n"
-            )
+            err.write(f"[erro] voz: {consecutive_errors} falhas seguidas ({exc}); abortando\n")
             err.flush()
             return True
         return False
@@ -360,7 +366,8 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             _hb("gravando")
             if cfg.input_mode == "auto":
                 wav = record_auto(
-                    config=cfg, should_stop=_should_stop,
+                    config=cfg,
+                    should_stop=_should_stop,
                     on_level=_level_sink(hub),
                 )
                 if not wav:
@@ -393,9 +400,7 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             consecutive_errors = 0
             _emit(hub, "idle")
             continue
-        registry = load_registry(
-            cfg.triggers_base, cfg.triggers_override, err=err
-        )
+        registry = load_registry(cfg.triggers_base, cfg.triggers_override, err=err)
         registry = with_vision_trigger(registry, cfg.vision_trigger)
         m = match_trigger(text, registry)
         if m is None and cfg.activation == "wake":
@@ -542,7 +547,7 @@ def is_vision_request(text: str, trigger: str) -> bool:
 def strip_trigger(text: str, trigger: str) -> str:
     t = (text or "").strip()
     if trigger and t.lower().startswith(trigger.lower()):
-        return t[len(trigger):].strip()
+        return t[len(trigger) :].strip()
     return t
 
 
@@ -615,10 +620,7 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
             cwd=cfg.project_root,
         )
     except FileNotFoundError:
-        err.write(
-            f"[erro] opencode nao encontrado em {cfg.opencode_bin} "
-            f"(defina OPENCODE_BIN)\n"
-        )
+        err.write(f"[erro] opencode nao encontrado em {cfg.opencode_bin} (defina OPENCODE_BIN)\n")
         err.flush()
         _emit(hub, "idle")
         return
@@ -641,10 +643,7 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     answer = strip_opencode_noise(proc.stdout or "").strip()
     error = None
     if proc.returncode != 0:
-        error = (
-            f"opencode falhou ({proc.returncode}): "
-            f"{(proc.stderr or '').strip()[:200]}"
-        )
+        error = f"opencode falhou ({proc.returncode}): {(proc.stderr or '').strip()[:200]}"
     if not answer:
         answer = f"erro: {error}" if error else "agente nao retornou resposta"
         error = error or "sem resposta"
@@ -697,9 +696,7 @@ def resolve_client(cfg, err=None):
     if cfg.agent_backend == "serve":
         if ensure_server(cfg):
             return make_client(cfg)
-        err.write(
-            "[aviso] serve indisponivel; usando backend 'run' (mais lento)\n"
-        )
+        err.write("[aviso] serve indisponivel; usando backend 'run' (mais lento)\n")
         err.flush()
         return RunClient(cfg)
     return make_client(cfg)
@@ -783,14 +780,11 @@ def main(argv=None) -> int:
                 return 1
             mean = lvl.get("mean_db")
             mx = lvl.get("max_db")
-            sys.stdout.write(
-                f"nivel do microfone: media={mean} dB, pico={mx} dB\n"
-            )
+            sys.stdout.write(f"nivel do microfone: media={mean} dB, pico={mx} dB\n")
             if mean is not None:
                 sug = int(round(mean + 8))
                 sys.stdout.write(
-                    f"VOICE_NOISE_DB sugerido: {sug} "
-                    f"(ruido de fundo ~{mean} dB + 8)\n"
+                    f"VOICE_NOISE_DB sugerido: {sug} (ruido de fundo ~{mean} dB + 8)\n"
                 )
             sys.stdout.flush()
             return 0
@@ -830,19 +824,16 @@ def main(argv=None) -> int:
                 sys.stderr.flush()
                 return 2
             cfg = load_config()
-            lock_fd, ok = acquire_singleton(
-                os.environ.get("JARVIS_VOICE_LOCK", DEFAULT_VOICE_LOCK)
-            )
+            lock_fd, ok = acquire_singleton(os.environ.get("JARVIS_VOICE_LOCK", DEFAULT_VOICE_LOCK))
             if not ok:
-                sys.stderr.write(
-                    "[erro] ja existe um loop de voz rodando (lock); saindo\n"
-                )
+                sys.stderr.write("[erro] ja existe um loop de voz rodando (lock); saindo\n")
                 sys.stderr.flush()
                 return 3
             hub = _start_hub(cfg, sys.stderr)
             try:
-                voice_loop(resolve_client(cfg, sys.stderr), iterations=iterations,
-                           config=cfg, hub=hub)
+                voice_loop(
+                    resolve_client(cfg, sys.stderr), iterations=iterations, config=cfg, hub=hub
+                )
             finally:
                 if hub is not None:
                     hub.stop()

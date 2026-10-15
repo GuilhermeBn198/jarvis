@@ -8,7 +8,7 @@
 // shell: falhas viram `JARVIS-ERR:<codigo>:<mensagem>` no stdout com exit 0
 // (PowerShell 5.1 poluiria stderr com CLIXML).
 
-import { readFile, readdir, stat, type Stats } from "node:fs/promises";
+import { readdir, readFile, type Stats, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 export type FsOp = "read" | "write" | "append";
@@ -87,8 +87,7 @@ export function toWindowsPath(p: string): string {
 // {"name","type","size"} (diretorio). Erros viram sentinela e exit 0.
 export function buildReadScript(path: string): string {
   const p = psQuote(path);
-  const err = (code: string, msg: string) =>
-    `Write-Output '${ERR_SENTINEL}${code}:${msg}'; exit 0`;
+  const err = (code: string, msg: string) => `Write-Output '${ERR_SENTINEL}${code}:${msg}'; exit 0`;
   return [
     "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
     "$ProgressPreference = 'SilentlyContinue'",

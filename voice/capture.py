@@ -25,47 +25,61 @@ class QuitRequested(Exception):
 def record(seconds: float, out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_OUT_WAV
-    cmd = [cfg.ffmpeg_exe, "-f", "dshow", "-i", f"audio={cfg.mic_device}",
-           "-t", str(seconds), "-y", _wsl_to_windows(out)]
+    cmd = [
+        cfg.ffmpeg_exe,
+        "-f",
+        "dshow",
+        "-i",
+        f"audio={cfg.mic_device}",
+        "-t",
+        str(seconds),
+        "-y",
+        _wsl_to_windows(out),
+    ]
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace",
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
             timeout=int(seconds) + 30,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
+        raise VoiceError(f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}") from exc
     if proc.returncode != 0:
         raise VoiceError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
     return _windows_to_wsl(out)
 
 
-def record_ptt(out_path: str | None = None, config: Config | None = None,
-               prompt_fn=input) -> str:
+def record_ptt(out_path: str | None = None, config: Config | None = None, prompt_fn=input) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_OUT_WAV
-    cmd = [cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i",
-           f"audio={cfg.mic_device}", _wsl_to_windows(out)]
+    cmd = [
+        cfg.ffmpeg_exe,
+        "-y",
+        "-f",
+        "dshow",
+        "-i",
+        f"audio={cfg.mic_device}",
+        _wsl_to_windows(out),
+    ]
     prompt_fn("Pressione Enter para comecar a gravar...")
     try:
         proc = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
+        raise VoiceError(f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}") from exc
     try:
         prompt_fn("Fale agora. Pressione Enter para parar...")
         proc.stdin.write(b"q")
         proc.stdin.flush()
         proc.wait(timeout=20)
     except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
+        raise VoiceError(f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}") from exc
     finally:
         if proc.poll() is None:
             proc.kill()
@@ -94,11 +108,18 @@ def _parse_silence_end(line: str) -> float | None:
         return None
 
 
-def record_auto(out_path: str | None = None, config: Config | None = None,
-                max_s: float | None = None, wait_s: float | None = None,
-                silence_s: float | None = None, noise_db: int | None = None,
-                min_speech_s: float | None = None, should_stop=None,
-                on_level=None, eps: float = EPS) -> str:
+def record_auto(
+    out_path: str | None = None,
+    config: Config | None = None,
+    max_s: float | None = None,
+    wait_s: float | None = None,
+    silence_s: float | None = None,
+    noise_db: int | None = None,
+    min_speech_s: float | None = None,
+    should_stop=None,
+    on_level=None,
+    eps: float = EPS,
+) -> str:
     cfg = config or load_config()
     out = out_path or DEFAULT_AUTO_OUT_WAV
     # Sem parametro explicito, usa os tunables do config (env VOICE_*).
@@ -113,22 +134,34 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
     if min_speech_s is None:
         min_speech_s = cfg.min_speech_s
     cmd = [
-        cfg.ffmpeg_exe, "-y", "-f", "dshow", "-i", f"audio={cfg.mic_device}",
-        "-af", f"silencedetect=noise={noise_db}dB:d={silence_s}",
-        "-t", str(max_s), "-nostats", "-loglevel", "info",
+        cfg.ffmpeg_exe,
+        "-y",
+        "-f",
+        "dshow",
+        "-i",
+        f"audio={cfg.mic_device}",
+        "-af",
+        f"silencedetect=noise={noise_db}dB:d={silence_s}",
+        "-t",
+        str(max_s),
+        "-nostats",
+        "-loglevel",
+        "info",
         _wsl_to_windows(out),
     ]
     try:
         proc = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE, text=True, bufsize=1,
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
+        raise VoiceError(f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}") from exc
 
-    lines: "queue.Queue[str | None]" = queue.Queue()
+    lines: queue.Queue[str | None] = queue.Queue()
 
     def _reader() -> None:
         try:
@@ -203,9 +236,7 @@ def record_auto(out_path: str | None = None, config: Config | None = None,
             if not heard_speech and time.monotonic() - t0 > wait_s:
                 break
     except (OSError, subprocess.SubprocessError) as exc:
-        raise VoiceError(
-            f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
-        ) from exc
+        raise VoiceError(f"falha ao gravar audio (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}") from exc
     finally:
         if proc.poll() is None:
             proc.kill()
@@ -244,12 +275,25 @@ def measure_level(seconds: float = 5, config: Config | None = None) -> dict:
     """
     cfg = config or load_config()
     cmd = [
-        cfg.ffmpeg_exe, "-f", "dshow", "-i", f"audio={cfg.mic_device}",
-        "-t", str(seconds), "-af", "volumedetect", "-f", "null", "-",
+        cfg.ffmpeg_exe,
+        "-f",
+        "dshow",
+        "-i",
+        f"audio={cfg.mic_device}",
+        "-t",
+        str(seconds),
+        "-af",
+        "volumedetect",
+        "-f",
+        "null",
+        "-",
     ]
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace",
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
             timeout=int(seconds) + 30,
         )
     except (OSError, subprocess.SubprocessError) as exc:
@@ -257,9 +301,7 @@ def measure_level(seconds: float = 5, config: Config | None = None) -> dict:
             f"falha ao medir o microfone (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
         ) from exc
     if proc.returncode != 0:
-        raise VoiceError(
-            f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}"
-        )
+        raise VoiceError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
     return parse_volume(proc.stderr)
 
 
@@ -291,12 +333,22 @@ def list_audio_devices(config: Config | None = None) -> list[str]:
     """
     cfg = config or load_config()
     cmd = [
-        cfg.ffmpeg_exe, "-hide_banner", "-list_devices", "true",
-        "-f", "dshow", "-i", "dummy",
+        cfg.ffmpeg_exe,
+        "-hide_banner",
+        "-list_devices",
+        "true",
+        "-f",
+        "dshow",
+        "-i",
+        "dummy",
     ]
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace", timeout=30,
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=30,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(

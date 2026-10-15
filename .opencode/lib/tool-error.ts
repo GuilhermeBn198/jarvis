@@ -27,6 +27,7 @@ const PADROES_SEGREDO: Array<[RegExp, string]> = [
 
 // Remove sequencias de escape ANSI (cores, cursor, etc.).
 function stripAnsi(text: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ESC (0x1b) inicia os codigos ANSI que queremos remover.
   return text.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "");
 }
 

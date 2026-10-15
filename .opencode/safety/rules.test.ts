@@ -1,7 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decide, isExecutionTarget } from "./rules.ts";
+import { test } from "node:test";
 import { actionFromToolCall } from "./hook.ts";
+import { decide, isExecutionTarget } from "./rules.ts";
 
 const d = (type: string, pattern?: string | string[]) => decide({ type, pattern });
 
@@ -190,7 +190,11 @@ test("act_type background benigno -> allow", () => {
   assert.equal(decide({ ...a }).status, "allow");
 });
 test("act_type background destrutivo -> deny (conteudo ainda avaliado)", () => {
-  const a = actionFromToolCall("act_type", { text: "format C:", mode: "background", window: "cmd" });
+  const a = actionFromToolCall("act_type", {
+    text: "format C:",
+    mode: "background",
+    window: "cmd",
+  });
   assert.equal(decide({ ...a }).status, "deny");
 });
 
@@ -239,11 +243,17 @@ test("win_write para credencial -> deny", () => {
 });
 
 test("clipboard_write benigno -> allow", () => {
-  const a = actionFromToolCall("win_context_win_clipboard_write", { text: "ola mundo", confirm: true });
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "ola mundo",
+    confirm: true,
+  });
   assert.equal(decide({ ...a }).status, "allow");
 });
 test("clipboard_write com rm -rf / -> deny", () => {
-  const a = actionFromToolCall("win_context_win_clipboard_write", { text: "rm -rf /", confirm: true });
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "rm -rf /",
+    confirm: true,
+  });
   assert.equal(decide({ ...a }).status, "deny");
 });
 test("clipboard_write de credencial -> deny", () => {
@@ -292,7 +302,15 @@ test("isExecutionTarget: interpretadores por nome, com .exe e caminho completo",
 });
 
 test("isExecutionTarget: extensoes de script (case-insensitive, com caminho)", () => {
-  const alvos = ["x.bat", "C:\\x\\y.CMD", "script.ps1", "a.vbs", "app.js", "C:\\a b\\run.BAT", "file:///C:/x.bat"];
+  const alvos = [
+    "x.bat",
+    "C:\\x\\y.CMD",
+    "script.ps1",
+    "a.vbs",
+    "app.js",
+    "C:\\a b\\run.BAT",
+    "file:///C:/x.bat",
+  ];
   for (const t of alvos) assert.equal(isExecutionTarget(t), true, t);
 });
 
@@ -317,7 +335,11 @@ test("isExecutionTarget: alvo com args embutidos no proprio target", () => {
 });
 
 test("act_open mapeia target + args no padrao (comando completo)", () => {
-  const a = actionFromToolCall("act_open", { target: "app.exe", args: ["--flag", "a b"], confirm: true });
+  const a = actionFromToolCall("act_open", {
+    target: "app.exe",
+    args: ["--flag", "a b"],
+    confirm: true,
+  });
   assert.equal(a.type, "act");
   assert.equal(a.pattern, "app.exe --flag a b");
 });
@@ -328,14 +350,22 @@ test("allow: act_open URL com args benignos -> allow", () => {
 });
 
 test("deny: act_open com padrao destrutivo dentro de args", () => {
-  const a = actionFromToolCall("act_open", { target: "cmd", args: ["/c", "del /s C:\\temp"], confirm: true });
+  const a = actionFromToolCall("act_open", {
+    target: "cmd",
+    args: ["/c", "del /s C:\\temp"],
+    confirm: true,
+  });
   assert.equal(decide({ ...a }).status, "deny");
 });
 
 test("deny: act_open com tokens perigosos separados em args", () => {
   // "del" e "/s" em elementos distintos: o join por espaco reconstroi a linha
   // para as regras line-scoped.
-  const a = actionFromToolCall("act_open", { target: "cmd", args: ["/c", "del", "/s", "C:\\temp"], confirm: true });
+  const a = actionFromToolCall("act_open", {
+    target: "cmd",
+    args: ["/c", "del", "/s", "C:\\temp"],
+    confirm: true,
+  });
   assert.equal(decide({ ...a }).status, "deny");
 });
 

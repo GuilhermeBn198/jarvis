@@ -1,12 +1,10 @@
 import http.client
 import json
-import queue
 import time
 import urllib.error
 import urllib.request
 
 import pytest
-
 from state import COMMANDS, STATES, StateHub
 
 
@@ -66,15 +64,15 @@ def test_push_command_rejects_unknown():
 
 def test_states_and_commands_are_exact():
     assert STATES == (
-        "idle", "listening", "transcribing", "thinking",
-        "speaking", "acting", "error",
+        "idle",
+        "listening",
+        "transcribing",
+        "thinking",
+        "speaking",
+        "acting",
+        "error",
     )
     assert COMMANDS == ("mute", "pause", "quit", "measure")
-
-
-import json
-import time
-import urllib.request
 
 
 def _read_line(resp):
@@ -99,9 +97,7 @@ def test_events_sends_snapshot_then_transitions():
     hub = StateHub(port=0)
     hub.start()
     try:
-        resp = urllib.request.urlopen(
-            f"http://127.0.0.1:{hub._port}/events", timeout=3
-        )
+        resp = urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/events", timeout=3)
         first = _read_line(resp)
         assert first.startswith("data: ")
         assert json.loads(first[6:])["state"] == "idle"
@@ -194,7 +190,7 @@ def test_post_command_enqueues_and_validates():
         )
         try:
             urllib.request.urlopen(bad, timeout=2)
-            assert False, "deveria dar 400"
+            assert False, "deveria dar 400"  # noqa: B011
         except urllib.error.HTTPError as exc:
             assert exc.code == 400
     finally:
@@ -237,9 +233,7 @@ def test_get_settings_endpoint_empty(tmp_path, monkeypatch):
     hub = StateHub(port=0)
     hub.start()
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{hub._port}/settings", timeout=2
-        ) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/settings", timeout=2) as r:
             assert json.loads(r.read()) == {}
     finally:
         hub.stop()
@@ -268,14 +262,10 @@ def test_mic_level_endpoint_pending_then_result():
     hub = StateHub(port=0)
     hub.start()
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{hub._port}/mic-level", timeout=2
-        ) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/mic-level", timeout=2) as r:
             assert json.loads(r.read()) == {"pending": True}
         hub.set_measure_result({"mean_db": -40.0, "ok": True})
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{hub._port}/mic-level", timeout=2
-        ) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/mic-level", timeout=2) as r:
             assert json.loads(r.read())["mean_db"] == -40.0
     finally:
         hub.stop()
@@ -283,13 +273,12 @@ def test_mic_level_endpoint_pending_then_result():
 
 def test_devices_endpoint_lists(monkeypatch):
     import capture
+
     monkeypatch.setattr(capture, "list_audio_devices", lambda config=None: ["Mic A", "Mic B"])
     hub = StateHub(port=0)
     hub.start()
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{hub._port}/devices", timeout=2
-        ) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/devices", timeout=2) as r:
             body = json.loads(r.read())
             assert body["devices"] == ["Mic A", "Mic B"]
             assert "current" in body
@@ -299,15 +288,15 @@ def test_devices_endpoint_lists(monkeypatch):
 
 def test_devices_endpoint_error_is_safe(monkeypatch):
     import capture
+
     def boom(config=None):
         raise RuntimeError("sem ffmpeg")
+
     monkeypatch.setattr(capture, "list_audio_devices", boom)
     hub = StateHub(port=0)
     hub.start()
     try:
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{hub._port}/devices", timeout=2
-        ) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/devices", timeout=2) as r:
             body = json.loads(r.read())
             assert body["devices"] == []
             assert "sem ffmpeg" in body["error"]

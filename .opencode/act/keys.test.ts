@@ -1,6 +1,6 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseKeys, buildForegroundKeyScript, encodeKeyChords, MOD_VK } from "./keys.ts";
+import { test } from "node:test";
+import { buildForegroundKeyScript, encodeKeyChords, MOD_VK, parseKeys } from "./keys.ts";
 
 test("parseKeys: teclas nomeadas viram VK (case-insensitive)", () => {
   const ks = parseKeys("ENTER esc Tab backspace DELETE space");

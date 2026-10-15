@@ -15,8 +15,7 @@ export const SeeTools: Plugin = async ({ $ }) => ({
         "Tira um print da tela do usuario e retorna a descricao do que aparece (modelo de visao). Use quando pedirem para 'olhar a tela' ou algo visual.",
       args: { prompt: tool.schema.string().optional() },
       async execute(args) {
-        const q =
-          (args.prompt ?? "").trim() || "Descreva o que esta na tela.";
+        const q = (args.prompt ?? "").trim() || "Descreva o que esta na tela.";
         const root = process.env.JARVIS_PROJECT_ROOT ?? process.cwd();
         const launcher = `${root}/jarvis`;
         // #26: falha do launcher nunca vaza crua — vira "erro em see_screen (etapa: ...)".
@@ -24,7 +23,14 @@ export const SeeTools: Plugin = async ({ $ }) => ({
         try {
           return (await $`${launcher} --see-text ${q}`).text();
         } catch (err) {
-          return formatToolError({ tool: "see_screen", step: "capturar e descrever tela", detail: "./jarvis --see-text" }, err);
+          return formatToolError(
+            {
+              tool: "see_screen",
+              step: "capturar e descrever tela",
+              detail: "./jarvis --see-text",
+            },
+            err,
+          );
         }
       },
     }),
