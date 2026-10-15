@@ -17,6 +17,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 3. **Texto antes de imagem**: peça `win_list`/`win_list_text` e `win_tree_text` antes de recorrer a `see_screen` — é mais barato e legível.
 4. **Resposta da própria tool**: `act_*` devolvem status explícito (`confirmed`, `unconfirmed`, `ambiguous`, `erro`); a mensagem costuma indicar a ação seguinte.
 5. **Plugins/tools do opencode**: `opencode run --print-logs "responda apenas: ok"` mostra falha de carregamento de plugin.
+6. **`act_type` com `JARVIS_ACT_DEBUG=1`** — log opt-in em stderr com os **argumentos brutos** recebidos pela tool (antes de montar o script), para decidir se um `\` perdido chegou até o `execute` ou se a perda é a montante ([#20](https://github.com/GuilhermeBn198/jarvis/issues/20)). O log **pode conter o texto digitado** — ligue só durante a coleta e revise antes de compartilhar. A env é lida pelo processo que hospeda as tools: o serve do opencode é reutilizado, então **encerre-o e relance** depois de ligar a env (ex.: `JARVIS_ACT_DEBUG=1` no `local.conf` + `./jarvis`).
 
 ### Checklist de coleta (para reportar)
 
@@ -190,7 +191,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 | [#21](https://github.com/GuilhermeBn198/jarvis/issues/21) | `see_screen` (modelo + erro real) | **corrigido** (na `main`) |
 | [#29](https://github.com/GuilhermeBn198/jarvis/issues/29) | CI roda os testes em todo PR | **corrigido** (na `main`) |
 | [#19](https://github.com/GuilhermeBn198/jarvis/issues/19) | `act_key` envia teclas de verdade | aberta |
-| [#20](https://github.com/GuilhermeBn198/jarvis/issues/20) | `act_type` preserva barras invertidas | aberta |
+| [#20](https://github.com/GuilhermeBn198/jarvis/issues/20) | `act_type` preserva barras invertidas | aberta (diagnóstico: `JARVIS_ACT_DEBUG=1`) |
 | [#22](https://github.com/GuilhermeBn198/jarvis/issues/22) | allowlist de escrita documentada (+ parser) | aberta |
 | [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) | `act_open` com argumentos | **corrigido** (nesta branch) |
 | [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) | `win_read` lê WSL e lista diretórios | aberta |

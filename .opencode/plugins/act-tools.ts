@@ -7,6 +7,21 @@ import { isExecutionTarget } from "../safety/rules.ts";
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
 // plugin. Este arquivo exporta APENAS `ActTools`; os helpers puros ficam em
 // `../act/ps.ts` e `../act/win.ts`.
+
+// Diagnostico opt-in da #20 (perda de barras invertidas): com
+// JARVIS_ACT_DEBUG=1, loga em stderr os argumentos BRUTOS que chegaram ao
+// execute, ANTES de montar o script — e o suficiente para decidir se o `\`
+// chegou ate aqui ou se a perda e a montante. PODE CONTER O TEXTO DIGITADO:
+// ligue so durante a coleta do repro e desligue depois (default: nada e logado).
+function debugRawTypeArgs(args: unknown): void {
+  if (process.env.JARVIS_ACT_DEBUG !== "1") return;
+  const record = (args ?? {}) as Record<string, unknown>;
+  const barras = (String(record.text ?? "").match(/\\/g) ?? []).length;
+  process.stderr.write(
+    `[act_type] JARVIS_ACT_DEBUG args brutos (barras invertidas no texto: ${barras}): ${JSON.stringify(args)}\n`,
+  );
+}
+
 export const ActTools: Plugin = async ({ $ }) => ({
   tool: {
     act_type: tool({
@@ -19,6 +34,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
         append: tool.schema.boolean().optional(),
       },
       async execute(args) {
+        debugRawTypeArgs(args);
         const bg = chooseActScript("act_type", args);
         if (!bg) {
           return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`).text();

@@ -168,3 +168,43 @@ test("mode foreground explicito forca foreground mesmo com window", () => {
 test("hwnd sozinho entra em background", () => {
   assert.match(chooseActScript("act_type", { text: "oi", hwnd: 123 }), /0x0102/);
 });
+
+// --- #20 act_type: contrato de `\`, aspas e `%` no background ---------------
+// Caracterizacao: `$text` e uma string 'single-quoted' do PowerShell (barra e
+// `%` literais; apostrofo dobra) e o WM_CHAR itera o texto char a char —
+// 0x5C (backslash) incluso. Protegem contra regressao da perda local.
+
+test("act_type bg: caminho com barras vira $text literal", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\Users\\Public\\x.txt", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\Users\\Public\\x.txt'"));
+});
+
+test("act_type bg: nenhuma barra do texto some (single-quoted)", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\Users\\Public\\x.txt", hwnd: 42 });
+  const line = s.split("\n").find((l) => l.startsWith("$text = "));
+  assert.ok(line, "linha $text presente no script");
+  assert.equal((line.match(/\\/g) ?? []).length, 3);
+});
+
+test("act_type bg: `%` e literal (sem escape de SendKeys, sem interpolacao)", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\50%\\x", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\50%\\x'"));
+  assert.ok(!s.includes("{%}"));
+  assert.doesNotMatch(s, /SendKeys/);
+});
+
+test("act_type bg: apostrofo dobra e barras seguem intactas", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\it's\\x", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\it''s\\x'"));
+});
+
+test("act_type bg: WM_CHAR itera cada char (0x5C incluso)", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\a", hwnd: 42 });
+  assert.match(s, /foreach \(\$ch in \$text\.ToCharArray\(\)\)/);
+  assert.match(s, /0x0102, \[IntPtr\]\[int\]\[char\]\$ch/);
+});
+
+test("act_type bg via chooseActScript preserva o caminho do texto", () => {
+  const s = chooseActScript("act_type", { text: "C:\\Users\\Public\\x.txt", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\Users\\Public\\x.txt'"));
+});

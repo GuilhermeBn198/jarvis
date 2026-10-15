@@ -184,3 +184,78 @@ test("act_key bg: aviso do win+r continua aparecendo", async () => {
   assert.match(out, /teclas enviadas em segundo plano/);
   assert.match(out, /win\+r nao funciona em background/);
 });
+
+// --- #20: instrumentacao opt-in do act_type (JARVIS_ACT_DEBUG) --------------
+
+async function actTypeTools(shell: unknown) {
+  const tools = (await ActTools({ $: shell } as never)).tool as Record<
+    string,
+    { execute: (a: Record<string, unknown>) => Promise<string> }
+  >;
+  return tools.act_type;
+}
+
+test("act_type: JARVIS_ACT_DEBUG=1 loga os args brutos antes do script", async (t) => {
+  const events: string[] = [];
+  t.mock.method(process.stderr, "write", (chunk: unknown) => {
+    events.push(String(chunk));
+    return true;
+  });
+  process.env.JARVIS_ACT_DEBUG = "1";
+  t.after(() => delete process.env.JARVIS_ACT_DEBUG);
+  const shell = (() => {
+    events.push("shell");
+    return Promise.resolve({ text: () => "ok" });
+  }) as never;
+
+  const out = await (await actTypeTools(shell)).execute({ text: "C:\\Users\\Public\\x.txt" });
+
+  assert.equal(out, "ok");
+  const logs = events.filter((e) => e.includes("[act_type]"));
+  assert.equal(logs.length, 1, "um log por chamada");
+  // O log e emitido ANTES de montar/rodar o script.
+  assert.ok(
+    events.indexOf(logs[0]) < events.indexOf("shell"),
+    "log deve vir antes da chamada ao shell",
+  );
+  assert.match(logs[0], /args brutos/);
+  // JSON com o texto BRUTO: `\\` no log = uma barra chegou ao execute.
+  const json = logs[0].slice(logs[0].indexOf("{"), logs[0].lastIndexOf("}") + 1);
+  assert.deepEqual(JSON.parse(json), { text: "C:\\Users\\Public\\x.txt" });
+  assert.match(logs[0], /barras invertidas no texto: 3/);
+});
+
+test("act_type bg: instrumentacao loga tambem no caminho background", async (t) => {
+  const events: string[] = [];
+  t.mock.method(process.stderr, "write", (chunk: unknown) => {
+    events.push(String(chunk));
+    return true;
+  });
+  process.env.JARVIS_ACT_DEBUG = "1";
+  t.after(() => delete process.env.JARVIS_ACT_DEBUG);
+
+  await (await actTypeTools(shellReturning("JARVIS_RESULT=confirmed|digitado"))).execute({
+    text: "C:\\x",
+    mode: "background",
+  });
+
+  const logs = events.filter((e) => e.includes("[act_type]"));
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /barras invertidas no texto: 1/);
+  assert.match(logs[0], /C:\\\\x/);
+});
+
+test("act_type: sem JARVIS_ACT_DEBUG (ou != 1) nada e logado", async (t) => {
+  const events: string[] = [];
+  t.mock.method(process.stderr, "write", (chunk: unknown) => {
+    events.push(String(chunk));
+    return true;
+  });
+  const actType = await actTypeTools(shellReturning("ok"));
+  delete process.env.JARVIS_ACT_DEBUG;
+  await actType.execute({ text: "C:\\a" });
+  process.env.JARVIS_ACT_DEBUG = "0";
+  await actType.execute({ text: "C:\\a" });
+  delete process.env.JARVIS_ACT_DEBUG;
+  assert.deepEqual(events.filter((e) => e.includes("[act_type]")), []);
+});

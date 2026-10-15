@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildPsScript, buildWindowsArgs } from "./ps.ts";
+import { buildPsScript, buildWindowsArgs, encode } from "./ps.ts";
 
 // Vetores de referencia gerados com o `subprocess.list2cmdline` do CPython
 // (fonte de verdade independente; recon validou saida identica). Nao
@@ -75,4 +75,48 @@ test("act_open: barra invertida final e por cento chegam ao script", () => {
     buildPsScript("act_open", { target: "app", args: ["%TEMP%\\x y"] }),
     "Start-Process -FilePath 'app' -ArgumentList '\"%TEMP%\\x y\"'",
   );
+});
+
+// --- #20 act_type: contrato de `\`, aspas e `%` no foreground ---------------
+// Testes de CARACTERIZACAO (passam desde ja): o recon nao reproduziu perda
+// local — o builder preserva `\` (fora do SENDFLARE) e so escapa o que o
+// SendKeys entende. Se alguem introduzir perda local (ex.: strip de `\`),
+// estes testes quebram.
+
+test("act_type fg: caminho com barras chega literal ao SendWait", () => {
+  assert.equal(
+    buildPsScript("act_type", { text: "C:\\Users\\Public\\x.txt" }),
+    "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('C:\\Users\\Public\\x.txt')",
+  );
+});
+
+test("act_type fg: `\\` fica literal e `%` vira {%} (SENDFLARE)", () => {
+  assert.equal(
+    buildPsScript("act_type", { text: "C:\\50%\\x" }),
+    "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('C:\\50{%}\\x')",
+  );
+});
+
+test("act_type fg: apostrofo dobra dentro do single-quote", () => {
+  assert.equal(
+    buildPsScript("act_type", { text: "C:\\it's\\x" }),
+    "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('C:\\it''s\\x')",
+  );
+});
+
+test("act_type fg: vetor combinado (% e apostrofo) preserva as barras", () => {
+  assert.equal(
+    buildPsScript("act_type", { text: "100% C:\\a'b" }),
+    "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('100{%} C:\\a''b')",
+  );
+});
+
+test("act_type fg: nenhuma barra some do texto", () => {
+  const s = buildPsScript("act_type", { text: "C:\\Users\\Public\\x.txt" });
+  assert.equal((s.match(/\\/g) ?? []).length, 3);
+});
+
+test("act_type fg: encode UTF-16LE/base64 preserva o script com barras", () => {
+  const s = buildPsScript("act_type", { text: "C:\\Users\\Public\\x.txt" });
+  assert.equal(Buffer.from(encode(s), "base64").toString("utf16le"), s);
 });
