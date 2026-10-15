@@ -24,7 +24,8 @@
     ],
     "security": {
       "csp": "default-src 'self'; connect-src 'self' http://localhost:*; style-src 'self' 'unsafe-inline'"
-    }
+    },
+    "enableGTKAppId": true
   },
   "bundle": {
     "active": false,

@@ -29,17 +29,8 @@ fn platform_info() -> serde_json::Value {
         "tts_backends": if cfg!(windows) { vec!["piper","sapi"] } else { vec!["piper"] }})
 }
 
-#[cfg(target_os = "linux")]
-fn set_linux_application_identity(identifier: &str) {
-    // WebKit uses this ID for its accessibility bus names. A path-derived
-    // fallback is outside the Flatpak application's permitted namespace.
-    glib::set_prgname(Some(identifier));
-}
-
 fn main() {
     let mut context = tauri::generate_context!();
-    #[cfg(target_os = "linux")]
-    set_linux_application_identity(&context.config().identifier);
     #[cfg(target_os = "linux")]
     if std::env::var_os("WAYLAND_DISPLAY").is_some()
         && std::env::var("JARVIS_WINDOW_MODE").as_deref() != Ok("orb")
@@ -75,9 +66,11 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
-    fn linux_identity_is_available_to_webkit() {
-        set_linux_application_identity("com.jarvis.overlay");
-        assert_eq!(glib::prgname().as_deref(), Some("com.jarvis.overlay"));
+    fn gtk_application_identifier_is_enabled() {
+        let config: tauri::Config =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert!(config.app.enable_gtk_app_id);
+        assert_eq!(config.identifier, "com.jarvis.overlay");
     }
 
     #[test]

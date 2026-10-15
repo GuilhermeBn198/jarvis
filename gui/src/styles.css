@@ -135,7 +135,9 @@ html, body {
   right: 8px;
   bottom: 8px;
   z-index: 3;
-  width: 224px;
+  box-sizing: border-box;
+  width: 246px;
+  max-height: calc(100vh - 16px);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -145,7 +147,8 @@ html, body {
   padding: 10px;
   color: #c7cedb;
   font: 11px system-ui;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .settings.hidden { display: none; }
