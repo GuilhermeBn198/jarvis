@@ -35,4 +35,7 @@ task_agent_version=$(flatpak build "$task_output/build" /app/lib/jarvis/bin/open
 [ "$task_agent_version" = '1.18.23' ] || { echo "Agente foi alterado pelo empacotamento: $task_agent_version" >&2; exit 2; }
 flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
     "$task_output/repo" "$task_output/jarvis-$task_arch.flatpak" com.jarvis.overlay stable
-sha256sum "$task_output/jarvis-$task_arch.flatpak" > "$task_output/jarvis-$task_arch.flatpak.sha256"
+(
+    cd "$task_output"
+    sha256sum "jarvis-$task_arch.flatpak" > "jarvis-$task_arch.flatpak.sha256"
+)

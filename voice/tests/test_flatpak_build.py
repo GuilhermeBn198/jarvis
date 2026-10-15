@@ -134,3 +134,26 @@ def test_preparation_accepts_verified_offline_wheelhouse(tmp_path,monkeypatch):
     assert '--no-index' in calls[0]
     assert calls[0][calls[0].index('--find-links')+1]==str(wheelhouse.resolve())
     assert '--filesystem='+str(wheelhouse.resolve())+':ro' in calls[0]
+
+
+def test_bundle_checksum_remains_verifiable_after_download(tmp_path):
+    import os,shutil,subprocess,sys
+    output=tmp_path/'build';sources=output/'sources';sources.mkdir(parents=True)
+    (sources/'jarvis-sources.tar.gz').write_bytes(b'prepared source')
+    (sources/'com.jarvis.overlay.json').write_text('{}')
+    tools=tmp_path/'tools';tools.mkdir()
+    uname=tools/'uname';uname.write_text('#!/bin/sh\nprintf "x86_64\\n"\n');uname.chmod(0o755)
+    flatpak=tools/'flatpak'
+    flatpak.write_text('#!'+sys.executable+'\nimport json,sys\nfrom pathlib import Path\n'+
+        'pins=json.loads(Path('+repr(str(ROOT/'packaging/flatpak/runtime-pins.json'))+').read_text())["x86_64"]\n'+
+        '''if sys.argv[1]=='info':print(pins[sys.argv[-1]])
+elif sys.argv[1]=='build':print('1.18.23')
+elif sys.argv[1]=='build-bundle':Path(sys.argv[4]).write_bytes(b'bundle fixture')
+elif sys.argv[1]!='run':sys.exit(3)
+''')
+    flatpak.chmod(0o755)
+    result=subprocess.run([str(ROOT/'scripts/build-flatpak.sh'),str(output)],env=dict(os.environ,JARVIS_FLATPAK_BUILDER='app',PATH=str(tools)+os.pathsep+os.environ['PATH']),capture_output=True,text=True)
+    assert result.returncode==0,result.stderr
+    downloaded=tmp_path/'downloaded';shutil.move(str(output),downloaded)
+    result=subprocess.run(['sha256sum','-c','jarvis-x86_64.flatpak.sha256'],cwd=downloaded,capture_output=True,text=True)
+    assert result.returncode==0,result.stderr
