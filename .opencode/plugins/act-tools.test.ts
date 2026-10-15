@@ -36,5 +36,79 @@ test("window informado -> script background (UIA)", () => {
   assert.match(s, /ValuePattern/);
 });
 test("mode background explicito -> background mesmo sem janela", () => {
-  assert.match(chooseActScript("act_key", { keys: "^s", mode: "background" }), /PostMessageW/);
+  assert.match(chooseActScript("act_key", { keys: "ctrl+s", mode: "background" }), /PostMessageW/);
+});
+test("act_key script foreground usa keybd_event (nao SendKeys)", () => {
+  const s = buildPsScript("act_key", { keys: "enter" });
+  assert.match(s, /keybd_event/);
+  assert.doesNotMatch(s, /SendKeys/);
+  assert.match(s, /0x0D/);
+});
+test("act_key descricao documenta sintaxe natural e limites do background", async () => {
+  const tools = (await ActTools({} as never)).tool as Record<string, { description: string }>;
+  const d = tools.act_key.description;
+  assert.match(d, /enter/);
+  assert.match(d, /ctrl\+c/);
+  assert.match(d, /ctrl\+shift\+esc/);
+  assert.match(d, /win\+r/);
+  assert.match(d, /background/i);
+  assert.match(d, /best-effort|GetKeyState/i);
+});
+test("act_key com keys invalido falha didaticamente antes de qualquer script", () => {
+  assert.throws(() => buildPsScript("act_key", { keys: "foo" }), /tecla desconhecida "foo"/);
+  assert.throws(() => buildPsScript("act_key", { keys: "foo" }), /ctrl\+c/);
+});
+
+test("act_key execute com keys invalido retorna erro sem chamar o shell", async () => {
+  let called = false;
+  const shell = (() => {
+    called = true;
+    return { text: async () => "" };
+  }) as never;
+  const tools = (await ActTools({ $: shell } as never)).tool as Record<string, { execute: (a: Record<string, unknown>) => Promise<string> }>;
+  const out = await tools.act_key.execute({ keys: "foo" });
+  assert.match(out, /^erro: /);
+  assert.match(out, /tecla desconhecida "foo"/);
+  assert.equal(called, false, "nao pode rodar powershell com keys invalido");
+});
+
+// Fake do Bun shell na forma do runtime: `$` aguardado devolve BunShellOutput,
+// cujo .text() e SINCRONO (BunShellPromise.text() e o async, nao este).
+function shellReturning(stdout: string) {
+  return (() => Promise.resolve({ text: () => stdout })) as never;
+}
+
+async function actKeyTools(stdout: string) {
+  const tools = (await ActTools({ $: shellReturning(stdout) } as never)).tool as Record<
+    string,
+    { execute: (a: Record<string, unknown>) => Promise<string> }
+  >;
+  return tools.act_key;
+}
+
+test("act_key bg: timeout vira aviso (teclas podem nao ter sido enviadas), nao sucesso", async () => {
+  const out = await (await actKeyTools("JARVIS_RESULT=unconfirmed|timeout (janela nao respondeu em 5s)")).execute({
+    keys: "enter",
+    mode: "background",
+  });
+  assert.match(out, /timeout/i);
+  assert.match(out, /nao respondeu/i);
+  assert.match(out, /podem nao ter sido enviadas/i);
+  assert.doesNotMatch(out, /^teclas enviadas/);
+});
+
+test("act_key bg: unconfirmed reporta o alvo do detalhe do script", async () => {
+  const out = await (await actKeyTools("JARVIS_RESULT=unconfirmed|controle de edicao")).execute({
+    keys: "enter",
+    mode: "background",
+  });
+  assert.equal(out, "teclas enviadas em segundo plano (confirmacao indisponivel) — controle de edicao");
+});
+
+test("act_key bg: aviso do win+r continua aparecendo", async () => {
+  const out = await (
+    await actKeyTools("JARVIS_RESULT=unconfirmed|controle de edicao — win+r nao funciona em background")
+  ).execute({ keys: "win+r", mode: "background" });
+  assert.match(out, /teclas enviadas em segundo plano/);
+  assert.match(out, /win\+r nao funciona em background/);
 });

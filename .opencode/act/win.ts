@@ -2,7 +2,14 @@
 // NAO e arquivo de plugin (o loader so varre .opencode/plugins/*.ts), entao
 // pode exportar varios helpers publicos.
 
+import { encodeKeyChords, parseKeys } from "./keys.ts";
+
 export type WinInfo = { hwnd: number; title: string; process: string };
+
+// Escapa um valor para string 'single-quoted' do PowerShell.
+function psQuote(v: string): string {
+  return v.replace(/'/g, "''");
+}
 
 // P/Invoke Win32 + resolucao de alvo, reutilizado por todos os scripts.
 // INVARIANTE: este snippet NUNCA chama SetForegroundWindow/SetCursorPos.
@@ -14,6 +21,7 @@ public delegate bool EnumWindowsProc(IntPtr h, IntPtr l);
 [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr h, System.Text.StringBuilder s, int n);
 [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint procId);
 [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern bool PostMessageW(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
+[DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
 '@
 function Get-JarvisWindows {
   $out = New-Object System.Collections.ArrayList
@@ -71,11 +79,6 @@ const UIA_SETUP = `
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 `;
-
-// Escapa um valor para string 'single-quoted' do PowerShell.
-function psQuote(v: string): string {
-  return v.replace(/'/g, "''");
-}
 
 function resolveBlock(window: string, hwnd: number): string {
   return `
@@ -152,34 +155,79 @@ else {
 }
 
 export function buildBackgroundKeyScript(a: { keys: string; window?: string; hwnd?: number }): string {
-  const keys = psQuote(String(a.keys ?? ""));
-  return `${WIN32_SNIPPET}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
-$keys = '${keys}'
-$map = @{ 'ENTER'=0x0D; 'TAB'=0x09; 'ESC'=0x1B; 'BACKSPACE'=0x08; 'DELETE'=0x2E; 'SPACE'=0x20; 'UP'=0x26; 'DOWN'=0x28; 'LEFT'=0x25; 'RIGHT'=0x27; 'HOME'=0x24; 'END'=0x23; 'F1'=0x70; 'F2'=0x71; 'F3'=0x72; 'F4'=0x73; 'F5'=0x74; 'F6'=0x75; 'F7'=0x76; 'F8'=0x77; 'F9'=0x78; 'F10'=0x79; 'F11'=0x7A; 'F12'=0x7B }
-$MOD = @{ '^'=0x11; '%'=0x12; '+'=0x10 }
-$mods = New-Object System.Collections.ArrayList
-$main = New-Object System.Collections.ArrayList
-$i = 0
-while ($i -lt $keys.Length) {
-  $c = $keys[$i]
-  if ($MOD.ContainsKey([string]$c)) { [void]$mods.Add($MOD[[string]$c]); $i++; continue }
-  if ($c -eq '{') {
-    $end = $keys.IndexOf('}', $i)
-    if ($end -gt $i) {
-      $name = $keys.Substring($i+1, $end-$i-1).ToUpper()
-      if ($map.ContainsKey($name)) { [void]$main.Add($map[$name]) }
-      $i = $end + 1; continue
+  // Mesmo parser natural do foreground (keys.ts). O JSON vai dentro de um
+  // here-string 'single-quoted': nao ha interpolacao nem aspas para escapar.
+  const chords = parseKeys(String(a.keys ?? ""));
+  const json = encodeKeyChords(chords);
+  const hasWin = chords.some((c) => c.mods.includes("win"));
+  return `${WIN32_SNIPPET}${UIA_SETUP}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
+# Teclas via PostMessage WM_KEYDOWN/UP com lParam correto (scan code +
+# extended). Mira o controle de edicao (mesmo padrao do act_type bg, I3);
+# sem controle de edicao, cai no topo. Limites conhecidos e documentados:
+# win+r e hotkey do sistema (nunca chega via PostMessage); combos com
+# Ctrl/Alt sao best-effort (apps que consultam GetKeyState podem ignora-los).
+# Teclas de caractere mandam SO keydown (down+up insere duas vezes em RichEdit).
+$job = Start-Job -ScriptBlock {
+  param($hwnd)
+  Add-Type -AssemblyName UIAutomationClient
+  Add-Type -AssemblyName UIAutomationTypes
+  Add-Type -Namespace W -Name Win -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
+[DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
+'@
+  $root = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]$hwnd)
+  $edit = $null
+  foreach ($ct in @([System.Windows.Automation.ControlType]::Document, [System.Windows.Automation.ControlType]::Edit)) {
+    $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ct)
+    $cand = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+    if ($cand) { $edit = $cand; break }
+  }
+  $native = 0
+  if ($edit) { try { $native = [int64]$edit.Current.NativeWindowHandle } catch { $native = 0 } }
+  $h = if ($native -gt 0) { [IntPtr]$native } else { [IntPtr]$hwnd }
+  $chords = @'
+${json}
+'@ | ConvertFrom-Json
+  $MODS = @{ ctrl = 0x11; shift = 0x10; alt = 0x12; win = 0x5B }
+  foreach ($c in @($chords)) {
+    $mods = @($c.mods)
+    $sc = [W.Win]::MapVirtualKey([uint32]$c.vk, 0x0001)
+    $ex = $(if ($c.ex) { 0x1000000 } else { 0 })
+    $lpDown = [IntPtr]([int64]($sc -shl 16) -bor $ex)
+    $lpUp = [IntPtr]([int64]($sc -shl 16) -bor 0x8000 -bor $ex)
+    foreach ($m in $mods) {
+      $mvk = [uint32]$MODS[[string]$m]
+      $msc = [W.Win]::MapVirtualKey($mvk, 0x0001)
+      [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$mvk, [IntPtr]([int64]($msc -shl 16)))
+    }
+    $vk = [uint32]$c.vk
+    if ($c.onlyDown) { [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]$lpDown) }
+    else {
+      [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]$lpDown)
+      [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$vk, [IntPtr]$lpUp)
+    }
+    [array]::Reverse($mods)
+    foreach ($m in $mods) {
+      $mvk = [uint32]$MODS[[string]$m]
+      $msc = [W.Win]::MapVirtualKey($mvk, 0x0001)
+      [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$mvk, [IntPtr]([int64]($msc -shl 16) -bor 0x8000))
     }
   }
-  $vk = if ([char]::IsLetter($c)) { [int][char]([string]$c).ToUpperInvariant() } else { [int][char]$c }
-  [void]$main.Add($vk)
-  $i++
+  return $native
+} -ArgumentList ([int]$h)
+$done = Wait-Job $job -Timeout 5
+if (-not $done) {
+  Stop-Job $job -ErrorAction SilentlyContinue
+  Remove-Job $job -Force -ErrorAction SilentlyContinue
+  Write-Output 'JARVIS_RESULT=unconfirmed|timeout (janela nao respondeu em 5s)'
+  exit 0
 }
-foreach ($vk in $mods) { [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]::Zero) }
-foreach ($vk in $main) { [void][W.Win]::PostMessageW($h, 0x0100, [IntPtr]$vk, [IntPtr]::Zero); [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$vk, [IntPtr]::Zero) }
-$mods.Reverse()
-foreach ($vk in $mods) { [void][W.Win]::PostMessageW($h, 0x0101, [IntPtr]$vk, [IntPtr]::Zero) }
-Write-Output 'JARVIS_RESULT=unconfirmed|teclas enviadas (verificacao indisponivel)'
+$res = @(Receive-Job $job)
+Remove-Job $job -Force -ErrorAction SilentlyContinue
+$native = if ($res.Count -gt 0) { [int64]$res[0] } else { 0 }
+$alvo = if ($native -gt 0) { 'controle de edicao' } else { 'topo da janela (sem controle de edicao)' }
+# Detalhe e SO o alvo (a tool compoe a mensagem); win+r appendado quando usado.
+Write-Output ('JARVIS_RESULT=unconfirmed|' + $alvo + '${hasWin ? " — win+r nao funciona em background" : ""}')
 `;
 }
 

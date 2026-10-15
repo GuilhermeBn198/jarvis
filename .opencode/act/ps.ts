@@ -2,6 +2,8 @@
 // loader do opencode invoca TODA funcao exportada por um plugin como factory;
 // assim `.opencode/plugins/act-tools.ts` exporta apenas `ActTools`.
 
+import { buildForegroundKeyScript } from "./keys.ts";
+
 const SENDFLARE = /([+^%~(){}[\]])/g; // caracteres especiais do SendKeys
 
 export function encode(script: string): string {
@@ -14,8 +16,9 @@ export function buildPsScript(name: string, args: Record<string, unknown>): stri
     return `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${text.replace(/'/g, "''")}')`;
   }
   if (name === "act_key") {
-    const keys = String(args.keys ?? "").replace(/'/g, "''");
-    return `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${keys}')`;
+    // Sintaxe natural (keys.ts) via keybd_event; SendKeys nao interpreta
+    // "enter"/"ctrl+v" como teclas — digitava o texto literal.
+    return buildForegroundKeyScript(String(args.keys ?? ""));
   }
   if (name === "act_open") {
     const target = String(args.target ?? "").replace(/'/g, "''");
