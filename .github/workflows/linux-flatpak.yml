@@ -2,8 +2,8 @@ name: Linux Flatpak experimental
 on:
   workflow_dispatch:
   push:
-    branches: [feat/linux-port]
-    paths: ['.github/workflows/linux-flatpak.yml']
+    branches: [feat/linux-port, main]
+    paths: ['gui/**', 'voice/**', 'mcp_servers/**', '.opencode/**', 'packaging/flatpak/**', 'scripts/**', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-flatpak.yml']
 permissions:
   contents: read
 jobs:

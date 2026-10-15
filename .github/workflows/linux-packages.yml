@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [feat/linux-port, main]
-    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'opencode.json', '.github/workflows/linux-packages.yml']
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-packages.yml']
   pull_request:
-    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'opencode.json', '.github/workflows/linux-packages.yml']
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-packages.yml']
 permissions:
   contents: read
 concurrency:
@@ -26,6 +26,8 @@ jobs:
           - {family: ubuntu, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/ubuntu/Dockerfile, image: 'ubuntu:24.04', pattern: 'jarvis-assistant_*.deb'}
           - {family: fedora, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.x86_64.rpm'}
           - {family: fedora, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.aarch64.rpm'}
+          - {family: suse, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/suse/Dockerfile, image: 'opensuse/tumbleweed:latest', pattern: 'jarvis-assistant-*.x86_64.rpm'}
+          - {family: suse, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/suse/Dockerfile, image: 'opensuse/tumbleweed:latest', pattern: 'jarvis-assistant-*.aarch64.rpm'}
           - {family: arch, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/arch/Dockerfile, image: 'archlinux:base', pattern: 'jarvis-assistant-*.pkg.tar.zst'}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

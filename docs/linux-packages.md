@@ -50,7 +50,9 @@ gráfico ainda precisam ser verificados antes de tratar o DEB como release.
 A receita usa o mesmo controle Debian, mas compila o overlay e prepara os
 wheels no Ubuntu 24.04, com o ABI Python 3.12 dessa distribuição. O toolchain
 Rust oficial é fornecido separadamente; os binários do aplicativo são produzidos
-no Ubuntu. Build e instalação limpa ainda estão em validação.
+no Ubuntu. Os builds x86_64 e ARM64 passaram pela instalação limpa, imports,
+integridade e remoção na execução CI 38786962019. A execução gráfica instalada
+segue em validação.
 
 ```sh
 docker build -f packaging/ubuntu/Dockerfile -t jarvis-linux-ubuntu:local .
@@ -121,3 +123,24 @@ A CI acrescentou um teste de importação do AT-SPI que revelou a ausência de
 agora exige `gobject-introspection`; a correção passou pela instalação limpa, importação AT-SPI,
 integridade e remoção em Fedora 44 x86_64 e ARM64 na execução CI 38764598505. O smoke anterior não incluía esse teste e não comprova que
 a acessibilidade estava funcional.
+
+## openSUSE Tumbleweed
+
+A receita própria está em `packaging/rpm/suse`. Ela usa WebKit 4.1 fornecido por
+`webkitgtk3-devel`, o Python padrão da distribuição e os pacotes GI/AT-SPI do
+openSUSE. O RPM ainda está em build; não há validação instalada concluída.
+
+```sh
+docker build -f packaging/rpm/suse/Dockerfile -t jarvis-linux-suse:local .
+mkdir -p dist/suse
+docker run --rm -v "$PWD/dist/suse:/out" jarvis-linux-suse:local
+sudo zypper install ./dist/suse/jarvis-assistant-0.1.0-1.x86_64.rpm
+```
+
+O artefato ARM64 termina em `.aarch64.rpm`. No próprio Tumbleweed com as
+ferramentas de build, use `scripts/build-package.sh --target suse --arch x86_64`.
+Essa receita ainda não foi validada no openSUSE Leap.
+
+Os próximos testes dos pacotes incluem uma sessão X11 e D-Bus privadas,
+abertura repetida do overlay e fechamento pela interface. Esse teste usa um
+launcher sem cérebro; não substitui voz, áudio e portais em GNOME/KDE reais.

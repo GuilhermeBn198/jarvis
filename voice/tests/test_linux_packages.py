@@ -102,6 +102,14 @@ def test_native_driver_rejects_ubuntu_target_on_arch(tmp_path):
     assert 'exige ambiente Ubuntu' in result.stderr
 
 
+def test_native_driver_rejects_suse_target_on_arch(tmp_path):
+    import subprocess
+    if 'ID=arch' not in Path('/etc/os-release').read_text():pytest.skip('requires Arch host')
+    result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','suse','--output',str(tmp_path)],capture_output=True,text=True)
+    assert result.returncode==2
+    assert 'exige openSUSE Tumbleweed' in result.stderr
+
+
 def test_target_catalog_records_recipe_and_validation_separately():
     import json
     catalog=json.loads((ROOT/'packaging/targets.json').read_text())

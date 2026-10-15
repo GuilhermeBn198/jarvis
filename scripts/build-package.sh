@@ -37,14 +37,18 @@ case "$task_target" in
         dpkg-buildpackage -us -uc -b
         find "$task_build" -maxdepth 1 -name '*.deb' -type f -exec cp '{}' "$task_output/" \;
         ;;
-    fedora)
+    fedora|suse)
         . /etc/os-release
-        [ "$ID" = 'fedora' ] || { echo 'Alvo fedora exige ambiente Fedora.' >&2; exit 2; }
+        case "$task_target:$ID" in
+            fedora:fedora|suse:opensuse-tumbleweed) ;;
+            fedora:*) echo 'Alvo fedora exige ambiente Fedora.' >&2; exit 2 ;;
+            suse:*) echo 'Alvo suse exige openSUSE Tumbleweed.' >&2; exit 2 ;;
+        esac
         command -v rpmbuild >/dev/null
-        task_build=$(mktemp -d "$task_output/.fedora-build-XXXXXX")
+        task_build=$(mktemp -d "$task_output/.$task_target-build-XXXXXX")
         mkdir -p "$task_build/SOURCES" "$task_build/SPECS"
         python3 "$task_root/scripts/source-archive.py" --output "$task_build/SOURCES/jarvis-0.1.0.tar.gz"
-        cp "$task_root/packaging/rpm/fedora/jarvis-assistant.spec" "$task_build/SPECS/"
+        cp "$task_root/packaging/rpm/$task_target/jarvis-assistant.spec" "$task_build/SPECS/"
         rpmbuild --define "_topdir $task_build" -ba "$task_build/SPECS/jarvis-assistant.spec"
         find "$task_build/RPMS" "$task_build/SRPMS" -name '*.rpm' -type f -exec cp '{}' "$task_output/" \;
         ;;

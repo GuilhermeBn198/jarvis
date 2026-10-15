@@ -201,3 +201,23 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
 - Pins ARM64 consultados no Flathub para SDK/Platform GNOME 49 e Rust 25.08;
   o driver seleciona commits e nome do bundle por arquitetura. Workflow manual
   prepara builds nativos x86_64/ARM64. Isso ainda não prova que ARM64 compila.
+
+### Ubuntu, ARM64 e regressão de reabertura
+
+- CI 38786962019 passou nos sete jobs: Arch x86_64, Debian 13 x86_64/ARM64,
+  Ubuntu 24.04 x86_64/ARM64 e Fedora 44 x86_64/ARM64. Os checks são de pacote,
+  ABI ELF, imports, integridade e ciclo de instalação/remoção.
+- CI Flatpak 38786961962 passou nas duas arquiteturas, com instalação do bundle,
+  OpenCode 1.18.23 e imports de voz/MCP/AT-SPI nos runners nativos. Isso valida
+  build/runtime básico, não captura e controle gráfico no ARM64.
+- A reabertura do overlay nativo reproduziu um panic: GTK reenviava a ativação
+  e Tauri tentava criar outra webview `main`. O teste isolado falhou na versão
+  anterior e passou com tauri-plugin-single-instance 2.5.4; o segundo processo
+  saiu e a primeira janela permaneceu. O teste usa Xvfb/D-Bus e dados privados.
+- No Arch/KDE Wayland, o overlay atual com essa correção passou por mudo, pausa,
+  configurações com fechar visível (`y=19`), reinício com troca do PID do cérebro,
+  retomada HTTP e saída com encerramento do OpenCode iniciado na porta exclusiva.
+- Suíte atual: 426 testes Python passaram, 1 opt-in ignorado; 7 testes Rust
+  passaram. Os pacotes com a correção de reabertura ainda precisam repetir a CI.
+- A receita Tumbleweed foi adicionada com dependências consultadas no repositório
+  nativo; o build local está em andamento. Não há RPM instalado validado ainda.
