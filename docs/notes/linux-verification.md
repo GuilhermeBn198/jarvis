@@ -156,3 +156,30 @@ famílias de distribuição continuam sem validação completa. O Flatpak passou
 pela compilação, mas o primeiro teste instalado encontrou corrupção do agente
 pela extração automática de símbolos; uma reconstrução com o binário preservado
 está em validação. O primeiro bundle não deve ser usado como release.
+
+## Continuação, 2026-10-15
+
+- Suíte atual: 421 testes Python passaram, 1 teste opt-in ignorado; 7 testes
+  Rust passaram. Incluem um processo Linux real que confirma o encerramento
+  do servidor junto ao grupo de processos do cérebro supervisionado.
+- CI no fork, execução 38758047113: Arch x86_64 e Debian 13 x86_64/ARM64
+  passaram pela compilação nativa, instalação em container limpo, inspeção
+  da arquitetura ELF, imports privados, importação AT-SPI, integridade dos
+  arquivos e remoção com preservação do dado de usuário usado no teste.
+- Fedora 44 x86_64 passou no smoke local anterior. A CI nas duas arquiteturas
+  compilou o RPM, mas o teste adicional de importação AT-SPI revelou um typelib
+  DBus ausente. A receita passou a exigir gobject-introspection; a nova CI
+  38764598505 está em andamento, sem resultado confirmado neste registro.
+- Flatpak x86_64 reconstruído sem processamento do binário do agente: OpenCode
+  1.18.23 iniciou corretamente, com SHA256 idêntico ao binário original. A voz
+  Faber foi baixada e verificada; captura real de microfone produziu 12000
+  frames a 48000 Hz. Piper e FFplay sintetizaram/reproduziram uma frase de teste;
+  Whisper tiny em CPU transcreveu a frase sintetizada “Teste de voz no Linux.”
+- A janela Flatpak e o HTTP do cérebro iniciaram. O teste dos controles via
+  acessibilidade ainda falhou; a correção da identidade GTK está sendo
+  reconstruída para repetir esse teste. Isso não comprova o fluxo gráfico
+  completo nem autoriza tratar o bundle como release.
+
+Ainda faltam atualização entre versões, a matriz gráfica instalada, ARM64 do
+Flatpak e os demais formatos/famílias previstos no plano. Evidência de container
+não substitui áudio, permissões de portal ou desktop real na distribuição alvo.

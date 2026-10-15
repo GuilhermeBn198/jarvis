@@ -48,3 +48,9 @@ Ainda não há publicação no Flathub. Build, instalação, voz/desktop no sand
 atualização, remoção e arquiteturas devem ser registrados separadamente em
 `docs/notes/linux-verification.md`; a presença desta receita não comprova toda
 a matriz Linux.
+
+Para reaproveitar wheels de um preparo anterior da mesma arquitetura e SDK,
+use um novo snapshot com `scripts/prepare-flatpak.py --output NOVO_DIRETORIO
+--wheelhouse DIRETORIO_ANTERIOR/source/wheels`. A resolução Python usa apenas
+esse diretório, em leitura, e falha se faltar um wheel compatível. As outras
+dependências de preparação ainda podem exigir rede.

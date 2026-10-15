@@ -31,9 +31,16 @@ usa Debian trixie e Rust 1.95; não reaproveita o overlay compilado no Arch.
 docker build -f packaging/debian/Dockerfile -t jarvis-linux-debian:local .
 mkdir -p dist/native
 docker run --rm -v "$PWD/dist/native:/out" jarvis-linux-debian:local
+sudo apt install ./dist/native/jarvis-assistant_0.1.0-1_amd64.deb
+jarvis --doctor
+jarvis-overlay
 ```
 
-O DEB x86_64 foi compilado no Debian 13 e passou pela instalação com apt,
+No ARM64, o nome do arquivo termina em `_arm64.deb`. Para atualizar, instale
+o novo DEB com `apt install ./caminho/do/pacote.deb`; para remover, use
+`sudo apt remove jarvis-assistant`.
+
+Os DEBs x86_64 e ARM64 foram compilados no Debian 13 e passaram pela instalação com apt,
 diagnóstico, imports, verificação de arquivos e remoção em container limpo,
 preservando o dado de usuário usado no teste. Atualização de versão e uso
 gráfico ainda precisam ser verificados antes de tratar o DEB como release.
@@ -44,8 +51,9 @@ Foi gerado um pacote Arch x86_64 e verificado, após extração, o launcher, o
 agente 1.18.23 e os imports de voz/MCP. Também passaram, em container Arch limpo, a instalação com pacman,
 a verificação de 8135 arquivos sem alterações e a remoção, preservando o dado de
 usuário usado no teste. Atualização de versão e execução gráfica instalada
-ainda estão pendentes. As demais receitas, Flatpak, ARM64 e a matriz de
-ambientes gráficos continuam pendentes. Veja também `linux-verification.md`
+ainda estão pendentes. A CI também validou os DEBs x86_64 e ARM64 em runners
+da arquitetura correspondente. As demais receitas, a validação completa do
+Flatpak e a matriz de ambientes gráficos continuam pendentes. Veja também `linux-verification.md`
 em `docs/notes` para os testes reais já executados.
 
 Os downloads do agente usam URLs e integridade SHA512 fixadas em
@@ -70,7 +78,14 @@ Há também um ambiente de build Fedora 44:
 docker build -f packaging/rpm/fedora/Dockerfile -t jarvis-linux-fedora:local .
 mkdir -p dist/native
 docker run --rm -v "$PWD/dist/native:/out" jarvis-linux-fedora:local
+sudo dnf install ./dist/native/jarvis-assistant-0.1.0-1.fc44.x86_64.rpm
+jarvis --doctor
+jarvis-overlay
 ```
+
+No ARM64, use o RPM `.aarch64.rpm`. Para atualizar, use `sudo dnf upgrade
+./caminho/do/pacote.rpm`; para remover, `sudo dnf remove jarvis-assistant`.
+O arquivo `.src.rpm` contém fontes e receita e não instala a aplicação.
 
 O RPM Fedora 44 x86_64 passou pela instalação com dnf, doctor, imports, versão
 do agente, presença de pactl, verificação rpm e remoção com preservação do dado
@@ -79,3 +94,9 @@ concluído. O arquivo `packaging/targets.json` registra as famílias previstas,
 separa receita disponível de validação e marca explicitamente os alvos cuja
 implementação ainda está pendente. Suporte ARM64 declarado é um alvo de build,
 não evidência de execução nessa arquitetura.
+
+A CI acrescentou um teste de importação do AT-SPI que revelou a ausência de
+`DBus-1.0.typelib` nas instalações mínimas Fedora x86_64 e ARM64. A receita
+agora exige `gobject-introspection`; a correção precisa passar novamente pela
+instalação limpa. O smoke anterior não incluía esse teste e não comprova que
+a acessibilidade estava funcional.
