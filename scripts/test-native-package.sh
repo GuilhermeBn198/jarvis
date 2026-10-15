@@ -14,7 +14,7 @@ printf '%s\n' preserved > "$XDG_DATA_HOME/jarvis/package-test"
 case "$task_family:$ID" in
     debian:debian|ubuntu:ubuntu) apt-get update; apt-get install -y --no-install-recommends -o "Dpkg::Options::=--path-include=/usr/share/doc/*" "$task_package" xvfb dbus-daemon ;;
     fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" xorg-x11-server-Xvfb dbus-daemon ;;
-    suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1 ;;
+    suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1-daemon ;;
     arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
     *) echo 'Familia e ambiente nao correspondem.' >&2; exit 2 ;;
 esac
