@@ -159,7 +159,7 @@ async function actKeyTools(stdout: string) {
 }
 
 test("act_key bg: timeout vira aviso (teclas podem nao ter sido enviadas), nao sucesso", async () => {
-  const out = await (await actKeyTools("JARVIS_RESULT=unconfirmed|timeout (janela nao respondeu em 5s)")).execute({
+  const out = await (await actKeyTools("JARVIS_RESULT=unconfirmed|timeout|janela nao respondeu em 5s")).execute({
     keys: "enter",
     mode: "background",
   });
@@ -167,6 +167,25 @@ test("act_key bg: timeout vira aviso (teclas podem nao ter sido enviadas), nao s
   assert.match(out, /nao respondeu/i);
   assert.match(out, /podem nao ter sido enviadas/i);
   assert.doesNotMatch(out, /^teclas enviadas/);
+});
+
+test("act_key bg sent: teclas postadas com controle de edicao (sem confirmacao)", async () => {
+  const out = await (await actKeyTools("JARVIS_RESULT=unconfirmed|sent|controle de edicao")).execute({
+    keys: "enter",
+    mode: "background",
+  });
+  assert.equal(out, "teclas enviadas em segundo plano (confirmacao indisponivel) — controle de edicao");
+});
+
+test("act_key bg noset: avisa que podem nao ter efeito e manda perguntar antes do foreground", async () => {
+  const out = await (
+    await actKeyTools("JARVIS_RESULT=unconfirmed|noset|topo da janela (sem controle de edicao)")
+  ).execute({ keys: "enter", mode: "background" });
+  assert.match(out, /sem controle de edicao/i);
+  assert.match(out, /podem nao ter efeito/i);
+  assert.match(out, /PERGUNTE/i);
+  assert.match(out, /foreground/i);
+  assert.doesNotMatch(out, /confirmacao indisponivel/);
 });
 
 test("act_key bg: unconfirmed reporta o alvo do detalhe do script", async () => {
@@ -183,6 +202,49 @@ test("act_key bg: aviso do win+r continua aparecendo", async () => {
   ).execute({ keys: "win+r", mode: "background" });
   assert.match(out, /teclas enviadas em segundo plano/);
   assert.match(out, /win\+r nao funciona em background/);
+});
+
+// --- #28: mensagens por causa na injecao em background -----------------------
+
+test("act_type bg noset: sem controle de edicao manda perguntar antes do foreground", async () => {
+  const out = await (
+    await actTypeTools(shellReturning("JARVIS_RESULT=unconfirmed|noset|sem controle de edicao (WM_CHAR no topo)"))
+  ).execute({ text: "echo oi", mode: "background" });
+  assert.match(out, /sem controle de edicao/i);
+  assert.match(out, /terminais/i);
+  assert.match(out, /nao funciona/i);
+  assert.match(out, /PERGUNTE/i);
+  assert.match(out, /foreground/i);
+  assert.doesNotMatch(out, /recusad/i);
+});
+
+test("act_type bg set: texto enviado sem confirmacao da UIA, sem afirmar recusa", async () => {
+  const out = await (
+    await actTypeTools(shellReturning("JARVIS_RESULT=unconfirmed|set|sem confirmacao"))
+  ).execute({ text: "oi", mode: "background" });
+  assert.match(out, /texto enviado/i);
+  assert.match(out, /nao confirmou/i);
+  assert.match(out, /ocupada/i);
+  assert.match(out, /antes de repetir/i);
+  assert.doesNotMatch(out, /nao aceita entrada|recusad/i);
+});
+
+test("act_type bg timeout: janela nao respondeu a UIA, sugere tentar de novo", async () => {
+  const out = await (
+    await actTypeTools(shellReturning("JARVIS_RESULT=unconfirmed|timeout|UIA timeout (janela nao respondeu em 5s)"))
+  ).execute({ text: "oi", mode: "background" });
+  assert.match(out, /nao respondeu/i);
+  assert.match(out, /5s/);
+  assert.match(out, /tente de novo/i);
+  assert.doesNotMatch(out, /nao aceita entrada|recusad/i);
+});
+
+test("act_type bg sem codigo de razao (formato antigo): nao afirma recusa", async () => {
+  const out = await (
+    await actTypeTools(shellReturning("JARVIS_RESULT=unconfirmed|sem confirmacao"))
+  ).execute({ text: "oi", mode: "background" });
+  assert.match(out, /nao confirmada/i);
+  assert.doesNotMatch(out, /nao aceita entrada|recusad/i);
 });
 
 // --- #20: instrumentacao opt-in do act_type (JARVIS_ACT_DEBUG) --------------

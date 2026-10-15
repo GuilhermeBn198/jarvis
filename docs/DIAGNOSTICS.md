@@ -15,7 +15,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
    - `./jarvis --list-mics` — microfones vistos pelo `dshow` (o ativo leva `*`);
    - `./jarvis --mic-level` — ruído de fundo e sugestão de `VOICE_NOISE_DB`.
 3. **Texto antes de imagem**: peça `win_list`/`win_list_text` e `win_tree_text` antes de recorrer a `see_screen` — é mais barato e legível.
-4. **Resposta da própria tool**: `act_*` devolvem status explícito (`confirmed`, `unconfirmed`, `ambiguous`, `erro`); a mensagem costuma indicar a ação seguinte.
+4. **Resposta da própria tool**: `act_*` devolvem status explícito (`confirmed`, `unconfirmed`, `ambiguous`, `erro`); em background, o `unconfirmed` traz a causa (`noset` = sem controle de edicao; `set` = texto enviado sem confirmação da UIA; `timeout` = UIA não respondeu em 5s) e a mensagem indica a ação seguinte — nenhuma delas afirma recusa sem saber.
 5. **Plugins/tools do opencode**: `opencode run --print-logs "responda apenas: ok"` mostra falha de carregamento de plugin.
 6. **`act_type` com `JARVIS_ACT_DEBUG=1`** — log opt-in em stderr com os **argumentos brutos** recebidos pela tool (antes de montar o script), para decidir se um `\` perdido chegou até o `execute` ou se a perda é a montante ([#20](https://github.com/GuilhermeBn198/jarvis/issues/20)). O log **pode conter o texto digitado** — ligue só durante a coleta e revise antes de compartilhar. A env é lida pelo processo que hospeda as tools: o serve do opencode é reutilizado, então **encerre-o e relance** depois de ligar a env (ex.: `JARVIS_ACT_DEBUG=1` no `local.conf` + `./jarvis`).
 
@@ -42,7 +42,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 
 ### Windows Terminal (e afins) ignora entrada em segundo plano — esperado
 
-- **Sintoma**: `act_type` com `window`/`hwnd` do Terminal responde `unconfirmed|sem controle de edicao (WM_CHAR no topo)`; nenhum texto aparece. O Jarvis então pede confirmação antes de trazer a janela para frente.
+- **Sintoma**: `act_type` com `window`/`hwnd` do Terminal responde `unconfirmed|noset|sem controle de edicao (WM_CHAR no topo)` (mensagem: "sem controle de edicao exposto (tipico de terminais/Electron) — a entrada em background nao funciona aqui; PERGUNTE...") e nenhum texto aparece.
 - **Repro**: `act_type { window: "Terminal", text: "echo oi" }` (ou o `hwnd` obtido com `win_list`).
 - **Causa**: o Terminal é `CASCADIA_HOSTING_WINDOW_CLASS`, sem controle Edit/Document exposto à UIA, e o input real entra pelo ConPTY — `WM_CHAR`/`WM_KEYDOWN` postados são ignorados. É comportamento do app, não bug do Jarvis.
 - **Workaround**: repetir com `mode="foreground"` (sem `window`/`hwnd`); a janela recebe o foco e a digitação é real.
@@ -60,7 +60,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 
 - **Sintoma**: teclas enviadas em background às vezes não têm efeito; `Win+R` não abre o Executar; combinações como `ctrl+v` não funcionam como no caminho em foco.
 - **Repro**: `act_key { window: "Notepad", keys: "^v" }` (equivalente a Ctrl+V em background) vs. `act_key { window: ..., keys: "win+r" }` (sem efeito).
-- **Causa**: o background posta `WM_KEYDOWN`/`WM_KEYUP` com um parser estilo SendKeys (`^` Ctrl, `%` Alt, `+` Shift, `{ENTER}`/`{TAB}`/...); hotkeys globais (`Win+R`, `Alt+Tab`) são resolvidas pelo sistema e não chegam por `PostMessage`. A verificação de efeito é indisponível: a tool só reporta "teclas enviadas em segundo plano".
+- **Causa**: o background posta `WM_KEYDOWN`/`WM_KEYUP` com um parser estilo SendKeys (`^` Ctrl, `%` Alt, `+` Shift, `{ENTER}`/`{TAB}`/...); hotkeys globais (`Win+R`, `Alt+Tab`) são resolvidas pelo sistema e não chegam por `PostMessage`. A verificação de efeito é indisponível: a tool reporta "teclas enviadas em segundo plano" — e, quando não há controle de edição exposto (`noset`, típico de terminais/Electron), avisa que as teclas podem não ter efeito e orienta perguntar antes de ir para foreground.
 - **Workaround**: use a sintaxe SendKeys (`^v`, `{ENTER}`) nos apps que aceitam background; para hotkeys do sistema ou combos, use `mode="foreground"`.
 - **Issue**: [#19](https://github.com/GuilhermeBn198/jarvis/issues/19) — aberta.
 
@@ -138,7 +138,7 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 
 ### Timeout da UIA (~5s)
 
-- **Sintoma**: `act_type` em background devolve `unconfirmed|UIA timeout (janela nao respondeu em 5s)`.
+- **Sintoma**: `act_type` em background devolve `unconfirmed|timeout|UIA timeout (janela nao respondeu em 5s)` (mensagem por causa: janela nao respondeu a UIA; a tool sugere tentar de novo).
 - **Repro**: `act_type { window: "<app>", text: "x" }` com um diálogo modal aberto na janela alvo.
 - **Causa**: a busca UIA roda com timeout de ~5s para não travar o loop quando a janela está ocupada (modal, diálogo, travada).
 - **Workaround**: feche diálogos modais; tente novamente; se persistir, use `foreground`.
@@ -196,4 +196,4 @@ Como diagnosticar falhas e conviver com as limitações conhecidas das tools do 
 | [#23](https://github.com/GuilhermeBn198/jarvis/issues/23) | `act_open` com argumentos | **corrigido** (nesta branch) |
 | [#24](https://github.com/GuilhermeBn198/jarvis/issues/24) | `win_read` lê WSL e lista diretórios | aberta |
 | [#25](https://github.com/GuilhermeBn198/jarvis/issues/25) | clipboard/contexto Windows no `chat` | aberta |
-| [#28](https://github.com/GuilhermeBn198/jarvis/issues/28) | mensagens de background por causa | aberta |
+| [#28](https://github.com/GuilhermeBn198/jarvis/issues/28) | mensagens de background por causa | aberta (mensagens por causa nesta branch; validação do dono pendente) |

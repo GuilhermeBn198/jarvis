@@ -60,7 +60,16 @@ test("background type roda a UIA num job com timeout e trata estouro como unconf
   assert.match(s, /Start-Job/);
   assert.match(s, /Wait-Job/);
   assert.match(s, /-Timeout/);
-  assert.match(s, /JARVIS_RESULT=unconfirmed\|UIA timeout/);
+  // #28: o estouro carrega o codigo de razao 'timeout' para a tool compor.
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|timeout\|UIA timeout/);
+});
+
+test("background type marca a causa de cada unconfirmed no JARVIS_RESULT (#28)", () => {
+  const s = buildBackgroundTypeScript({ text: "oi", hwnd: 42 });
+  // noset: sem controle de edicao (WM_CHAR foi postado no topo da janela).
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|noset\|sem controle de edicao/);
+  // set: havia controle de edicao, mas a UIA nao confirmou o texto.
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|set\|sem confirmacao/);
 });
 
 test("background type suporta append (I2) e WM_CHAR no controle (I3)", () => {
@@ -134,8 +143,15 @@ test("background key: char manda so keydown; tecla especial down+up", () => {
 
 test("background key avisa que win+r nao funciona em background", () => {
   const s = buildBackgroundKeyScript({ keys: "win+r", hwnd: 42 });
-  assert.match(s, /JARVIS_RESULT=unconfirmed\|' \+ \$alvo/);
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|' \+ \$reason \+ '\|' \+ \$alvo/);
   assert.match(s, /win\+r nao funciona em background/);
+});
+
+test("background key marca a causa no JARVIS_RESULT (sent/noset/timeout) (#28)", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter", hwnd: 42 });
+  // sent: teclas postadas com controle de edicao; noset: sem controle.
+  assert.match(s, /if \(\$native -gt 0\) \{ 'sent' \} else \{ 'noset' \}/);
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|timeout\|janela nao respondeu em 5s/);
 });
 
 test("background key: detalhe e so o alvo (a tool compoe a mensagem sem repetir)", () => {
@@ -158,6 +174,17 @@ test("parseActResult le marcadores", () => {
   assert.equal(parseActResult("JARVIS_RESULT=unconfirmed|sem confirmacao").status, "unconfirmed");
   assert.equal(parseActResult("JARVIS_RESULT=ambiguous|[]").status, "ambiguous");
   assert.equal(parseActResult("nada").status, "error");
+});
+
+test("parseActResult le o codigo de razao e mantem o formato antigo (#28)", () => {
+  // Formato novo: status|reason|detail.
+  assert.deepEqual(parseActResult("JARVIS_RESULT=unconfirmed|set|sem confirmacao"), {
+    status: "unconfirmed", reason: "set", detail: "sem confirmacao",
+  });
+  // Formato antigo (sem reason) continua parseavel: reason fica ausente.
+  assert.deepEqual(parseActResult("JARVIS_RESULT=unconfirmed|sem confirmacao"), {
+    status: "unconfirmed", detail: "sem confirmacao",
+  });
 });
 
 test("mode foreground explicito forca foreground mesmo com window", () => {

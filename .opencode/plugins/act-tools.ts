@@ -1,12 +1,30 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
 import { buildPsScript, encode, toArgList } from "../act/ps.ts";
-import { buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
+import { buildWinListScript, chooseActScript, parseActResult, type ActResult } from "../act/win.ts";
 import { isExecutionTarget } from "../safety/rules.ts";
 
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
 // plugin. Este arquivo exporta APENAS `ActTools`; os helpers puros ficam em
 // `../act/ps.ts` e `../act/win.ts`.
+
+// #28: mensagem do act_type em background POR CAUSA (reason do JARVIS_RESULT).
+// 'noset' e o unico caso em que a entrada em background nao funciona (sem
+// controle de edicao exposto: terminais/Electron); por isso a tool pede que o
+// modelo PERGUNTE antes de repetir em foreground. Os demais casos NAO sao
+// recusa — a mensagem nunca pode afirmar "a janela nao aceita entrada".
+function unconfirmedTypeMessage(r: ActResult): string {
+  if (r.reason === "noset") {
+    return 'sem controle de edicao exposto (tipico de terminais/Electron) — a entrada em background nao funciona aqui; PERGUNTE ao usuario antes de repetir em foreground (focalize a janela-alvo e repita sem window).';
+  }
+  if (r.reason === "set") {
+    return "texto enviado em segundo plano, mas a UIA nao confirmou (a janela pode estar ocupada) — nao trate como recusa; verifique o resultado antes de repetir.";
+  }
+  if (r.reason === "timeout") {
+    return "a janela nao respondeu a UIA em 5s (pode estar inicializando ou ocupada) — tente de novo.";
+  }
+  return `entrada em segundo plano nao confirmada (${r.detail}) — verifique o estado da janela antes de repetir.`;
+}
 
 // Diagnostico opt-in da #20 (perda de barras invertidas): com
 // JARVIS_ACT_DEBUG=1, loga em stderr os argumentos BRUTOS que chegaram ao
@@ -41,9 +59,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
         }
         const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
         const r = parseActResult(out);
-        if (r.status === "unconfirmed") {
-          return `${r.detail} — a janela nao aceita entrada em segundo plano. Focalize a janela-alvo e repita com mode="foreground" (sem window).`;
-        }
+        if (r.status === "unconfirmed") return unconfirmedTypeMessage(r);
         if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
         return `${r.status}: ${r.detail}`;
       },
@@ -73,9 +89,14 @@ export const ActTools: Plugin = async ({ $ }) => ({
           const r = parseActResult(out);
           if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
           if (r.status === "error") return `erro: ${r.detail}`;
-          // Timeout nao e sucesso: as teclas podem nunca ter sido postadas.
-          if (/timeout/i.test(r.detail)) {
+          // #28: mensagem POR CAUSA via reason; nunca afirmar recusa/sucesso
+          // sem saber. Timeout nao e sucesso: as teclas podem nunca ter sido
+          // postadas.
+          if (r.reason === "timeout") {
             return `timeout: a janela nao respondeu em 5s — as teclas podem nao ter sido enviadas (confirme o estado da janela antes de repetir)`;
+          }
+          if (r.reason === "noset") {
+            return "teclas enviadas em segundo plano sem controle de edicao exposto (tipico de terminais/Electron) — podem nao ter efeito; PERGUNTE ao usuario antes de repetir em foreground.";
           }
           return `teclas enviadas em segundo plano (confirmacao indisponivel) — ${r.detail}`;
         } catch (err) {
