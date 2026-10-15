@@ -2,7 +2,7 @@ import { type Plugin, tool } from "@opencode-ai/plugin";
 
 import { parseKeys } from "../act/keys.ts";
 import { buildPsScript, encode, toArgList } from "../act/ps.ts";
-import { buildWinListScript, chooseActScript, parseActResult, type ActResult } from "../act/win.ts";
+import { type ActResult, buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
 import { formatToolError } from "../lib/tool-error.ts";
 import { isExecutionTarget } from "../safety/rules.ts";
 
@@ -17,7 +17,7 @@ import { isExecutionTarget } from "../safety/rules.ts";
 // recusa — a mensagem nunca pode afirmar "a janela nao aceita entrada".
 function unconfirmedTypeMessage(r: ActResult): string {
   if (r.reason === "noset") {
-    return 'sem controle de edicao exposto (tipico de terminais/Electron) — a entrada em background nao funciona aqui; PERGUNTE ao usuario antes de repetir em foreground (focalize a janela-alvo e repita sem window).';
+    return "sem controle de edicao exposto (tipico de terminais/Electron) — a entrada em background nao funciona aqui; PERGUNTE ao usuario antes de repetir em foreground (focalize a janela-alvo e repita sem window).";
   }
   if (r.reason === "set") {
     return "texto enviado em segundo plano, mas a UIA nao confirmou (a janela pode estar ocupada) — nao trate como recusa; verifique o resultado antes de repetir.";
@@ -45,7 +45,8 @@ function debugRawTypeArgs(args: unknown): void {
 export const ActTools: Plugin = async ({ $ }) => ({
   tool: {
     act_type: tool({
-      description: "Digita um texto. Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: injeta na janela-alvo sem roubar foco. append=true concatena ao conteudo atual (default substitui).",
+      description:
+        "Digita um texto. Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: injeta na janela-alvo sem roubar foco. append=true concatena ao conteudo atual (default substitui).",
       args: {
         text: tool.schema.string(),
         mode: tool.schema.string().optional(),
@@ -59,12 +60,15 @@ export const ActTools: Plugin = async ({ $ }) => ({
         // #26: falha do shell nunca vaza crua — vira "erro em act_type (etapa: ...)".
         try {
           if (!bg) {
-            return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`).text();
+            return (
+              await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`
+            ).text();
           }
           const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
           const r = parseActResult(out);
           if (r.status === "unconfirmed") return unconfirmedTypeMessage(r);
-          if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
+          if (r.status === "ambiguous")
+            return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
           return `${r.status}: ${r.detail}`;
         } catch (err) {
           const etapa = bg ? "background" : "foreground";
@@ -78,7 +82,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
         "Envia teclas/atalho em sintaxe natural (case-insensitive). " +
         "Teclas: enter esc tab backspace delete space up down left right home end pgup pgdn f1..f24, letras/digitos, plus. " +
         "Combos: ctrl+/alt+/shift+/win+ (ex.: ctrl+c, ctrl+shift+esc, alt+f4). " +
-        "Acordes separados por espaco ou virgula (ex.: \"ctrl+s , enter\"). " +
+        'Acordes separados por espaco ou virgula (ex.: "ctrl+s , enter"). ' +
         "Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: envia a janela-alvo sem roubar foco. " +
         "Limites do background: win+r nao funciona (hotkey do sistema, nunca chega via PostMessage); " +
         "combos com ctrl/alt sao best-effort (apps que consultam GetKeyState podem ignora-los).",
@@ -99,11 +103,14 @@ export const ActTools: Plugin = async ({ $ }) => ({
         // #26: falha do shell nunca vaza crua — vira "erro em act_key (etapa: ...)".
         try {
           if (!bg) {
-            return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`).text();
+            return (
+              await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`
+            ).text();
           }
           const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
           const r = parseActResult(out);
-          if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
+          if (r.status === "ambiguous")
+            return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
           if (r.status === "error") return `erro: ${r.detail}`;
           // #28: mensagem POR CAUSA via reason; nunca afirmar recusa/sucesso
           // sem saber. Timeout nao e sucesso: as teclas podem nunca ter sido
@@ -126,7 +133,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
       description:
         "Abre uma URL, arquivo ou aplicativo (Start-Process). args (opcional) sao repassados ao alvo com quoting Windows. " +
         "Alvos de execucao — terminais/interpretadores/scripts (cmd, powershell, pwsh, wsl, wt, wscript, cscript, mshta, rundll32, regsvr32, .bat/.cmd/.ps1/.vbs/.js) — " +
-        "exigem confirm=true: sem ele a tool recusa — PERGUNTE ao usuario (\"quer que eu abra X para executar Y?\") antes de repetir com confirm=true.",
+        'exigem confirm=true: sem ele a tool recusa — PERGUNTE ao usuario ("quer que eu abra X para executar Y?") antes de repetir com confirm=true.',
       args: {
         target: tool.schema.string(),
         args: tool.schema.array(tool.schema.string()).optional(),
@@ -141,33 +148,53 @@ export const ActTools: Plugin = async ({ $ }) => ({
         }
         // #26: falha do Start-Process vira mensagem com alvo e causa real.
         try {
-          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
+          return (
+            await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`
+          ).text();
         } catch (err) {
-          return formatToolError({ tool: "act_open", step: "abrir alvo", detail: `Start-Process ${target}` }, err);
+          return formatToolError(
+            { tool: "act_open", step: "abrir alvo", detail: `Start-Process ${target}` },
+            err,
+          );
         }
       },
     }),
     act_click: tool({
       description: "Move o mouse para (x,y) e clica (left/right).",
-      args: { x: tool.schema.number(), y: tool.schema.number(), button: tool.schema.string().optional() },
+      args: {
+        x: tool.schema.number(),
+        y: tool.schema.number(),
+        button: tool.schema.string().optional(),
+      },
       async execute(args) {
         // #26: falha do clique vira mensagem com etapa e causa real.
         try {
-          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
+          return (
+            await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`
+          ).text();
         } catch (err) {
-          return formatToolError({ tool: "act_click", step: "clicar", detail: "powershell (SetCursorPos/mouse_event)" }, err);
+          return formatToolError(
+            { tool: "act_click", step: "clicar", detail: "powershell (SetCursorPos/mouse_event)" },
+            err,
+          );
         }
       },
     }),
     win_list: tool({
-      description: "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
+      description:
+        "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
       args: {},
       async execute() {
         // #26: falha do EnumWindows vira mensagem com etapa e causa real.
         try {
-          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
+          return (
+            await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`
+          ).text();
         } catch (err) {
-          return formatToolError({ tool: "win_list", step: "listar janelas", detail: "powershell (EnumWindows)" }, err);
+          return formatToolError(
+            { tool: "win_list", step: "listar janelas", detail: "powershell (EnumWindows)" },
+            err,
+          );
         }
       },
     }),

@@ -64,7 +64,7 @@ class SentenceChunker:
                 if idx == -1:
                     self._buf = self._buf[-2:]  # guarda possível fence parcial
                     return
-                self._buf = self._buf[idx + 3:]
+                self._buf = self._buf[idx + 3 :]
                 self._in_fence = False
                 self._force_pending(out)
                 if not self._fence_notified:
@@ -74,12 +74,12 @@ class SentenceChunker:
             fence_idx = self._buf.find(_CODE_FENCE)
             term_idx = self._find_terminator()
             if term_idx is not None and (fence_idx == -1 or term_idx < fence_idx):
-                self._emit(self._buf[:term_idx + 1].strip(), out)
-                self._buf = self._buf[term_idx + 1:].lstrip()
+                self._emit(self._buf[: term_idx + 1].strip(), out)
+                self._buf = self._buf[term_idx + 1 :].lstrip()
                 continue
             if fence_idx != -1:
                 self._emit(self._buf[:fence_idx].strip(), out)
-                self._buf = self._buf[fence_idx + 3:]
+                self._buf = self._buf[fence_idx + 3 :]
                 self._in_fence = True
                 self._fence_notified = False
                 continue
@@ -104,7 +104,7 @@ class SentenceChunker:
         j = i - 1
         while j >= 0 and b[j].isalpha():
             j -= 1
-        return b[j + 1:i].lower() in _ABBREV
+        return b[j + 1 : i].lower() in _ABBREV
 
 
 class Speaker:

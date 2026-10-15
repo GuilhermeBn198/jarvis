@@ -28,7 +28,7 @@ def load_settings(path: str | None = None) -> dict:
     """
     p = _path(path)
     try:
-        with open(p, "r", encoding="utf-8") as fh:
+        with open(p, encoding="utf-8") as fh:
             data = json.load(fh)
     except (OSError, ValueError):
         return {}

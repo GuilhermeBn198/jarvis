@@ -1,17 +1,17 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 import {
-  LIST_CAP,
-  LIST_SENTINEL,
   buildReadScript,
   buildWriteScript,
   formatListing,
   formatReadError,
   isAllowedWrite,
   isUnder,
+  LIST_CAP,
+  LIST_SENTINEL,
   normalizeWinPath,
   parseAllowlist,
   parseListLines,
@@ -29,10 +29,10 @@ test("normalizeWinPath converte C:\\ e /mnt/c e tira barra final", () => {
 });
 
 test("parseAllowlist aceita ; e : sem quebrar letra de drive", () => {
-  assert.deepEqual(
-    parseAllowlist("C:\\Users\\me\\proj; /mnt/c/Users/me/out"),
-    ["/mnt/c/Users/me/proj", "/mnt/c/Users/me/out"],
-  );
+  assert.deepEqual(parseAllowlist("C:\\Users\\me\\proj; /mnt/c/Users/me/out"), [
+    "/mnt/c/Users/me/proj",
+    "/mnt/c/Users/me/out",
+  ]);
   assert.deepEqual(parseAllowlist(""), []);
 });
 
@@ -247,16 +247,18 @@ test("readWindowsPath usa o runner, converte o caminho e formata a saida", async
   assert.equal(conteudo, "conteudo\r\ndo arquivo");
   assert.ok(scripts[0].includes(`C:\\Users\\me\\a.txt`));
 
-  const lista = await readWindowsPath(
-    "/mnt/c/Windows",
-    async () => [LIST_SENTINEL, '{"name":"win.ini","type":"file","size":92}'].join("\n"),
+  const lista = await readWindowsPath("/mnt/c/Windows", async () =>
+    [LIST_SENTINEL, '{"name":"win.ini","type":"file","size":92}'].join("\n"),
   );
   assert.deepEqual(lista.split("\n"), [
     "listagem de /mnt/c/Windows (1 entradas):",
     '{"name":"win.ini","type":"file","size":92}',
   ]);
 
-  const erro = await readWindowsPath("/mnt/c/nope", async () => "JARVIS-ERR:not_found:item not found");
+  const erro = await readWindowsPath(
+    "/mnt/c/nope",
+    async () => "JARVIS-ERR:not_found:item not found",
+  );
   assert.equal(erro, "erro ao ler /mnt/c/nope: caminho não existe");
 });
 

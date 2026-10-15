@@ -71,7 +71,8 @@ export function buildPsScript(name: string, args: Record<string, unknown>): stri
     return `Start-Process -FilePath '${target}' -ArgumentList '${line}'`;
   }
   if (name === "act_click") {
-    const x = Number(args.x ?? 0), y = Number(args.y ?? 0);
+    const x = Number(args.x ?? 0),
+      y = Number(args.y ?? 0);
     const right = String(args.button ?? "left") === "right";
     const flag = right ? "0x0008" : "0x0002"; // RIGHTDOWN/LEFTDOWN
     const up = right ? "0x0010" : "0x0004";

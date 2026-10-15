@@ -97,7 +97,12 @@ $h = [IntPtr]$cands[0].hwnd
 `;
 }
 
-export function buildBackgroundTypeScript(a: { text: string; window?: string; hwnd?: number; append?: boolean }): string {
+export function buildBackgroundTypeScript(a: {
+  text: string;
+  window?: string;
+  hwnd?: number;
+  append?: boolean;
+}): string {
   const text = psQuote(String(a.text ?? ""));
   const append = a.append === true;
   return `${WIN32_SNIPPET}${UIA_SETUP}${resolveBlock(String(a.window ?? ""), Number(a.hwnd ?? 0))}
@@ -158,7 +163,11 @@ else {
 `;
 }
 
-export function buildBackgroundKeyScript(a: { keys: string; window?: string; hwnd?: number }): string {
+export function buildBackgroundKeyScript(a: {
+  keys: string;
+  window?: string;
+  hwnd?: number;
+}): string {
   // Mesmo parser natural do foreground (keys.ts). O JSON vai dentro de um
   // here-string 'single-quoted': nao ha interpolacao nem aspas para escapar.
   const chords = parseKeys(String(a.keys ?? ""));
@@ -243,7 +252,9 @@ export function parseActResult(stdout: string): ActResult {
     // valido — so nao traz a causa.
     const m = line
       .trim()
-      .match(/^JARVIS_RESULT=(confirmed|unconfirmed|ambiguous|error)\|(?:(noset|set|timeout|sent)\|)?(.*)$/);
+      .match(
+        /^JARVIS_RESULT=(confirmed|unconfirmed|ambiguous|error)\|(?:(noset|set|timeout|sent)\|)?(.*)$/,
+      );
     if (m) {
       const r: ActResult = { status: m[1] as ActStatus, detail: m[3] };
       if (m[2]) r.reason = m[2] as ActReason;

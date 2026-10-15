@@ -23,7 +23,9 @@ def test_redact_akia():
 
 
 def test_redact_bearer_preserva_esquema():
-    assert te.redact("Authorization: Bearer eyJhbGciOi.abc-123") == "Authorization: Bearer [REDACTADO]"
+    assert (
+        te.redact("Authorization: Bearer eyJhbGciOi.abc-123") == "Authorization: Bearer [REDACTADO]"
+    )
 
 
 def test_redact_encodedcommand_nao_vaza_base64():
@@ -43,11 +45,17 @@ def test_truncate_400_com_sufixo():
 
 # extract_cause: causa real do erro, nunca so "exit code 1" cru.
 def test_extract_cause_exit_code_stderr():
-    assert te.extract_cause(_Falha("x", exit_code=1, stderr="npm ERR! missing script\n")) == "exit code 1: npm ERR! missing script"
+    assert (
+        te.extract_cause(_Falha("x", exit_code=1, stderr="npm ERR! missing script\n"))
+        == "exit code 1: npm ERR! missing script"
+    )
 
 
 def test_extract_cause_ansi_limpo():
-    assert te.extract_cause(_Falha("x", exit_code=2, stderr="\x1b[31mError: boom\x1b[0m\n")) == "exit code 2: Error: boom"
+    assert (
+        te.extract_cause(_Falha("x", exit_code=2, stderr="\x1b[31mError: boom\x1b[0m\n"))
+        == "exit code 2: Error: boom"
+    )
 
 
 def test_extract_cause_exit_sem_stderr():
@@ -55,7 +63,9 @@ def test_extract_cause_exit_sem_stderr():
 
 
 def test_extract_cause_usa_stdout_quando_stderr_vazio():
-    assert te.extract_cause(_Falha("x", exit_code=1, stdout="saida util")) == "exit code 1: saida util"
+    assert (
+        te.extract_cause(_Falha("x", exit_code=1, stdout="saida util")) == "exit code 1: saida util"
+    )
 
 
 def test_extract_cause_message():
@@ -102,12 +112,19 @@ def test_format_tool_error_com_detail_e_action():
         detail="hwnd 123",
         action="confira a janela",
     )
-    assert out == "erro em win_tree_text (etapa: powershell; hwnd 123): exit code 1: boom — confira a janela"
+    assert (
+        out
+        == "erro em win_tree_text (etapa: powershell; hwnd 123): exit code 1: boom — confira a janela"
+    )
 
 
 def test_format_tool_error_redige_detail_e_action():
     out = te.format_tool_error(
-        "w", "s", ValueError("x"), detail="Authorization: Bearer abc.def", action="use sk-abc123456789?"
+        "w",
+        "s",
+        ValueError("x"),
+        detail="Authorization: Bearer abc.def",
+        action="use sk-abc123456789?",
     )
     assert "Bearer abc.def" not in out
     assert "sk-abc123456789" not in out

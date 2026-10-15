@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { buildPsScript, encode } from "../act/ps.ts";
 import { buildWinListScript, chooseActScript } from "../act/win.ts";
 import { ActTools } from "./act-tools.ts";
@@ -65,7 +65,10 @@ test("act_key execute com keys invalido retorna erro formatado sem chamar o shel
     called = true;
     return { text: async () => "" };
   }) as never;
-  const tools = (await ActTools({ $: shell } as never)).tool as Record<string, { execute: (a: Record<string, unknown>) => Promise<string> }>;
+  const tools = (await ActTools({ $: shell } as never)).tool as Record<
+    string,
+    { execute: (a: Record<string, unknown>) => Promise<string> }
+  >;
   const out = await tools.act_key.execute({ keys: "foo" });
   assert.match(out, /^erro em act_key \(etapa: validar sintaxe\): /);
   assert.match(out, /tecla desconhecida "foo"/);
@@ -108,7 +111,11 @@ test("act_open sem confirm em alvo de execucao recusa e orienta a perguntar", as
 
 test("act_open com confirm em alvo de execucao executa", async () => {
   const { shell, calls } = recordingShell();
-  const out = await (await actOpenTools(shell)).execute({ target: "cmd", args: ["/c", "dir"], confirm: true });
+  const out = await (await actOpenTools(shell)).execute({
+    target: "cmd",
+    args: ["/c", "dir"],
+    confirm: true,
+  });
   assert.equal(out, "ok");
   assert.equal(calls.length, 1);
 });
@@ -121,7 +128,16 @@ test("act_open confirm=false explicito tambem recusa", async () => {
 });
 
 test("act_open recusa alvos de execucao (nome, caminho e extensao) sem confirm", async () => {
-  const alvos = ["powershell.exe", "wsl", "wt", "wscript", "C:\\x\\run.bat", "C:\\x\\s.ps1", "a.vbs", "app.js"];
+  const alvos = [
+    "powershell.exe",
+    "wsl",
+    "wt",
+    "wscript",
+    "C:\\x\\run.bat",
+    "C:\\x\\s.ps1",
+    "a.vbs",
+    "app.js",
+  ];
   for (const target of alvos) {
     const { shell, calls } = recordingShell();
     const out = await (await actOpenTools(shell)).execute({ target });
@@ -159,7 +175,9 @@ async function actKeyTools(stdout: string) {
 }
 
 test("act_key bg: timeout vira aviso (teclas podem nao ter sido enviadas), nao sucesso", async () => {
-  const out = await (await actKeyTools("JARVIS_RESULT=unconfirmed|timeout|janela nao respondeu em 5s")).execute({
+  const out = await (
+    await actKeyTools("JARVIS_RESULT=unconfirmed|timeout|janela nao respondeu em 5s")
+  ).execute({
     keys: "enter",
     mode: "background",
   });
@@ -170,11 +188,16 @@ test("act_key bg: timeout vira aviso (teclas podem nao ter sido enviadas), nao s
 });
 
 test("act_key bg sent: teclas postadas com controle de edicao (sem confirmacao)", async () => {
-  const out = await (await actKeyTools("JARVIS_RESULT=unconfirmed|sent|controle de edicao")).execute({
+  const out = await (
+    await actKeyTools("JARVIS_RESULT=unconfirmed|sent|controle de edicao")
+  ).execute({
     keys: "enter",
     mode: "background",
   });
-  assert.equal(out, "teclas enviadas em segundo plano (confirmacao indisponivel) — controle de edicao");
+  assert.equal(
+    out,
+    "teclas enviadas em segundo plano (confirmacao indisponivel) — controle de edicao",
+  );
 });
 
 test("act_key bg noset: avisa que podem nao ter efeito e manda perguntar antes do foreground", async () => {
@@ -193,12 +216,17 @@ test("act_key bg: unconfirmed reporta o alvo do detalhe do script", async () => 
     keys: "enter",
     mode: "background",
   });
-  assert.equal(out, "teclas enviadas em segundo plano (confirmacao indisponivel) — controle de edicao");
+  assert.equal(
+    out,
+    "teclas enviadas em segundo plano (confirmacao indisponivel) — controle de edicao",
+  );
 });
 
 test("act_key bg: aviso do win+r continua aparecendo", async () => {
   const out = await (
-    await actKeyTools("JARVIS_RESULT=unconfirmed|controle de edicao — win+r nao funciona em background")
+    await actKeyTools(
+      "JARVIS_RESULT=unconfirmed|controle de edicao — win+r nao funciona em background",
+    )
   ).execute({ keys: "win+r", mode: "background" });
   assert.match(out, /teclas enviadas em segundo plano/);
   assert.match(out, /win\+r nao funciona em background/);
@@ -208,7 +236,9 @@ test("act_key bg: aviso do win+r continua aparecendo", async () => {
 
 test("act_type bg noset: sem controle de edicao manda perguntar antes do foreground", async () => {
   const out = await (
-    await actTypeTools(shellReturning("JARVIS_RESULT=unconfirmed|noset|sem controle de edicao (WM_CHAR no topo)"))
+    await actTypeTools(
+      shellReturning("JARVIS_RESULT=unconfirmed|noset|sem controle de edicao (WM_CHAR no topo)"),
+    )
   ).execute({ text: "echo oi", mode: "background" });
   assert.match(out, /sem controle de edicao/i);
   assert.match(out, /terminais/i);
@@ -231,7 +261,9 @@ test("act_type bg set: texto enviado sem confirmacao da UIA, sem afirmar recusa"
 
 test("act_type bg timeout: janela nao respondeu a UIA, sugere tentar de novo", async () => {
   const out = await (
-    await actTypeTools(shellReturning("JARVIS_RESULT=unconfirmed|timeout|UIA timeout (janela nao respondeu em 5s)"))
+    await actTypeTools(
+      shellReturning("JARVIS_RESULT=unconfirmed|timeout|UIA timeout (janela nao respondeu em 5s)"),
+    )
   ).execute({ text: "oi", mode: "background" });
   assert.match(out, /nao respondeu/i);
   assert.match(out, /5s/);
@@ -319,7 +351,10 @@ test("act_type: sem JARVIS_ACT_DEBUG (ou != 1) nada e logado", async (t) => {
   process.env.JARVIS_ACT_DEBUG = "0";
   await actType.execute({ text: "C:\\a" });
   delete process.env.JARVIS_ACT_DEBUG;
-  assert.deepEqual(events.filter((e) => e.includes("[act_type]")), []);
+  assert.deepEqual(
+    events.filter((e) => e.includes("[act_type]")),
+    [],
+  );
 });
 
 // --- #26: falha de subprocesso vira mensagem com etapa, comando e stderr -----
@@ -348,9 +383,10 @@ test("act_type foreground: falha do powershell vira erro com etapa, comando e ca
 });
 
 test("act_type background: falha do powershell vira erro com etapa background", async () => {
-  const out = await (
-    await actingTool(shellFailing(1, "UIA: janela sumiu"), "act_type")
-  ).execute({ text: "oi", mode: "background" });
+  const out = await (await actingTool(shellFailing(1, "UIA: janela sumiu"), "act_type")).execute({
+    text: "oi",
+    mode: "background",
+  });
   assert.equal(
     out,
     "erro em act_type (etapa: background; powershell (UIA/PostMessage)): exit code 1: UIA: janela sumiu",
@@ -388,7 +424,10 @@ test("act_key background: falha do powershell vira erro com causa", async () => 
 
 test("act_open: falha do Start-Process vira erro com alvo e causa redigida", async () => {
   const out = await (
-    await actingTool(shellFailing(1, "Start-Process falhou (chave AKIAIOSFODNN7EXAMPLE)"), "act_open")
+    await actingTool(
+      shellFailing(1, "Start-Process falhou (chave AKIAIOSFODNN7EXAMPLE)"),
+      "act_open",
+    )
   ).execute({ target: "https://x" });
   assert.equal(
     out,
@@ -399,7 +438,10 @@ test("act_open: falha do Start-Process vira erro com alvo e causa redigida", asy
 
 test("act_click: falha do mouse vira erro com causa redigida", async () => {
   const out = await (
-    await actingTool(shellFailing(1, "SetCursorPos negado (token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789)"), "act_click")
+    await actingTool(
+      shellFailing(1, "SetCursorPos negado (token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789)"),
+      "act_click",
+    )
   ).execute({ x: -1, y: -1 });
   assert.equal(
     out,
@@ -410,7 +452,10 @@ test("act_click: falha do mouse vira erro com causa redigida", async () => {
 
 test("win_list: falha do powershell vira erro com causa redigida", async () => {
   const out = await (
-    await actingTool(shellFailing(1, "EnumWindows negado: Authorization Bearer abc.def"), "win_list")
+    await actingTool(
+      shellFailing(1, "EnumWindows negado: Authorization Bearer abc.def"),
+      "win_list",
+    )
   ).execute({});
   assert.equal(
     out,

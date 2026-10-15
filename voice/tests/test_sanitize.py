@@ -1,4 +1,4 @@
-from sanitize import speechify, strip_ansi, drop_leading_tui
+from sanitize import drop_leading_tui, speechify, strip_ansi
 
 
 def test_strip_ansi():
@@ -60,9 +60,7 @@ def test_underscores_in_identifiers_kept():
 
 
 def test_markdown_emphasis_removed():
-    assert speechify("isso e *importante* e **forte**") == (
-        "isso e importante e forte"
-    )
+    assert speechify("isso e *importante* e **forte**") == ("isso e importante e forte")
 
 
 def test_stray_asterisks_kept():

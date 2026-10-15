@@ -1,7 +1,6 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
 import { encode } from "../act/ps.ts";
-import { formatToolError } from "../lib/tool-error.ts";
 import {
   buildWriteScript,
   isAllowedWrite,
@@ -12,6 +11,7 @@ import {
   routeRead,
   toWindowsPath,
 } from "../act/winfs.ts";
+import { formatToolError } from "../lib/tool-error.ts";
 
 // Tools de leitura/escrita de arquivos do Windows (sub-projeto C). O cerebro
 // roda no WSL e alcanca /mnt/c; aqui nao abrimos terminal/editor.
@@ -75,9 +75,11 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
         const win = toWindowsPath(p);
         // #26: falha do shell nunca vaza crua — vira "erro em win_write (etapa: ...)".
         try {
-          const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(
-            buildWriteScript(win, String(args.content ?? ""), args.append === true),
-          )}`).text();
+          const out = (
+            await $`powershell.exe -NoProfile -EncodedCommand ${encode(
+              buildWriteScript(win, String(args.content ?? ""), args.append === true),
+            )}`
+          ).text();
           return `${args.append === true ? "concatenado" : "escrito"}: ${p}${out.trim() ? ` (${out.trim()})` : ""}`;
         } catch (err) {
           return formatToolError({ tool: "win_write", step: "escrever arquivo", detail: p }, err);

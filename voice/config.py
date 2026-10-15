@@ -8,9 +8,7 @@ from settings import load_settings
 DEFAULT_OPENCODE_BIN = os.path.expanduser("~/.opencode/bin/opencode")
 # Raiz do projeto (voice/ fica um nivel abaixo): o `opencode` precisa rodar daqui
 # para carregar `.opencode/plugins` (act_*, see_screen) e o SafetyGate.
-DEFAULT_PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))
-)
+DEFAULT_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_TIMEOUT_S = 300
 DEFAULT_POWERSHELL_EXE = "powershell.exe"
 # Base do perfil do usuario do Windows vista do WSL. Neutro por padrao (nao
@@ -24,9 +22,7 @@ def win_path(*parts: str) -> str:
     return "/".join([WIN_HOME, *parts])
 
 
-DEFAULT_FFMPEG_EXE = win_path(
-    "tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe"
-)
+DEFAULT_FFMPEG_EXE = win_path("tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe")
 DEFAULT_MIC_DEVICE = "Microphone (FIFINE Microphone)"
 DEFAULT_WHISPER_MODEL = "base"
 DEFAULT_RECORD_SECONDS = 5
@@ -40,9 +36,7 @@ DEFAULT_AGENT = "chat"
 DEFAULT_VOICE_LOG = os.path.expanduser("~/.local/share/jarvis/voice-log.jsonl")
 DEFAULT_PIPER_EXE = win_path("tools/piper/piper/piper.exe")
 DEFAULT_PIPER_MODEL = win_path("tools/piper/voices/pt_BR-faber-medium.onnx")
-DEFAULT_FFPLAY_EXE = win_path(
-    "tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffplay.exe"
-)
+DEFAULT_FFPLAY_EXE = win_path("tools/ffmpeg/ffmpeg-master-latest-win64-gpl/bin/ffplay.exe")
 DEFAULT_PIPER_OUT_WAV = _wsl_to_windows(win_path("tools/piper/out.wav"))
 DEFAULT_VISION_MODEL = "opencode-go/deepseek-v4.1-flash"
 DEFAULT_VISION_TRIGGER = "olha"
@@ -131,16 +125,15 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         raise ValueError(f"RECORD_SECONDS deve ser inteiro: {raw_seconds}") from exc
     agent_backend = e.get("AGENT_BACKEND", DEFAULT_AGENT_BACKEND)
     if agent_backend not in ("run", "serve"):
-        raise ValueError(
-            f"AGENT_BACKEND deve ser 'run' ou 'serve': {agent_backend}"
-        )
+        raise ValueError(f"AGENT_BACKEND deve ser 'run' ou 'serve': {agent_backend}")
     tts_backend = e.get("TTS_BACKEND", settings.get("tts_backend", DEFAULT_TTS_BACKEND))
     if tts_backend not in ("sapi", "piper"):
-        raise ValueError(
-            f"TTS_BACKEND deve ser 'sapi' ou 'piper': {tts_backend}"
-        )
+        raise ValueError(f"TTS_BACKEND deve ser 'sapi' ou 'piper': {tts_backend}")
     legacy_ptt = str(e.get("VOICE_PTT", "1")).strip().lower() in (
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     )
     raw_input = e.get("VOICE_INPUT")
     if raw_input is None:
@@ -151,22 +144,26 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
     else:
         input_mode = str(raw_input).strip().lower()
         if input_mode not in INPUT_MODES:
-            raise ValueError(
-                f"VOICE_INPUT deve ser 'auto', 'ptt' ou 'fixed': {raw_input}"
-            )
+            raise ValueError(f"VOICE_INPUT deve ser 'auto', 'ptt' ou 'fixed': {raw_input}")
     ptt = input_mode == "ptt"
     raw_state_port = e.get("JARVIS_STATE_PORT", DEFAULT_STATE_PORT)
     try:
         state_port = int(raw_state_port)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"JARVIS_STATE_PORT deve ser inteiro: {raw_state_port}") from exc
-    state_require_gui = str(
-        e.get("JARVIS_REQUIRE_GUI", "0")
-    ).strip().lower() in ("1", "true", "yes", "on")
+    state_require_gui = str(e.get("JARVIS_REQUIRE_GUI", "0")).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     stream_tts = str(
         e.get("VOICE_STREAM_TTS", settings.get("stream_tts", "1"))
     ).strip().lower() in (
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     )
     raw_idle = e.get("VOICE_STREAM_IDLE_MS", DEFAULT_STREAM_IDLE_MS)
     try:
@@ -177,9 +174,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
     try:
         stream_min_chars = int(raw_min)
     except (TypeError, ValueError) as exc:
-        raise ValueError(
-            f"VOICE_STREAM_MIN_CHARS deve ser inteiro: {raw_min}"
-        ) from exc
+        raise ValueError(f"VOICE_STREAM_MIN_CHARS deve ser inteiro: {raw_min}") from exc
     raw_noise = e.get("VOICE_NOISE_DB", settings.get("noise_db", DEFAULT_NOISE_DB))
     try:
         noise_db = int(raw_noise)
@@ -200,25 +195,24 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         max_s = float(raw_max)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"VOICE_MAX_S deve ser numero: {raw_max}") from exc
-    raw_min_speech = e.get(
-        "VOICE_MIN_SPEECH_S", settings.get("min_speech_s", DEFAULT_MIN_SPEECH_S)
-    )
+    raw_min_speech = e.get("VOICE_MIN_SPEECH_S", settings.get("min_speech_s", DEFAULT_MIN_SPEECH_S))
     try:
         min_speech_s = float(raw_min_speech)
     except (TypeError, ValueError) as exc:
-        raise ValueError(
-            f"VOICE_MIN_SPEECH_S deve ser numero: {raw_min_speech}"
-        ) from exc
+        raise ValueError(f"VOICE_MIN_SPEECH_S deve ser numero: {raw_min_speech}") from exc
     heartbeat = str(e.get("JARVIS_HEARTBEAT", "0")).strip().lower() in (
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     )
-    activation = str(
-        e.get("VOICE_ACTIVATION", settings.get("activation", DEFAULT_ACTIVATION))
-    ).strip().lower()
+    activation = (
+        str(e.get("VOICE_ACTIVATION", settings.get("activation", DEFAULT_ACTIVATION)))
+        .strip()
+        .lower()
+    )
     if activation not in ACTIVATIONS:
-        raise ValueError(
-            f"VOICE_ACTIVATION deve ser 'free' ou 'wake': {activation}"
-        )
+        raise ValueError(f"VOICE_ACTIVATION deve ser 'free' ou 'wake': {activation}")
     triggers_base = DEFAULT_TRIGGERS_BASE
     triggers_override = str(e.get("JARVIS_TRIGGERS", "")).strip()
     if not triggers_override and os.path.exists(DEFAULT_TRIGGERS_USER):

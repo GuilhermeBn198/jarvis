@@ -14,7 +14,7 @@ def test_normalize_de_string_vazia():
     assert normalize(None) == ""
 
 
-from triggers import Target, Trigger, Registry, match
+from triggers import Registry, Target, Trigger, match  # noqa: E402
 
 REG = Registry(
     triggers=(
@@ -67,11 +67,13 @@ def test_texto_vazio_retorna_none():
     assert match("   ", REG) is None
 
 
-import json
-from triggers import load_registry, DEFAULT_REGISTRY, with_vision_trigger
+import json  # noqa: E402
+
+from triggers import DEFAULT_REGISTRY, load_registry, with_vision_trigger  # noqa: E402
 
 BASE = {
-    "version": 1, "fuzzy": 1,
+    "version": 1,
+    "fuzzy": 1,
     "default": {"kind": "agent", "agent": "chat"},
     "triggers": [
         {"name": "chat", "phrases": ["jarvis"], "target": {"kind": "agent", "agent": "chat"}},
@@ -94,17 +96,25 @@ def test_load_registry_le_base(tmp_path):
 
 def test_load_registry_merge_por_name(tmp_path):
     base = _write(tmp_path, "b.json", BASE)
-    override = _write(tmp_path, "u.json", {
-        "triggers": [
-            {"name": "act", "phrases": ["faz"], "target": {"kind": "agent", "agent": "act"}},
-            {"name": "vision", "phrases": ["veja"], "target": {"kind": "action", "action": "vision"}},
-        ]
-    })
+    override = _write(
+        tmp_path,
+        "u.json",
+        {
+            "triggers": [
+                {"name": "act", "phrases": ["faz"], "target": {"kind": "agent", "agent": "act"}},
+                {
+                    "name": "vision",
+                    "phrases": ["veja"],
+                    "target": {"kind": "action", "action": "vision"},
+                },
+            ]
+        },
+    )
     reg = load_registry(base, override, use_cache=False)
     by = {t.name: t for t in reg.triggers}
-    assert by["act"].phrases == ("faz",)          # adicionado
-    assert by["vision"].phrases == ("veja",)      # sobrescrito
-    assert by["chat"].phrases == ("jarvis",)      # base preservada
+    assert by["act"].phrases == ("faz",)  # adicionado
+    assert by["vision"].phrases == ("veja",)  # sobrescrito
+    assert by["chat"].phrases == ("jarvis",)  # base preservada
 
 
 def test_load_registry_arquivo_invalido_usa_fallback(tmp_path, capsys):
@@ -117,13 +127,17 @@ def test_load_registry_arquivo_invalido_usa_fallback(tmp_path, capsys):
 
 
 def test_load_registry_json_valido_tipo_ruim_nao_derruba(tmp_path, capsys):
-    bad = _write(tmp_path, "bad.json", {
-        "fuzzy": "abc",
-        "triggers": [
-            "nao-e-dict",
-            {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
-        ],
-    })
+    bad = _write(
+        tmp_path,
+        "bad.json",
+        {
+            "fuzzy": "abc",
+            "triggers": [
+                "nao-e-dict",
+                {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
+            ],
+        },
+    )
     reg = load_registry(bad, use_cache=False)
     assert isinstance(reg, Registry)
     assert [t.name for t in reg.triggers] == ["ok"]
@@ -131,13 +145,17 @@ def test_load_registry_json_valido_tipo_ruim_nao_derruba(tmp_path, capsys):
 
 
 def test_load_registry_gatilho_invalido_e_descartado(tmp_path, capsys):
-    base = _write(tmp_path, "b.json", {
-        "triggers": [
-            {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
-            {"name": "ruim", "phrases": ["x"], "target": {"kind": "nope", "agent": "chat"}},
-            {"name": "sem_frase", "phrases": [], "target": {"kind": "agent", "agent": "chat"}},
-        ]
-    })
+    base = _write(
+        tmp_path,
+        "b.json",
+        {
+            "triggers": [
+                {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
+                {"name": "ruim", "phrases": ["x"], "target": {"kind": "nope", "agent": "chat"}},
+                {"name": "sem_frase", "phrases": [], "target": {"kind": "agent", "agent": "chat"}},
+            ]
+        },
+    )
     reg = load_registry(base, use_cache=False)
     assert [t.name for t in reg.triggers] == ["ok"]
     assert "descartado" in capsys.readouterr().err
@@ -145,8 +163,7 @@ def test_load_registry_gatilho_invalido_e_descartado(tmp_path, capsys):
 
 def test_aliases_casam():
     reg = Registry(
-        triggers=(Trigger("chat", ("jarvis",), Target("agent", "chat"),
-                          aliases=("hey jarvis",)),),
+        triggers=(Trigger("chat", ("jarvis",), Target("agent", "chat"), aliases=("hey jarvis",)),),
         default=Target("agent", "chat"),
         fuzzy=1,
     )
@@ -158,9 +175,7 @@ def test_aliases_casam():
 
 def test_enabled_false_no_override_desabilita(tmp_path):
     base = _write(tmp_path, "b.json", BASE)
-    override = _write(tmp_path, "u.json", {
-        "triggers": [{"name": "vision", "enabled": False}]
-    })
+    override = _write(tmp_path, "u.json", {"triggers": [{"name": "vision", "enabled": False}]})
     reg = load_registry(base, override, use_cache=False)
     by = {t.name: t for t in reg.triggers}
     assert by["vision"].enabled is False
@@ -168,12 +183,16 @@ def test_enabled_false_no_override_desabilita(tmp_path):
 
 
 def test_default_nao_dict_nao_perde_gatilhos(tmp_path):
-    path = _write(tmp_path, "b.json", {
-        "default": "chat",
-        "triggers": [
-            {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
-        ],
-    })
+    path = _write(
+        tmp_path,
+        "b.json",
+        {
+            "default": "chat",
+            "triggers": [
+                {"name": "ok", "phrases": ["oi"], "target": {"kind": "agent", "agent": "chat"}},
+            ],
+        },
+    )
     reg = load_registry(path, use_cache=False)
     assert isinstance(reg, Registry)
     assert [t.name for t in reg.triggers] == ["ok"]

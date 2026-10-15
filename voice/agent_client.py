@@ -19,9 +19,7 @@ def _model_payload(model_id: str) -> dict:
     """Converte 'provider/model' no objeto `model` da API do serve."""
     provider, sep, model = model_id.partition("/")
     if not sep or not provider or not model:
-        raise AgentError(
-            f"model_id invalido (esperado 'provider/model'): {model_id}"
-        )
+        raise AgentError(f"model_id invalido (esperado 'provider/model'): {model_id}")
     return {"providerID": provider, "modelID": model}
 
 
@@ -65,16 +63,12 @@ class _QueuedLineStream:
         # Capturado agora: `resp.fp` pode ser limpo pelo `HTTPResponse.close()`,
         # entao `close()` precisa guardar o socket cru para poder desbloquear a
         # thread leitora antes de fechar o buffer.
-        self._sock = getattr(
-            getattr(getattr(resp, "fp", None), "raw", None), "_sock", None
-        )
+        self._sock = getattr(getattr(getattr(resp, "fp", None), "raw", None), "_sock", None)
         # Fila LIMITADA: restaurar backpressure de TCP. Com fila ilimitada, um
         # consumidor lento deixaria a thread leitora drenar o socket inteiro na
         # memoria; limitada, ela bloqueia em `put` e o kernel segura o remetente.
-        self._q: "queue.Queue" = queue.Queue(maxsize=1000)
-        self._thread = threading.Thread(
-            target=_pump_lines, args=(resp, self._q), daemon=True
-        )
+        self._q: queue.Queue = queue.Queue(maxsize=1000)
+        self._thread = threading.Thread(target=_pump_lines, args=(resp, self._q), daemon=True)
         self._thread.start()
 
     def readline(self) -> bytes:
@@ -84,7 +78,7 @@ class _QueuedLineStream:
         try:
             item = self._q.get(timeout=timeout)
         except queue.Empty:
-            raise socket.timeout("idle na leitura do stream")
+            raise TimeoutError("idle na leitura do stream")  # noqa: B904
         if item is None:
             return b""
         if isinstance(item, BaseException):
@@ -180,7 +174,9 @@ class ServeClient:
         url = self._cfg.server_url.rstrip("/") + path
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
-            url, data=data, headers={"Content-Type": "application/json"},
+            url,
+            data=data,
+            headers={"Content-Type": "application/json"},
             method="POST",
         )
         try:
@@ -188,12 +184,8 @@ class ServeClient:
                 raw = resp.read()
         except urllib.error.HTTPError as exc:
             if exc.code in (404, 410):
-                raise _SessionGone(
-                    f"sessao expirada no servidor (HTTP {exc.code})"
-                ) from exc
-            raise AgentError(
-                f"falha ao falar com o servidor em {url} ({exc})"
-            ) from exc
+                raise _SessionGone(f"sessao expirada no servidor (HTTP {exc.code})") from exc
+            raise AgentError(f"falha ao falar com o servidor em {url} ({exc})") from exc
         except (OSError, ValueError) as exc:
             raise AgentError(f"falha ao falar com o servidor em {url} ({exc})") from exc
         try:
@@ -217,9 +209,7 @@ class ServeClient:
     @staticmethod
     def _extract_reply(data: dict) -> str:
         parts = data.get("parts") or []
-        text = "".join(
-            p.get("text", "") for p in parts if p.get("type") == "text"
-        ).strip()
+        text = "".join(p.get("text", "") for p in parts if p.get("type") == "text").strip()
         if not text:
             raise AgentError("agente nao retornou resposta")
         return text
@@ -305,7 +295,9 @@ class ServeClient:
         url = self._cfg.server_url.rstrip("/") + path
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
-            url, data=data, headers={"Content-Type": "application/json"},
+            url,
+            data=data,
+            headers={"Content-Type": "application/json"},
             method="POST",
         )
         try:
@@ -313,17 +305,12 @@ class ServeClient:
                 resp.read()
         except urllib.error.HTTPError as exc:
             if exc.code in (404, 410):
-                raise _SessionGone(
-                    f"sessao expirada no servidor (HTTP {exc.code})"
-                ) from exc
-            raise AgentError(
-                f"falha ao falar com o servidor em {url} ({exc})"
-            ) from exc
+                raise _SessionGone(f"sessao expirada no servidor (HTTP {exc.code})") from exc
+            raise AgentError(f"falha ao falar com o servidor em {url} ({exc})") from exc
         except (OSError, ValueError) as exc:
             raise AgentError(f"falha ao falar com o servidor em {url} ({exc})") from exc
 
-    def _consume_events(self, stream, session_id, on_delta, on_idle, timeout,
-                        idle_s=None):
+    def _consume_events(self, stream, session_id, on_delta, on_idle, timeout, idle_s=None):
         # `idle_s` e aceito por compatibilidade de assinatura; o idle de fato e
         # sinalizado pelo `socket.timeout` que o stream levanta quando fica
         # `idle_s` sem linhas (ver `_QueuedLineStream`, usado por `stream`).
@@ -341,7 +328,7 @@ class ServeClient:
                 raise AgentError("timeout ao aguardar a resposta")
             try:
                 raw = stream.readline()
-            except (socket.timeout, TimeoutError):
+            except TimeoutError:
                 if on_idle is not None:
                     on_idle()
                 continue
@@ -378,7 +365,7 @@ class ServeClient:
                 pid = part.get("id") or "?"
                 new = part.get("text") or ""
                 prev = parts.get(pid, "")
-                delta = new[len(prev):] if new.startswith(prev) else new
+                delta = new[len(prev) :] if new.startswith(prev) else new
                 parts[pid] = new
                 if delta:
                     on_delta(delta)
@@ -418,17 +405,17 @@ class ServeClient:
             if self._cfg.agent:
                 payload["agent"] = self._cfg.agent
             try:
-                self._post_no_content(
-                    f"/session/{session_id}/prompt_async", payload, timeout
-                )
+                self._post_no_content(f"/session/{session_id}/prompt_async", payload, timeout)
             except _SessionGone:
                 self._session_id = None
                 session_id = self._ensure_session(timeout)
-                self._post_no_content(
-                    f"/session/{session_id}/prompt_async", payload, timeout
-                )
+                self._post_no_content(f"/session/{session_id}/prompt_async", payload, timeout)
             return self._consume_events(
-                stream, session_id, on_delta, on_idle, timeout,
+                stream,
+                session_id,
+                on_delta,
+                on_idle,
+                timeout,
                 idle_s=idle_s,
             )
         finally:

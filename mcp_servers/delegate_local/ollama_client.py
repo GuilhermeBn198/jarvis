@@ -3,7 +3,6 @@ from typing import Any
 
 import httpx
 import jsonschema
-
 from config import Config
 
 
@@ -34,9 +33,7 @@ class OllamaClient:
                 f"{self._cfg.ollama_host} (cold start?)"
             ) from exc
         except httpx.HTTPError as exc:
-            raise OllamaError(
-                f"Ollama nao respondeu em {self._cfg.ollama_host}: {exc}"
-            ) from exc
+            raise OllamaError(f"Ollama nao respondeu em {self._cfg.ollama_host}: {exc}") from exc
 
         if resp.status_code != 200:
             raise OllamaError(f"Ollama respondeu HTTP {resp.status_code}: {resp.text[:200]}")
@@ -54,14 +51,10 @@ class OllamaClient:
             try:
                 parsed = json.loads(content)
             except ValueError as exc:
-                raise OllamaError(
-                    "Modelo nao devolveu JSON valido apesar do json_schema"
-                ) from exc
+                raise OllamaError("Modelo nao devolveu JSON valido apesar do json_schema") from exc
             try:
                 jsonschema.validate(instance=parsed, schema=json_schema)
             except jsonschema.exceptions.ValidationError as exc:
-                raise OllamaError(
-                    f"Resposta nao conforme ao json_schema: {exc.message}"
-                ) from exc
+                raise OllamaError(f"Resposta nao conforme ao json_schema: {exc.message}") from exc
 
         return content

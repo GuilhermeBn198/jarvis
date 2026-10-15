@@ -1,5 +1,4 @@
 import pytest
-
 from ollama_client import OllamaError
 
 
@@ -10,7 +9,9 @@ def _env(monkeypatch):
 
 def _import_server():
     import importlib
+
     import server
+
     return importlib.reload(server)
 
 

@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { actionFromToolCall, beforeToolCall } from "./hook.ts";
 
 test("mapping: bash usa o comando como pattern", () => {
@@ -46,14 +46,14 @@ test("beforeToolCall: bash destrutivo -> throw (deny)", () => {
 });
 
 test("beforeToolCall: acesso a credencial -> throw (deny)", () => {
-  assert.throws(() => beforeToolCall("bash", { command: "cat ~/.ssh/id_rsa" }), /SafetyGate bloqueou/);
+  assert.throws(
+    () => beforeToolCall("bash", { command: "cat ~/.ssh/id_rsa" }),
+    /SafetyGate bloqueou/,
+  );
 });
 
 test("beforeToolCall: read de credencial -> throw (deny)", () => {
-  assert.throws(
-    () => beforeToolCall("read", { filePath: "~/.ssh/id_rsa" }),
-    /SafetyGate bloqueou/,
-  );
+  assert.throws(() => beforeToolCall("read", { filePath: "~/.ssh/id_rsa" }), /SafetyGate bloqueou/);
 });
 
 test("beforeToolCall: comando de leitura -> não throw (allow)", () => {
@@ -76,17 +76,17 @@ test("beforeToolCall: act_type benigno -> não throw (allow)", () => {
 });
 
 test("beforeToolCall: act_open com deny -> throw", () => {
-  assert.throws(
-    () => beforeToolCall("act_open", { target: "diskpart" }),
-    /SafetyGate bloqueou/,
-  );
+  assert.throws(() => beforeToolCall("act_open", { target: "diskpart" }), /SafetyGate bloqueou/);
 });
 
 test("mapping: act_open com args reconstroi o comando completo", () => {
-  assert.deepEqual(actionFromToolCall("act_open", { target: "cmd", args: ["/c", "dir"], confirm: true }), {
-    type: "act",
-    pattern: "cmd /c dir",
-  });
+  assert.deepEqual(
+    actionFromToolCall("act_open", { target: "cmd", args: ["/c", "dir"], confirm: true }),
+    {
+      type: "act",
+      pattern: "cmd /c dir",
+    },
+  );
 });
 
 test("mapping: act_open sem args mantem o target (regressao)", () => {
@@ -102,7 +102,8 @@ test("beforeToolCall: act_open de execucao sem confirm nao bloqueia no hook (con
 
 test("beforeToolCall: act_open com deny em args -> throw mesmo com confirm", () => {
   assert.throws(
-    () => beforeToolCall("act_open", { target: "cmd", args: ["/c", "del /s C:\\temp"], confirm: true }),
+    () =>
+      beforeToolCall("act_open", { target: "cmd", args: ["/c", "del /s C:\\temp"], confirm: true }),
     /SafetyGate bloqueou/,
   );
 });
@@ -116,7 +117,11 @@ test("beforeToolCall: clipboard_write destrutivo -> throw (deny)", () => {
 
 test("beforeToolCall: clipboard_write de credencial -> throw (deny)", () => {
   assert.throws(
-    () => beforeToolCall("win_context_win_clipboard_write", { text: "cat ~/.ssh/id_rsa", confirm: true }),
+    () =>
+      beforeToolCall("win_context_win_clipboard_write", {
+        text: "cat ~/.ssh/id_rsa",
+        confirm: true,
+      }),
     /SafetyGate bloqueou/,
   );
 });
