@@ -1,0 +1,44 @@
+# Local source-checkout recipe, populated by scripts/build-package.sh.
+pkgname=jarvis-assistant
+version=0.1.0
+revision=1
+archs="x86_64 aarch64"
+nocross=yes
+nostrip=yes
+nodebug=yes
+hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git"
+makedepends="gtk+3-devel libwebkit2gtk41-devel libffi-devel python3-devel"
+depends="python3>=3.14<3.15 ffmpeg pulseaudio-utils python3-gobject
+ at-spi2-core alsa-utils xdotool wl-clipboard xclip"
+short_desc="Voice assistant with native Linux overlay"
+maintainer="Jarvis local build contributors <jarvis@localhost.invalid>"
+license="Apache-2.0, MIT, GPL-3.0-or-later"
+homepage="https://github.com/GuilhermeBn198/jarvis"
+
+post_extract() {
+    # This local recipe ships the sanitized checkout archive in FILESDIR.
+    printf '%s  %s\n' '@JARVIS_SOURCE_SHA256@' "${FILESDIR}/jarvis-${version}.tar.gz" | sha256sum -c -
+    tar -xzf "${FILESDIR}/jarvis-${version}.tar.gz" --strip-components=1 -C "$wrksrc"
+}
+
+do_build() {
+    python3 -c 'import sys; assert sys.version_info[:2] == (3,14), "Void recipe requires rebuilding its Python ABI metadata"'
+    cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
+    npm ci --prefix .opencode --ignore-scripts
+    python3 scripts/fetch-opencode.py --target "${XBPS_TARGET_MACHINE}-glibc" --output opencode-package
+}
+
+do_install() {
+    python3 scripts/prepare-package.py --prefix /usr --destdir "$DESTDIR" \
+        --overlay gui/src-tauri/target/release/jarvis-overlay \
+        --python /usr/bin/python3 --opencode opencode-package
+    vlicense LICENSE
+    python3 - "${DESTDIR}/usr" <<'PY'
+from pathlib import Path
+import json,sys
+root=Path(sys.argv[1]);manifest=root/'lib/jarvis/install-manifest.json'
+data=json.loads(manifest.read_text())
+data['files']=sorted(str(p.relative_to(root)) for p in root.rglob('*') if p.is_file() or p.is_symlink())
+manifest.write_text(json.dumps(data,indent=2)+'\n')
+PY
+}

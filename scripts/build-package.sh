@@ -21,6 +21,48 @@ fi
 mkdir -p "$task_output"
 task_output=$(CDPATH= cd -P "$task_output" && pwd)
 case "$task_target" in
+    void-glibc)
+        . /etc/os-release
+        [ "$ID" = void ] || { echo 'Alvo void-glibc exige ambiente Void Linux.' >&2; exit 2; }
+        [ "$(xbps-uhelper arch)" = "$task_arch" ] || { echo 'Alvo void-glibc exige libc glibc nativa.' >&2; exit 2; }
+        task_build=$(mktemp -d)
+        task_collection=${JARVIS_VOID_PACKAGES:-$task_build/void-packages}
+        task_void_commit=dbf843f5f1dad63846b6d147ec10662cf8e8078a
+        if [ ! -d "$task_collection" ]; then
+            git init -q "$task_collection"
+            git -C "$task_collection" remote add origin https://github.com/void-linux/void-packages.git
+            git -C "$task_collection" fetch --depth 1 origin "$task_void_commit"
+            git -C "$task_collection" checkout --detach FETCH_HEAD
+        fi
+        [ "$(git -C "$task_collection" rev-parse HEAD)" = "$task_void_commit" ] || { echo 'A colecao Void deve corresponder ao commit fixado da receita.' >&2; exit 2; }
+        task_collection=$(CDPATH= cd -P "$task_collection" && pwd)
+        task_template=$task_collection/srcpkgs/jarvis-assistant
+        [ ! -e "$task_template" ] || { echo 'Use uma colecao sem receita Jarvis preexistente.' >&2; exit 2; }
+        mkdir -p "$task_template/files"
+        python3 "$task_root/scripts/source-archive.py" --output "$task_template/files/jarvis-0.1.0.tar.gz"
+        python3 - "$task_root/packaging/void/template" "$task_template" <<'PY'
+from pathlib import Path
+import hashlib,sys
+source=Path(sys.argv[1]);target=Path(sys.argv[2])
+with (target/'files/jarvis-0.1.0.tar.gz').open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
+(target/'template').write_text(source.read_text().replace('@JARVIS_SOURCE_SHA256@',digest))
+PY
+        (cd "$task_collection" && ./xbps-src -j2 pkg jarvis-assistant)
+        find "$task_collection/hostdir/binpkgs" -type f -name "jarvis-assistant-*.$task_arch.xbps" -exec cp '{}' "$task_output/" \;
+        ;;
+    alpine)
+        . /etc/os-release
+        [ "$ID" = 'alpine' ] || { echo 'Alvo alpine exige ambiente Alpine.' >&2; exit 2; }
+        command -v abuild >/dev/null
+        [ "$(id -u)" -ne 0 ] || { echo 'Execute abuild com usuario de build, sem root.' >&2; exit 2; }
+        task_build=$(mktemp -d "$task_output/.alpine-build-XXXXXX")
+        python3 "$task_root/scripts/source-archive.py" --output "$task_build/jarvis-0.1.0.tar.gz"
+        cp "$task_root/packaging/alpine/APKBUILD" "$task_build/APKBUILD"
+        export REPODEST=$task_output
+        cd "$task_build"
+        abuild checksum
+        abuild -r
+        ;;
     debian|ubuntu)
         . /etc/os-release
         case "$task_target:$ID" in

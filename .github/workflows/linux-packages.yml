@@ -31,6 +31,8 @@ jobs:
           - {family: arch, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/arch/Dockerfile, image: 'archlinux:base', pattern: 'jarvis-assistant-*.pkg.tar.zst'}
           - {family: rhel, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/rhel/Dockerfile, image: 'almalinux:10', pattern: 'jarvis-assistant-*.x86_64.rpm'}
           - {family: rhel, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/rhel/Dockerfile, image: 'almalinux:10', pattern: 'jarvis-assistant-*.aarch64.rpm'}
+          - {family: alpine, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/alpine/Dockerfile, image: 'alpine:3.24', pattern: 'jarvis-assistant-*.apk', export: '/export'}
+          - {family: alpine, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/alpine/Dockerfile, image: 'alpine:3.24', pattern: 'jarvis-assistant-*.apk', export: '/export'}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Build in target distribution
@@ -41,9 +43,11 @@ jobs:
           test "$(uname -m)" = "$ARCH"
           docker build --progress=plain -f "$DOCKERFILE" -t jarvis-package .
       - name: Export packages and checksums
+        env:
+          EXPORT_DIRECTORY: ${{ matrix.export || '/out' }}
         run: |
           mkdir -p dist/native
-          docker run --rm -v "$PWD/dist/native:/out" jarvis-package
+          docker run --rm -v "$PWD/dist/native:$EXPORT_DIRECTORY" jarvis-package
           cd dist/native
           find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
       - name: Install, inspect and remove in clean target
@@ -57,6 +61,10 @@ jobs:
           if [ "$FAMILY" = rhel ]; then
             docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
               sh -ec 'dnf -y install epel-release dnf-plugins-core; dnf config-manager --set-enabled crb; exec sh /checks/test-native-package.sh "$@"' \
+              sh "$FAMILY" "/packages/$(basename "$package")"
+          elif [ "$FAMILY" = alpine ]; then
+            docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
+              sh -ec 'find /packages -name "*.pub" -exec cp {} /etc/apk/keys/ \;; apk add --no-cache "$2"; exec sh /checks/test-native-package.sh "$@"' \
               sh "$FAMILY" "/packages/$(basename "$package")"
           else
             docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \

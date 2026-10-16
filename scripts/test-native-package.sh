@@ -16,6 +16,14 @@ case "$task_family:$ID" in
     fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" xorg-x11-server-Xvfb dbus-daemon ;;
     suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1-daemon ;;
     arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
+    alpine:alpine) apk add --no-cache --allow-untrusted "$task_package" xvfb dbus ;;
+    void-glibc:void|void-musl:void)
+        task_repository=$(mktemp -d)
+        cp "$task_package" "$task_repository/"
+        xbps-rindex -a "$task_repository/$(basename "$task_package")"
+        xbps-install -Sy xorg-server-xvfb dbus
+        xbps-install -y -R "$task_repository" jarvis-assistant
+        ;;
     rhel:rhel|rhel:almalinux|rhel:rocky|rhel:centos|rhel:ol)
         [ "${VERSION_ID%%.*}" = 10 ] || { echo 'Teste rhel exige versao 10.' >&2; exit 2; }
         set -- "$task_package"
@@ -79,6 +87,18 @@ case "$task_family" in
     suse) rpm -V jarvis-assistant; zypper --non-interactive remove jarvis-assistant ;;
     rhel) rpm -V jarvis-assistant; rpm -V xdotool; dnf remove -y jarvis-assistant xdotool; test ! -e /usr/bin/xdotool ;;
     arch) pacman -Qkk jarvis-assistant; pacman -R --noconfirm jarvis-assistant ;;
+    void-glibc|void-musl)
+        xbps-pkgdb --checks files,dependencies,alternatives,pkgdb jarvis-assistant
+        xbps-remove -y jarvis-assistant
+        ! xbps-query jarvis-assistant
+        ;;
+    alpine)
+        task_verify=$(apk audit --system --packages)
+        printf '%s\n' "$task_verify"
+        task_changed=$(printf '%s\n' "$task_verify" | awk '$1 ~ /^jarvis-assistant(-|$)/ {print}')
+        test -z "$task_changed"
+        apk del jarvis-assistant
+        ;;
 esac
 test ! -e /usr/bin/jarvis
 test ! -e /usr/bin/jarvis-overlay

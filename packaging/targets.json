@@ -96,34 +96,35 @@
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64"
+      "x86_64",
+      "aarch64"
     ]
   },
   "alpine": {
     "distro": "alpine",
-    "version": null,
+    "version": "3.24",
     "libc": "musl",
     "architectures": [
       "x86_64",
       "aarch64"
     ],
     "format": "apk",
-    "recipe": null,
-    "implementation": "pending",
+    "recipe": "packaging/alpine/APKBUILD",
+    "implementation": "recipe",
     "validation": "unverified",
     "validated_architectures": []
   },
   "void-glibc": {
     "distro": "void",
-    "version": null,
+    "version": "rolling",
     "libc": "glibc",
     "architectures": [
       "x86_64",
       "aarch64"
     ],
     "format": "xbps",
-    "recipe": null,
-    "implementation": "pending",
+    "recipe": "packaging/void/template",
+    "implementation": "recipe",
     "validation": "unverified",
     "validated_architectures": []
   },

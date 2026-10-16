@@ -1,0 +1,67 @@
+# Local release recipe; no package repository publication is implied.
+pkgname=jarvis-assistant
+pkgver=0.1.0
+pkgrel=0
+pkgdesc="Assistente pessoal por voz com overlay Linux"
+url="https://github.com/GuilhermeBn198/jarvis"
+arch="x86_64 aarch64"
+license="Apache-2.0 AND MIT AND GPL-3.0-or-later"
+depends="python3 gtk+3.0 webkit2gtk-4.1 ffmpeg ffplay pulseaudio-utils libpulse
+    libx11 xdotool wl-clipboard xclip py3-gobject3 at-spi2-core alsa-utils
+    py3-onnxruntime py3-numpy openblas libgomp libstdc++"
+makedepends="build-base cmake ninja git python3-dev py3-pip py3-pybind11-dev
+    linux-headers openblas-dev ffmpeg-dev pkgconf rust cargo nodejs npm
+    gtk+3.0-dev webkit2gtk-4.1-dev patchelf"
+# Network access is build-only. Bun's appended executable payload must survive.
+options="!strip !dbg net"
+source="jarvis-$pkgver.tar.gz"
+builddir="$srcdir/jarvis-$pkgver"
+
+build() {
+    cd "$builddir"
+    sh packaging/alpine/build-runtime.sh "$builddir" "$srcdir/native"
+    RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=-crt-static" \
+        cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
+    npm ci --prefix .opencode --ignore-scripts
+    python3 scripts/fetch-opencode.py --target "$CARCH-musl" --output "$srcdir/opencode"
+}
+
+check() {
+    LD_LIBRARY_PATH="$srcdir/native/ctranslate2/lib" OPENBLAS_NUM_THREADS=1 \
+        "$srcdir/native/runtime/bin/python" -c 'import ctranslate2,faster_whisper,piper,mcp,httpx,dbus_next; assert "int8" in ctranslate2.get_supported_compute_types("cpu")'
+}
+
+package() {
+    cd "$builddir"
+    LD_LIBRARY_PATH="$srcdir/native/ctranslate2/lib" OPENBLAS_NUM_THREADS=1 \
+        python3 scripts/prepare-package.py --prefix /usr --destdir "$pkgdir" \
+        --overlay gui/src-tauri/target/release/jarvis-overlay --python /usr/bin/python3 \
+        --opencode "$srcdir/opencode" --python-environment "$srcdir/native/runtime" \
+        --python-report "$srcdir/native/python-report.json"
+    mkdir -p "$pkgdir/usr/lib/jarvis/lib"
+    cp -a "$srcdir/native/ctranslate2/lib/"*.so* "$pkgdir/usr/lib/jarvis/lib/"
+    for task_extension in "$pkgdir/usr/lib/jarvis/python/ctranslate2/"_ext*.so; do
+        patchelf --set-rpath '$ORIGIN/../../lib' "$task_extension"
+    done
+    printf '%s\n' 'OPENBLAS_NUM_THREADS=1' > "$pkgdir/usr/lib/jarvis/local.conf"
+    # This optional npm package ships both libc variants in the same archive.
+    # Its loader chooses the musl addon; do not publish unused glibc providers.
+    find "$pkgdir/usr/lib/jarvis/.opencode/node_modules/@msgpackr-extract" \
+        -type f -name '*.glibc.node' -delete
+    NODE_PATH="$pkgdir/usr/lib/jarvis/.opencode/node_modules" node -e '
+        const assert = require("node:assert/strict");
+        const codec = require("msgpackr");
+        assert.equal(codec.isNativeAccelerationEnabled, true);
+        assert.deepEqual(codec.unpack(codec.pack({text: "voz Linux", count: 3})), {text: "voz Linux", count: 3});
+        console.log("Native musl msgpackr round-trip passed");
+    '
+    depends="$depends python3~$(python3 -c 'import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    python3 - "$pkgdir/usr" <<'PY'
+import json,sys
+from pathlib import Path
+root=Path(sys.argv[1]);manifest=root/'lib/jarvis/install-manifest.json'
+data=json.loads(manifest.read_text())
+data['files']=sorted(str(p.relative_to(root)) for p in root.rglob('*') if p.is_file() or p.is_symlink())
+manifest.write_text(json.dumps(data,indent=2)+'\n')
+PY
+}

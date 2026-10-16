@@ -233,9 +233,25 @@ def test_prepared_python_rejects_build_links_and_wrong_abi(tmp_path,monkeypatch,
     assert not (app/'python').exists()
 
 
+def test_native_driver_rejects_alpine_target_on_arch(tmp_path):
+    import subprocess
+    if 'ID=arch' not in Path('/etc/os-release').read_text():pytest.skip('requires Arch host')
+    result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','alpine','--output',str(tmp_path)],capture_output=True,text=True)
+    assert result.returncode==2
+    assert 'exige ambiente Alpine' in result.stderr
+
+
 def test_native_driver_rejects_rhel_target_on_arch(tmp_path):
     import subprocess
     if 'ID=arch' not in Path('/etc/os-release').read_text():pytest.skip('requires Arch host')
     result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','rhel','--output',str(tmp_path)],capture_output=True,text=True)
     assert result.returncode==2
     assert 'exige ambiente RHEL 10' in result.stderr
+
+
+def test_native_driver_rejects_void_glibc_target_on_arch(tmp_path):
+    import subprocess
+    if 'ID=arch' not in Path('/etc/os-release').read_text():pytest.skip('requires Arch host')
+    result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','void-glibc','--output',str(tmp_path)],capture_output=True,text=True)
+    assert result.returncode==2
+    assert 'exige ambiente Void Linux' in result.stderr

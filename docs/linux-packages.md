@@ -87,7 +87,7 @@ interface em X11 isolado, saída e remoção preservando o dado de teste.
 Não substituem a matriz de áudio, portais, GNOME/KDE e sessões reais.
 Atualizações de versão dessas cinco famílias continuam pendentes.
 
-RHEL 10 tem uma receita adicional em validação, descrita abaixo.
+Alpine e RHEL 10 têm receitas adicionais em validação, descritas abaixo.
 Os demais alvos permanecem explicitamente pendentes em `packaging/targets.json`.
 Veja também os testes reais registrados em `docs/notes/linux-verification.md`.
 
@@ -197,6 +197,31 @@ copiado. A validação do APK Alpine com as dependências de voz completas ainda
 está pendente.
 
 
+### Alpine 3.24: receita em validação
+
+A receita local `packaging/alpine/APKBUILD` constrói CTranslate2 e Piper para
+musl a partir de commits fixados. ONNX Runtime e NumPy vêm dos pacotes Alpine;
+as demais dependências Python ficam privadas em `/usr/lib/jarvis/python`.
+O agente usa o artefato musl com SHA512 verificado e permanece sem stripping.
+A configuração do pacote limita apenas o OpenBLAS a uma thread para evitar
+paralelismo aninhado com OpenMP; o CTranslate2 mantém seu paralelismo próprio.
+
+Build completo em container descartável:
+
+```sh
+docker build -f packaging/alpine/Dockerfile -t jarvis-linux-alpine .
+mkdir -p dist/alpine
+docker run --rm -v "$PWD/dist/alpine:/export" jarvis-linux-alpine
+```
+
+Dentro de um ambiente Alpine com as dependências de build instaladas, um usuário
+não root com chave `abuild` configurada também pode executar
+`scripts/build-package.sh --target alpine --output dist/alpine`.
+O build precisa de rede; a instalação não executa pip ou downloads de modelos.
+O catálogo mantém esta receita como **não verificada** até a conclusão do build
+e dos testes de instalação/atualização/remoção. Os testes de voz e interface
+x86_64 em ambientes de desenvolvimento não certificam o APK nem ARM64.
+
 ### Família RHEL 10: receita em validação
 
 A base de build é AlmaLinux 10, com EPEL e CRB. A receita principal fica em
@@ -214,8 +239,23 @@ docker run --rm -v "$PWD/dist/rhel:/out" jarvis-linux-rhel
 O build completo dos dois RPMs e seus SRPMs passou em AlmaLinux 10 x86_64.
 Em um container limpo também passaram instalação, ABI/imports privados, recursos,
 interface Wayland em Weston isolado, integridade e remoção preservando os dados
-de teste. O catálogo registra **installed-smoke** apenas para x86_64.
-A CI inclui ARM64, mas essa arquitetura permanece não verificada até o resultado.
+de teste. O catálogo registra **installed-smoke** para x86_64 e aarch64: os dois jobs
+RHEL da [CI 38947707383](https://github.com/V1nic1us/jarvis/actions/runs/38947707383)
+passaram nos testes instalados da arquitetura correspondente.
 Atualização de versão, áudio, portais e desktops reais continuam pendentes.
 A seleção de repositórios da imagem de build é específica do AlmaLinux; os testes
 não certificam outras distribuições da família.
+
+### Void glibc: receita em preparação
+
+A receita local `packaging/void/template` usa o XBPS nativo e mantém o Python
+privado vinculado ao ABI 3.14 da distribuição. O driver fixa o commit da coleção
+`void-packages` e verifica o SHA256 do arquivo de fontes do checkout. O builder
+`packaging/void/Dockerfile` prepara uma imagem descartável com o modo `ethereal`
+oferecido pelo próprio `xbps-src`; esse modo modifica a raiz do ambiente e deve
+permanecer restrito ao container de build.
+
+O pacote XBPS ainda não foi compilado nem validado. A variante musl depende da
+construção nativa do ONNX Runtime, ausente nos repositórios Void consultados;
+ela não reutiliza as bibliotecas glibc. Ambas as variantes continuam marcadas
+como **não verificadas** no catálogo.
