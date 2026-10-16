@@ -19,4 +19,6 @@ USER builder
 # The Docker context is already filtered. Inventory it for source-archive.py.
 RUN git init -q && git add -A && \
     sh scripts/build-package.sh --target alpine --output /out
+# Export into bind mounts whose host UID may differ from the abuild user.
+USER root
 CMD ["sh", "-c", "find /out -name '*.apk' -type f -exec cp '{}' /export/ ';'; cp /home/builder/.abuild/*.pub /export/"]
