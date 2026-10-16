@@ -1,0 +1,494 @@
+{
+  "schema_version": 1,
+  "verified_at_utc": "2026-10-16T19:16:01.013030+00:00",
+  "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
+  "limitations": [
+    "Isolated Xvfb/Weston checks do not certify a real desktop session.",
+    "Package lifecycle success does not prove version upgrade or microphone capture.",
+    "Local evidence paths refer to retained task artifacts and are not distributed in Git.",
+    "Unverified architecture/target combinations remain required work."
+  ],
+  "results": [
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "pkg.tar.zst",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh arch <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350147",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "pkg.tar.zst",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "debian",
+      "distro": "debian",
+      "version": "13",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "deb",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh debian <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350266",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "debian",
+      "distro": "debian",
+      "version": "13",
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "deb",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh debian <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142349744",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "fedora",
+      "distro": "fedora",
+      "version": "44",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "rpm",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh fedora <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350095",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "fedora",
+      "distro": "fedora",
+      "version": "44",
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "rpm",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh fedora <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350212",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "ubuntu",
+      "distro": "ubuntu",
+      "version": "24.04",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "deb",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh ubuntu <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350192",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "ubuntu",
+      "distro": "ubuntu",
+      "version": "24.04",
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "deb",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh ubuntu <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350032",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "suse",
+      "distro": "opensuse-tumbleweed",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "rpm",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh suse <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350108",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "suse",
+      "distro": "opensuse-tumbleweed",
+      "version": "rolling",
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "rpm",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh suse <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350238",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "rhel",
+      "distro": "almalinux",
+      "version": "10",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Weston headless fixture",
+      "session": "wayland",
+      "package": "rpm",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh rhel <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142350061",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "rhel",
+      "distro": "almalinux",
+      "version": "10",
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": "Weston headless fixture",
+      "session": "wayland",
+      "package": "rpm",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh rhel <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38951093284/job/117142349971",
+          "source_commit": "153b4bcc5335724d8d4807247effa44deed38601",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "target": "alpine",
+      "distro": "alpine",
+      "version": "3.24",
+      "arch": "x86_64",
+      "libc": "musl",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "apk",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "signed apk add, then sh scripts/test-native-package.sh alpine /packages/jarvis-assistant-0.1.0-r0.apk",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/alpine-full-source-signed-lifecycle.log",
+          "artifact": "jarvis-assistant-0.1.0-r0.apk",
+          "sha256": "28ac3d085cddb9a50a58934aac5b541da2f6332dcb70cce9569c2865cf880668",
+          "source_commit": null,
+          "provenance": "Local source checkout; artifact checksum identifies the tested package."
+        }
+      ]
+    },
+    {
+      "target": "alpine",
+      "distro": "alpine",
+      "version": "3.24",
+      "arch": "aarch64",
+      "libc": "musl",
+      "desktop": null,
+      "session": null,
+      "package": "apk",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "void-glibc",
+      "distro": "void",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "xbps",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "void-glibc",
+      "distro": "void",
+      "version": "rolling",
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "xbps",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "void-musl",
+      "distro": "void",
+      "version": null,
+      "arch": "x86_64",
+      "libc": "musl",
+      "desktop": null,
+      "session": null,
+      "package": "xbps",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "void-musl",
+      "distro": "void",
+      "version": null,
+      "arch": "aarch64",
+      "libc": "musl",
+      "desktop": null,
+      "session": null,
+      "package": "xbps",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "gentoo",
+      "distro": "gentoo",
+      "version": null,
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "ebuild",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "gentoo",
+      "distro": "gentoo",
+      "version": null,
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "ebuild",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "nix",
+      "distro": "nixos",
+      "version": null,
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "nix",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "nix",
+      "distro": "nixos",
+      "version": null,
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "nix",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "guix",
+      "distro": "guix",
+      "version": null,
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "guix",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "guix",
+      "distro": "guix",
+      "version": null,
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "guix",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "slackware",
+      "distro": "slackware",
+      "version": null,
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "txz",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "solus",
+      "distro": "solus",
+      "version": null,
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "eopkg",
+      "capability": "native_package_lifecycle",
+      "status": "unverified",
+      "command": null,
+      "evidence": []
+    },
+    {
+      "target": "alpine",
+      "distro": "alpine",
+      "version": "3.24",
+      "arch": "x86_64",
+      "libc": "musl",
+      "desktop": null,
+      "session": null,
+      "package": "apk",
+      "capability": "synthetic_offline_tts_to_stt_cpu_int8",
+      "status": "passed",
+      "command": "python3 .superpowers/sdd/2026-10-14-jarvis-linux/probe-alpine-installed-voice.py",
+      "evidence": [
+        {
+          "kind": "local_validation_report",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/alpine-installed-voice-result.json",
+          "artifact_sha256": "28ac3d085cddb9a50a58934aac5b541da2f6332dcb70cce9569c2865cf880668",
+          "word_error_rate": 0.13333333333333333,
+          "audio_seconds": 5.097
+        }
+      ]
+    }
+  ],
+  "pending_gates": [
+    "Native version upgrade and data preservation for every package family",
+    "Remaining native recipes, source builds and architecture checks",
+    "GNOME/KDE real Wayland/X11 functional matrix",
+    "Microphone, calibration, PTT/VAD, playback and streaming on installed targets",
+    "Screenshot/RemoteDesktop consent, denial and revocation on installed targets",
+    "Installed agent/MCP, accessibility, clipboard, monitors/scaling and process cleanup matrix",
+    "Licenses, corresponding sources, SBOM and independent whole-branch review"
+  ]
+}

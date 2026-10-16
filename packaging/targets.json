@@ -111,8 +111,10 @@
     "format": "apk",
     "recipe": "packaging/alpine/APKBUILD",
     "implementation": "recipe",
-    "validation": "unverified",
-    "validated_architectures": []
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "void-glibc": {
     "distro": "void",

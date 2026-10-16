@@ -193,8 +193,10 @@ redirecionamentos `.pth` e links de instalações editáveis. O venv deve conter
 somente o runtime, sem ferramentas de build.
 
 A regressão local remove o venv original e executa um comando do runtime
-copiado. A validação do APK Alpine com as dependências de voz completas ainda
-está pendente.
+copiado. O APK Alpine x86_64 construído das fontes passou pelos imports do
+runtime de voz completo em uma instalação limpa. Síntese e transcrição offline
+CPU também passaram com áudio sintético usando o APK instalado; microfone e
+integração de áudio em desktop real continuam pendentes.
 
 
 ### Alpine 3.24: receita em validação
@@ -218,9 +220,15 @@ Dentro de um ambiente Alpine com as dependências de build instaladas, um usuár
 não root com chave `abuild` configurada também pode executar
 `scripts/build-package.sh --target alpine --output dist/alpine`.
 O build precisa de rede; a instalação não executa pip ou downloads de modelos.
-O catálogo mantém esta receita como **não verificada** até a conclusão do build
-e dos testes de instalação/atualização/remoção. Os testes de voz e interface
-x86_64 em ambientes de desenvolvimento não certificam o APK nem ARM64.
+O APK completo x86_64 passou pela instalação assinada em Alpine limpo, pelos
+imports e ABI privados, pelos recursos e ferramentas, pela interface isolada
+X11 (reabertura e saída), pela integridade e pela remoção preservando dados de
+teste. O catálogo registra **installed-smoke** somente para x86_64. Atualização
+entre revisões do build completo, ARM64, microfone e desktops reais seguem
+pendentes. O APK instalado também sintetizou e transcreveu uma frase de teste
+em português, sem rede, usando Piper e Whisper tiny/CPU int8. O erro por palavra
+foi 13,3%; esse ensaio sintético não certifica captura de microfone nem qualidade
+de reconhecimento em situações reais.
 
 ### Família RHEL 10: receita em validação
 

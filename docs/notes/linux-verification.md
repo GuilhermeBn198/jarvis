@@ -3,6 +3,12 @@
 Worktree: `.worktrees/linux-port`, branch `feat/linux-port`.
 Não é uma declaração de suporte universal ou conclusão do porte.
 
+A [matriz por distribuição e arquitetura](linux-matrix.json) registra resultados
+com comandos e evidências. Os relatos abaixo são históricos: uma pendência
+registrada numa etapa anterior pode ter sido resolvida depois. A matriz distingue
+o ciclo de instalação em container, a fala sintética offline e a validação ainda
+pendente em desktops reais; esses resultados não são intercambiáveis.
+
 ## Plataforma/configuração
 
 - Linux nativo seleciona executáveis POSIX e mic default; WSL mantém dshow.
