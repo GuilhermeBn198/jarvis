@@ -148,3 +148,17 @@ Essa receita ainda não foi validada no openSUSE Leap.
 Os testes dos pacotes incluem uma sessão X11 e D-Bus privadas,
 abertura repetida do overlay e fechamento pela interface. Esse teste usa um
 launcher sem cérebro; não substitui voz, áudio e portais em GNOME/KDE reais.
+
+## ABI do Python em pacotes nativos
+
+A preparação do pacote resolve o interpretador do alvo (por exemplo,
+`/usr/bin/python3.14`) e cria um link privado em
+`/usr/lib/jarvis/runtime/bin/python3`. O launcher e os comandos Python privados
+usam esse ABI, mesmo se o alias `python3` mudar. Os RPMs exigem também o provider
+GI da mesma versão, além de `python(abi)`. Isso não torna wheels compatíveis com
+outro ABI; atualizações que removam o interpretador necessário precisam de um
+pacote Jarvis reconstruído para a nova versão.
+
+A regressão local simula a troca do alias e verifica o launcher instalado e o
+comando Piper. A CI dos pacotes confere o interpretador e os imports com o ABI
+registrado no manifesto de instalação.

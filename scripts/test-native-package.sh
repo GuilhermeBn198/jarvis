@@ -21,10 +21,14 @@ esac
 test "$(cat "$XDG_DATA_HOME/jarvis/package-test")" = preserved
 jarvis --doctor
 [ "$(/usr/lib/jarvis/bin/opencode --version)" = '1.18.23' ]
-PYTHONPATH=/usr/lib/jarvis/python python3 - <<'PY'
+PYTHONPATH=/usr/lib/jarvis/python /usr/lib/jarvis/runtime/bin/python3 - <<'PY'
 from pathlib import Path
-import importlib,gi,platform
+import importlib,gi,platform,json,sys
 root=Path('/usr/lib/jarvis')
+manifest=json.loads((root/'install-manifest.json').read_text())
+assert manifest['python_abi']==f'{sys.version_info.major}.{sys.version_info.minor}'
+assert (root/'runtime/bin/python3').resolve()==Path(sys.executable).resolve()
+assert (root/'runtime/bin/python3').resolve().name==f'python{manifest["python_abi"]}'
 expected={'x86_64':62,'aarch64':183}[platform.machine()]
 for binary in (Path('/usr/bin/jarvis-overlay'),root/'bin/opencode'):
     with binary.open('rb') as stream:header=stream.read(20)

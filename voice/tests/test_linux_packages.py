@@ -142,3 +142,32 @@ def test_native_driver_resolves_relative_output_before_changing_directory(tmp_pa
     result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','arch','--output','packages ação'],env=env,cwd=tmp_path,capture_output=True,text=True)
     assert result.returncode==0,result.stderr
     assert marker.read_text()==str(tmp_path/'packages ação')
+
+
+def test_native_python_binding_survives_default_interpreter_switch(tmp_path):
+    import os, shlex, subprocess, sys
+    loader=importlib.util.spec_from_file_location('prepare_package_binding',ROOT/'scripts/prepare-package.py')
+    package=importlib.util.module_from_spec(loader)
+    sys.path.insert(0,str(ROOT/'scripts'))
+    try:loader.loader.exec_module(package)
+    finally:sys.path.pop(0)
+    prefix=tmp_path/'installed ação'
+    overlay=tmp_path/'overlay';overlay.write_text('#!/bin/sh\nexit 0\n');overlay.chmod(0o755)
+    subprocess.run([sys.executable,str(ROOT/'scripts/stage-linux.py'),'--prefix',str(prefix),'--overlay',str(overlay)],check=True,capture_output=True)
+    app=prefix/'lib/jarvis'
+    runtime=app/'python/bin';runtime.mkdir(parents=True)
+    tools=tmp_path/'tools';tools.mkdir()
+    versioned=tools/'python3.frozen'
+    versioned.write_text('#!/bin/sh\nexec '+shlex.quote(sys.executable)+' "$@"\n');versioned.chmod(0o755)
+    default=tools/'python3';default.symlink_to(versioned.name)
+    console=runtime/'piper';console.write_text('#!'+str(default)+'\nprint("console ABI retained")\n');console.chmod(0o755)
+    package.bind_python(app,default)
+    default.unlink();default.write_text('#!/bin/sh\nexit 97\n');default.chmod(0o755)
+    env=dict(os.environ,PATH=str(tools)+os.pathsep+os.environ['PATH'])
+    env.pop('JARVIS_PYTHON',None);env.pop('JARVIS_PROJECT_ROOT',None)
+    result=subprocess.run([str(prefix/'bin/jarvis'),'--doctor'],env=env,cwd=tmp_path,capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
+    assert (app/'runtime/bin/python3').resolve()==versioned
+    result=subprocess.run([str(console)],env=env,capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
+    assert result.stdout.strip()=='console ABI retained'

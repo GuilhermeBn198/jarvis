@@ -11,6 +11,22 @@ from stage_linux_loader import stage
 ROOT=Path(__file__).resolve().parents[1]
 
 
+def bind_python(app: Path, interpreter: Path):
+    """Bind native entrypoints to the wheel ABI, not the rolling default alias."""
+    interpreter=interpreter.resolve(strict=True)
+    if not interpreter.is_file() or not os.access(interpreter,os.X_OK):
+        raise ValueError('interpretador do pacote nao e executavel')
+    runtime_bin=app/'runtime/bin'
+    runtime_bin.mkdir(parents=True,exist_ok=True)
+    (runtime_bin/'python3').symlink_to(interpreter)
+    for entry in (app/'python/bin').iterdir():
+        if not entry.is_file():continue
+        data=entry.read_bytes()
+        if data.startswith(b'#!'):
+            first,rest=data.split(b'\n',1)
+            if b'python' in first:entry.write_bytes(b'#!'+os.fsencode(interpreter)+b'\n'+rest)
+
+
 def prepare(prefix: str,destdir: str,overlay: str,python: str,opencode: str,wheelhouse: str | None=None):
     output=Path(destdir)/prefix.lstrip('/') if destdir else Path(prefix)
     app=output/'lib/jarvis'
@@ -31,15 +47,10 @@ def prepare(prefix: str,destdir: str,overlay: str,python: str,opencode: str,whee
     subprocess.run(argv,check=True)
     # Console entrypoints must use the package's declared system Python,
     # not a developer venv or a DESTDIR path.
-    interpreter=subprocess.check_output([python,'-c','import sys;print(sys.executable)'],text=True).strip()
-    if not interpreter.startswith('/usr/bin/'):
+    interpreter=Path(subprocess.check_output([python,'-c','import sys;print(sys.executable)'],text=True).strip()).resolve(strict=True)
+    if interpreter.parent!=Path('/usr/bin'):
         raise ValueError('pacote nativo exige Python do alvo em /usr/bin; use ambiente da distro correspondente')
-    for entry in (runtime/'bin').iterdir():
-        if not entry.is_file():continue
-        data=entry.read_bytes()
-        if data.startswith(b'#!'):
-            first,rest=data.split(b'\n',1)
-            if b'python' in first:entry.write_bytes(b'#!'+interpreter.encode()+b'\n'+rest)
+    bind_python(app,interpreter)
     version=subprocess.check_output([python,'-c','import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")'],text=True).strip()
     files=sorted(str(path.relative_to(output)) for path in output.rglob('*') if path.is_file() or path.is_symlink())
     (app/'install-manifest.json').write_text(json.dumps({'prefix':prefix,'python_abi':version,'files':files},indent=2)+'\n')
