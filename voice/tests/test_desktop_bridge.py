@@ -10,6 +10,16 @@ from desktop_service import socket_path, peer_is_owner
 VOICE=Path(__file__).resolve().parents[1]
 
 
+def wait_for_socket(path, process):
+    # Cold imports can exceed two seconds on busy distro build hosts.
+    deadline=time.monotonic()+10
+    while time.monotonic()<deadline:
+        if path.exists():return
+        if process.poll() is not None:pytest.fail(process.communicate()[1])
+        time.sleep(.02)
+    pytest.fail('desktop service did not create its socket within 10 seconds')
+
+
 def test_runtime_directory_rejects_symlink(tmp_path):
     root=tmp_path/'runtime';root.mkdir(mode=0o700)
     (root/'jarvis').symlink_to(tmp_path,target_is_directory=True)
@@ -29,11 +39,7 @@ def test_bridge_real_socket_lifecycle(tmp_path):
     proc=subprocess.Popen([sys.executable,str(VOICE/'desktop_service.py'),'--idle-timeout','20'],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     try:
         path=root/'jarvis/desktop.sock'
-        for _ in range(100):
-            if path.exists():break
-            if proc.poll() is not None: pytest.fail(proc.communicate()[1])
-            time.sleep(.02)
-        assert path.exists()
+        wait_for_socket(path,proc)
         def request(operation,args):
             result=subprocess.run([sys.executable,str(VOICE/'desktop_bridge.py')],input=json.dumps({'operation':operation,'args':args}),env=env,capture_output=True,text=True,timeout=10)
             return result,json.loads(result.stdout)
@@ -61,9 +67,7 @@ def test_service_exits_when_owning_brain_exits(tmp_path):
     service=subprocess.Popen([sys.executable,str(VOICE/'desktop_service.py'),'--idle-timeout','30'],env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     try:
         path=runtime/'jarvis/desktop.sock'
-        for _ in range(100):
-            if path.exists():break
-            time.sleep(.02)
+        wait_for_socket(path,service)
         result=subprocess.run([sys.executable,str(VOICE/'desktop_bridge.py')],input=json.dumps({'operation':'attach','args':{'pid':parent.pid}}),env=env,capture_output=True,text=True,timeout=5)
         assert result.returncode==0,result.stdout+result.stderr
         parent.terminate();parent.wait(timeout=5)
