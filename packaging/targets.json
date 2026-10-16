@@ -85,17 +85,19 @@
   },
   "rhel": {
     "distro": "rhel",
-    "version": null,
+    "version": "10",
     "libc": "glibc",
     "architectures": [
       "x86_64",
       "aarch64"
     ],
     "format": "rpm",
-    "recipe": null,
-    "implementation": "pending",
-    "validation": "unverified",
-    "validated_architectures": []
+    "recipe": "packaging/rpm/rhel/jarvis-assistant.spec",
+    "implementation": "recipe",
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "alpine": {
     "distro": "alpine",

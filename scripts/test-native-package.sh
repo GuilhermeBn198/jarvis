@@ -16,6 +16,18 @@ case "$task_family:$ID" in
     fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" xorg-x11-server-Xvfb dbus-daemon ;;
     suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1-daemon ;;
     arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
+    rhel:rhel|rhel:almalinux|rhel:rocky|rhel:centos|rhel:ol)
+        [ "${VERSION_ID%%.*}" = 10 ] || { echo 'Teste rhel exige versao 10.' >&2; exit 2; }
+        set -- "$task_package"
+        task_helpers=0
+        for task_extra in "$(dirname "$task_package")"/xdotool-*."$(uname -m)".rpm; do
+            [ -f "$task_extra" ] || continue
+            set -- "$@" "$task_extra"
+            task_helpers=$((task_helpers+1))
+        done
+        [ "$task_helpers" -eq 1 ] || { echo 'Forneca exatamente um RPM xdotool da arquitetura do alvo junto ao Jarvis.' >&2; exit 2; }
+        dnf install -y --setopt=install_weak_deps=False "$@" weston dbus-daemon mesa-libEGL mesa-dri-drivers
+        ;;
     *) echo 'Familia e ambiente nao correspondem.' >&2; exit 2 ;;
 esac
 test "$(cat "$XDG_DATA_HOME/jarvis/package-test")" = preserved
@@ -49,7 +61,11 @@ for task_tool in ffmpeg ffplay pactl arecord xdotool wl-paste xclip; do command 
 ffmpeg -version >/dev/null
 ffplay -version >/dev/null
 pactl --version
-python3 "$task_checks/test-overlay-instance.py" /usr/bin/jarvis-overlay
+if [ "$task_family" = rhel ]; then
+    python3 "$task_checks/test-overlay-wayland.py" /usr/bin/jarvis-overlay
+else
+    python3 "$task_checks/test-overlay-instance.py" /usr/bin/jarvis-overlay
+fi
 case "$task_family" in
     debian|ubuntu)
         task_verify_status=0
@@ -61,10 +77,11 @@ case "$task_family" in
         ;;
     fedora) rpm -V jarvis-assistant; dnf remove -y jarvis-assistant ;;
     suse) rpm -V jarvis-assistant; zypper --non-interactive remove jarvis-assistant ;;
+    rhel) rpm -V jarvis-assistant; rpm -V xdotool; dnf remove -y jarvis-assistant xdotool; test ! -e /usr/bin/xdotool ;;
     arch) pacman -Qkk jarvis-assistant; pacman -R --noconfirm jarvis-assistant ;;
 esac
 test ! -e /usr/bin/jarvis
 test ! -e /usr/bin/jarvis-overlay
 test ! -e /usr/lib/jarvis
 test "$(cat "$XDG_DATA_HOME/jarvis/package-test")" = preserved
-printf '%s\n' 'PASS: package lifecycle/imports/integrity/data preservation and isolated X11 relaunch (full desktop/audio pending)'
+printf '%s\n' 'PASS: package lifecycle/imports/integrity/data preservation and isolated GUI relaunch (full desktop/audio pending)'

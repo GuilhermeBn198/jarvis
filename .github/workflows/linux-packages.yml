@@ -29,6 +29,8 @@ jobs:
           - {family: suse, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/suse/Dockerfile, image: 'opensuse/tumbleweed:latest', pattern: 'jarvis-assistant-*.x86_64.rpm'}
           - {family: suse, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/suse/Dockerfile, image: 'opensuse/tumbleweed:latest', pattern: 'jarvis-assistant-*.aarch64.rpm'}
           - {family: arch, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/arch/Dockerfile, image: 'archlinux:base', pattern: 'jarvis-assistant-*.pkg.tar.zst'}
+          - {family: rhel, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/rhel/Dockerfile, image: 'almalinux:10', pattern: 'jarvis-assistant-*.x86_64.rpm'}
+          - {family: rhel, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/rhel/Dockerfile, image: 'almalinux:10', pattern: 'jarvis-assistant-*.aarch64.rpm'}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Build in target distribution
@@ -52,8 +54,14 @@ jobs:
         run: |
           package=$(find dist/native -maxdepth 1 -type f -name "$PATTERN" -print -quit)
           test -n "$package"
-          docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
-            sh /checks/test-native-package.sh "$FAMILY" "/packages/$(basename "$package")"
+          if [ "$FAMILY" = rhel ]; then
+            docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
+              sh -ec 'dnf -y install epel-release dnf-plugins-core; dnf config-manager --set-enabled crb; exec sh /checks/test-native-package.sh "$@"' \
+              sh "$FAMILY" "/packages/$(basename "$package")"
+          else
+            docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
+              sh /checks/test-native-package.sh "$FAMILY" "/packages/$(basename "$package")"
+          fi
       - name: Upload experimental package artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

@@ -231,3 +231,11 @@ def test_prepared_python_rejects_build_links_and_wrong_abi(tmp_path,monkeypatch,
     app=tmp_path/'app';app.mkdir()
     with pytest.raises(ValueError):package.copy_python_environment(environment,app,sys.executable)
     assert not (app/'python').exists()
+
+
+def test_native_driver_rejects_rhel_target_on_arch(tmp_path):
+    import subprocess
+    if 'ID=arch' not in Path('/etc/os-release').read_text():pytest.skip('requires Arch host')
+    result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','rhel','--output',str(tmp_path)],capture_output=True,text=True)
+    assert result.returncode==2
+    assert 'exige ambiente RHEL 10' in result.stderr

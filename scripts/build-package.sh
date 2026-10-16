@@ -37,18 +37,36 @@ case "$task_target" in
         dpkg-buildpackage -us -uc -b
         find "$task_build" -maxdepth 1 -name '*.deb' -type f -exec cp '{}' "$task_output/" \;
         ;;
-    fedora|suse)
+    fedora|suse|rhel)
         . /etc/os-release
         case "$task_target:$ID" in
             fedora:fedora|suse:opensuse-tumbleweed) ;;
             fedora:*) echo 'Alvo fedora exige ambiente Fedora.' >&2; exit 2 ;;
             suse:*) echo 'Alvo suse exige openSUSE Tumbleweed.' >&2; exit 2 ;;
+            rhel:rhel|rhel:almalinux|rhel:rocky|rhel:centos|rhel:ol)
+                [ "${VERSION_ID%%.*}" = '10' ] || { echo 'Alvo rhel exige ambiente RHEL 10 ou derivado.' >&2; exit 2; }
+                ;;
+            rhel:*) echo 'Alvo rhel exige ambiente RHEL 10 ou derivado.' >&2; exit 2 ;;
         esac
         command -v rpmbuild >/dev/null
         task_build=$(mktemp -d "$task_output/.$task_target-build-XXXXXX")
         mkdir -p "$task_build/SOURCES" "$task_build/SPECS"
         python3 "$task_root/scripts/source-archive.py" --output "$task_build/SOURCES/jarvis-0.1.0.tar.gz"
         cp "$task_root/packaging/rpm/$task_target/jarvis-assistant.spec" "$task_build/SPECS/"
+        if [ "$task_target" = 'rhel' ]; then
+            # EPEL 10 lacks xdotool. Build its native RPM alongside Jarvis.
+            task_xdotool_commit=d37c16111dbe38ea29194f20ac9de03cff8dfc1c
+            git init -q "$task_build/xdotool-source"
+            git -C "$task_build/xdotool-source" remote add origin https://github.com/jordansissel/xdotool.git
+            git -C "$task_build/xdotool-source" fetch --depth 1 origin "$task_xdotool_commit"
+            git -C "$task_build/xdotool-source" checkout --detach FETCH_HEAD
+            [ "$(git -C "$task_build/xdotool-source" rev-parse HEAD)" = "$task_xdotool_commit" ]
+            git -C "$task_build/xdotool-source" archive --format=tar --prefix=xdotool-4.20260303.1/ \
+                --output="$task_build/SOURCES/xdotool-4.20260303.1.tar" "$task_xdotool_commit"
+            gzip -n "$task_build/SOURCES/xdotool-4.20260303.1.tar"
+            cp "$task_root/packaging/rpm/rhel/xdotool.spec" "$task_build/SPECS/"
+            rpmbuild --define "_topdir $task_build" -ba "$task_build/SPECS/xdotool.spec"
+        fi
         rpmbuild --define "_topdir $task_build" -ba "$task_build/SPECS/jarvis-assistant.spec"
         find "$task_build/RPMS" "$task_build/SRPMS" -name '*.rpm' -type f -exec cp '{}' "$task_output/" \;
         ;;

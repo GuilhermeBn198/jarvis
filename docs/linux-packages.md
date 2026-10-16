@@ -42,8 +42,8 @@ o novo DEB com `apt install ./caminho/do/pacote.deb`; para remover, use
 
 Os DEBs x86_64 e ARM64 foram compilados no Debian 13 e passaram pela instalação com apt,
 diagnóstico, imports, verificação de arquivos e remoção em container limpo,
-preservando o dado de usuário usado no teste. Atualização de versão e uso
-gráfico ainda precisam ser verificados antes de tratar o DEB como release.
+preservando o dado de usuário usado no teste. O teste de abertura, segunda execução e saída da interface passou em X11
+isolado. Atualização de versão e uso completo no desktop continuam pendentes.
 
 ## Ubuntu 24.04
 
@@ -51,8 +51,8 @@ A receita usa o mesmo controle Debian, mas compila o overlay e prepara os
 wheels no Ubuntu 24.04, com o ABI Python 3.12 dessa distribuição. O toolchain
 Rust oficial é fornecido separadamente; os binários do aplicativo são produzidos
 no Ubuntu. Os builds x86_64 e ARM64 passaram pela instalação limpa, imports,
-integridade e remoção na execução CI 38786962019. A execução gráfica instalada
-segue em validação.
+integridade, remoção e relançamento da interface em X11 isolado na execução
+CI 38910794267. O uso completo no desktop segue em validação.
 
 ```sh
 docker build -f packaging/ubuntu/Dockerfile -t jarvis-linux-ubuntu:local .
@@ -70,14 +70,26 @@ Ubuntu com as dependências de build e Rust compatível já instalados.
 
 ## Estado da validação
 
-Foi gerado um pacote Arch x86_64 e verificado, após extração, o launcher, o
-agente 1.18.23 e os imports de voz/MCP. Também passaram, em container Arch limpo, a instalação com pacman,
-a verificação de 8135 arquivos sem alterações e a remoção, preservando o dado de
-usuário usado no teste. Atualização de versão e execução gráfica instalada
-ainda estão pendentes. A CI também validou os DEBs x86_64 e ARM64 em runners
-da arquitetura correspondente. As demais receitas, a validação completa do
-Flatpak e a matriz de ambientes gráficos continuam pendentes. Veja também `linux-verification.md`
-em `docs/notes` para os testes reais já executados.
+A [CI 38910794267](https://github.com/V1nic1us/jarvis/actions/runs/38910794267)
+concluiu os nove testes nativos do commit `9ac3e30`:
+
+| Família | Base | Arquiteturas com teste básico instalado |
+|---|---|---|
+| Arch | rolling | x86_64 |
+| Debian | 13 | x86_64, aarch64 |
+| Ubuntu | 24.04 | x86_64, aarch64 |
+| Fedora | 44 | x86_64, aarch64 |
+| openSUSE | Tumbleweed | x86_64, aarch64 |
+
+Esses testes cobrem instalação pelo gerenciador nativo, diagnóstico, ABI e
+imports Python privados, recursos, integridade, abertura e segunda execução da
+interface em X11 isolado, saída e remoção preservando o dado de teste.
+Não substituem a matriz de áudio, portais, GNOME/KDE e sessões reais.
+Atualizações de versão dessas cinco famílias continuam pendentes.
+
+RHEL 10 tem uma receita adicional em validação, descrita abaixo.
+Os demais alvos permanecem explicitamente pendentes em `packaging/targets.json`.
+Veja também os testes reais registrados em `docs/notes/linux-verification.md`.
 
 Os downloads do agente usam URLs e integridade SHA512 fixadas em
 `packaging/opencode-sources.json`. As dependências Python são resolvidas durante
@@ -112,8 +124,8 @@ O arquivo `.src.rpm` contém fontes e receita e não instala a aplicação.
 
 O RPM Fedora 44 x86_64 passou pela instalação com dnf, doctor, imports, versão
 do agente, presença de pactl, verificação rpm e remoção com preservação do dado
-de usuário usado no teste. Não há RPM publicado ou teste gráfico Fedora
-concluído. O arquivo `packaging/targets.json` registra as famílias previstas,
+de usuário usado no teste. Não há RPM publicado em repositório oficial. O teste gráfico básico em X11
+isolado passou; a validação do desktop completo permanece pendente. O arquivo `packaging/targets.json` registra as famílias previstas,
 separa receita disponível de validação e marca explicitamente os alvos cuja
 implementação ainda está pendente. Suporte ARM64 declarado é um alvo de build,
 não evidência de execução nessa arquitetura.
@@ -183,3 +195,27 @@ somente o runtime, sem ferramentas de build.
 A regressão local remove o venv original e executa um comando do runtime
 copiado. A validação do APK Alpine com as dependências de voz completas ainda
 está pendente.
+
+
+### Família RHEL 10: receita em validação
+
+A base de build é AlmaLinux 10, com EPEL e CRB. A receita principal fica em
+`packaging/rpm/rhel/jarvis-assistant.spec`. O driver também constrói um RPM
+`xdotool` a partir do commit upstream fixado na receita de dependência, pois
+os repositórios consultados dessa base não oferecem esse pacote. Os RPMs
+binários e de código-fonte são exportados juntos:
+
+```sh
+docker build -f packaging/rpm/rhel/Dockerfile -t jarvis-linux-rhel .
+mkdir -p dist/rhel
+docker run --rm -v "$PWD/dist/rhel:/out" jarvis-linux-rhel
+```
+
+O build completo dos dois RPMs e seus SRPMs passou em AlmaLinux 10 x86_64.
+Em um container limpo também passaram instalação, ABI/imports privados, recursos,
+interface Wayland em Weston isolado, integridade e remoção preservando os dados
+de teste. O catálogo registra **installed-smoke** apenas para x86_64.
+A CI inclui ARM64, mas essa arquitetura permanece não verificada até o resultado.
+Atualização de versão, áudio, portais e desktops reais continuam pendentes.
+A seleção de repositórios da imagem de build é específica do AlmaLinux; os testes
+não certificam outras distribuições da família.
