@@ -162,3 +162,24 @@ pacote Jarvis reconstruído para a nova versão.
 A regressão local simula a troca do alias e verifica o launcher instalado e o
 comando Piper. A CI dos pacotes confere o interpretador e os imports com o ABI
 registrado no manifesto de instalação.
+
+## Runtime preparado com dependências da distribuição
+
+Quando uma dependência como ONNX Runtime é fornecida pela distribuição, o
+builder pode resolver os pacotes Python em um venv separado, criado com
+`--without-pip --system-site-packages`. O pip do ambiente de build instala nesse
+venv com `--python` e produz um relatório com `--report`. Nenhum desses comandos
+é executado na instalação do pacote pelo usuário.
+
+`prepare-package.py` aceita `--python-environment CAMINHO` e
+`--python-report RELATORIO.json` no lugar de `--wheelhouse`. Ele verifica o ABI,
+copia somente os módulos locais do venv e recria os comandos pelos metadados dos
+pacotes, removendo referências ao caminho de build. Dependências disponíveis
+somente no Python da distribuição continuam externas e precisam constar nas
+dependências nativas da receita. Esse modo rejeita symlinks nos módulos,
+redirecionamentos `.pth` e links de instalações editáveis. O venv deve conter
+somente o runtime, sem ferramentas de build.
+
+A regressão local remove o venv original e executa um comando do runtime
+copiado. A validação do APK Alpine com as dependências de voz completas ainda
+está pendente.
