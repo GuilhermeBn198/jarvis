@@ -39,9 +39,14 @@ jobs:
         env:
           DOCKERFILE: ${{ matrix.dockerfile }}
           ARCH: ${{ matrix.arch }}
+          FAMILY: ${{ matrix.family }}
         run: |
           test "$(uname -m)" = "$ARCH"
-          docker build --progress=plain -f "$DOCKERFILE" -t jarvis-package .
+          if [ "$FAMILY" = alpine ]; then
+            docker build --progress=plain --build-arg JARVIS_TEST_PACKAGE_UPGRADE=1 -f "$DOCKERFILE" -t jarvis-package .
+          else
+            docker build --progress=plain -f "$DOCKERFILE" -t jarvis-package .
+          fi
       - name: Export packages and checksums
         env:
           EXPORT_DIRECTORY: ${{ matrix.export || '/out' }}
@@ -70,6 +75,14 @@ jobs:
             docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
               sh /checks/test-native-package.sh "$FAMILY" "/packages/$(basename "$package")"
           fi
+      - name: Check signed Alpine revision update and user data preservation
+        if: matrix.family == 'alpine'
+        run: |
+          test -f dist/native/jarvis-assistant-0.1.0-r0.apk
+          test -f dist/native/jarvis-assistant-0.1.0-r1.apk
+          docker run --rm -e JARVIS_APK_REQUIRE_SIGNATURE=1 \
+            -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" alpine:3.24 \
+            sh -ec 'find /packages -name "*.pub" -exec cp {} /etc/apk/keys/ \;; exec sh /checks/test-native-apk-upgrade.sh /packages/jarvis-assistant-0.1.0-r0.apk 0.1.0-r0 /packages/jarvis-assistant-0.1.0-r1.apk 0.1.0-r1'
       - name: Upload experimental package artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

@@ -255,3 +255,11 @@ def test_native_driver_rejects_void_glibc_target_on_arch(tmp_path):
     result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','void-glibc','--output',str(tmp_path)],capture_output=True,text=True)
     assert result.returncode==2
     assert 'exige ambiente Void Linux' in result.stderr
+
+
+def test_native_driver_rejects_gentoo_target_on_arch(tmp_path):
+    import subprocess
+    if 'ID=arch' not in Path('/etc/os-release').read_text():pytest.skip('requires Arch host')
+    result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','gentoo','--output',str(tmp_path)],capture_output=True,text=True)
+    assert result.returncode==2
+    assert 'exige ambiente Gentoo' in result.stderr

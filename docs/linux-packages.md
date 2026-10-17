@@ -220,13 +220,17 @@ Dentro de um ambiente Alpine com as dependências de build instaladas, um usuár
 não root com chave `abuild` configurada também pode executar
 `scripts/build-package.sh --target alpine --output dist/alpine`.
 O build precisa de rede; a instalação não executa pip ou downloads de modelos.
-O APK completo x86_64 passou pela instalação assinada em Alpine limpo, pelos
-imports e ABI privados, pelos recursos e ferramentas, pela interface isolada
-X11 (reabertura e saída), pela integridade e pela remoção preservando dados de
-teste. O catálogo registra **installed-smoke** somente para x86_64. Atualização
-entre revisões do build completo, ARM64, microfone e desktops reais seguem
-pendentes. O APK instalado também sintetizou e transcreveu uma frase de teste
-em português, sem rede, usando Piper e Whisper tiny/CPU int8. O erro por palavra
+Os APKs completos x86_64 e aarch64 passaram pela instalação assinada em Alpine
+limpo, pelos imports e ABI privados, pelos recursos e ferramentas, pela interface
+isolada X11 (reabertura e saída), pela integridade e pela remoção preservando
+dados de teste. Os dois jobs Alpine da [CI 38953368727](https://github.com/V1nic1us/jarvis/actions/runs/38953368727)
+passaram; o catálogo registra **installed-smoke** para ambas as arquiteturas.
+O APK x86_64 passou também pela atualização assinada r0→r1 construída das fontes
+completas, preservando hashes de configuração, cache e dados do modelo; o teste
+está em `.superpowers/sdd/2026-10-14-jarvis-linux/alpine-full-source-signed-upgrade-retry.log`.
+A atualização aarch64, microfone e desktops reais seguem pendentes. O APK x86_64
+instalado também sintetizou e transcreveu uma frase de teste em português, sem
+rede, usando Piper e Whisper tiny/CPU int8. O erro por palavra
 foi 13,3%; esse ensaio sintético não certifica captura de microfone nem qualidade
 de reconhecimento em situações reais.
 
@@ -267,3 +271,22 @@ O pacote XBPS ainda não foi compilado nem validado. A variante musl depende da
 construção nativa do ONNX Runtime, ausente nos repositórios Void consultados;
 ela não reutiliza as bibliotecas glibc. Ambas as variantes continuam marcadas
 como **não verificadas** no catálogo.
+
+### Gentoo rolling: pacote local em validação
+
+O driver `scripts/build-package.sh --target gentoo --output dist/gentoo`
+prepara um overlay local, registra o arquivo de fontes sanitizado no Manifest e
+usa `ebuild package` para gerar um pacote `gpkg`. O ambiente precisa de Portage,
+Git e das dependências de build da receita. A receita fixa Python 3.14 e WebKit
+no slot 4.1, exige os recursos de captura/reprodução do FFmpeg e preserva o
+payload do agente sem stripping. As dependências privadas são resolvidas durante
+o build; a instalação não executa pip nem baixa modelos.
+
+O gpkg atualizado foi compilado e instalado pelo Portage nativo em x86_64.
+`jarvis --doctor`, os 7.355 caminhos do manifesto, os imports privados e ABI
+Python, AT-SPI, os ganchos de cache XDG, o relançamento em Weston headless e a
+remoção preservando um sentinel de dados passaram. O artefato e o log de
+validação estão em `.superpowers/sdd/2026-10-14-jarvis-linux/gentoo-native-artifacts`
+e `gentoo-native-revised-lifecycle.log`. O catálogo marca **installed-smoke**
+somente para x86_64. Atualização e aarch64 seguem pendentes. O overlay é local e
+não implica publicação no repositório oficial.

@@ -16,7 +16,13 @@ case "$task_family:$ID" in
     fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" xorg-x11-server-Xvfb dbus-daemon ;;
     suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1-daemon ;;
     arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
-    alpine:alpine) apk add --no-cache --allow-untrusted "$task_package" xvfb dbus ;;
+    alpine:alpine)
+        if [ "${JARVIS_APK_REQUIRE_SIGNATURE:-0}" = 1 ]; then
+            apk add --no-cache "$task_package" xvfb dbus
+        else
+            apk add --no-cache --allow-untrusted "$task_package" xvfb dbus
+        fi
+        ;;
     void-glibc:void|void-musl:void)
         task_repository=$(mktemp -d)
         cp "$task_package" "$task_repository/"

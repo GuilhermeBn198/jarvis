@@ -21,6 +21,25 @@ fi
 mkdir -p "$task_output"
 task_output=$(CDPATH= cd -P "$task_output" && pwd)
 case "$task_target" in
+    gentoo)
+        . /etc/os-release
+        [ "$ID" = gentoo ] || { echo 'Alvo gentoo exige ambiente Gentoo.' >&2; exit 2; }
+        command -v ebuild >/dev/null
+        command -v git >/dev/null
+        task_build=$(mktemp -d)
+        chmod 0755 "$task_build"
+        task_overlay=$task_build/overlay
+        task_package=$task_overlay/app-misc/jarvis-assistant
+        mkdir -p "$task_package/files" "$task_overlay/profiles" "$task_overlay/metadata" "$task_build/tmp" "$task_build/binpkgs"
+        printf '%s\n' jarvis-local > "$task_overlay/profiles/repo_name"
+        printf '%s\n' 'masters = gentoo' 'thin-manifests = false' > "$task_overlay/metadata/layout.conf"
+        python3 "$task_root/scripts/source-archive.py" --output "$task_package/files/jarvis-0.1.0.tar.gz"
+        cp "$task_root/packaging/gentoo/jarvis-assistant-0.1.0.ebuild" "$task_package/"
+        export PORTDIR_OVERLAY="${PORTDIR_OVERLAY:+$PORTDIR_OVERLAY }$task_overlay"
+        export PORTAGE_TMPDIR=$task_build/tmp PKGDIR=$task_build/binpkgs BINPKG_FORMAT=gpkg
+        ebuild "$task_package/jarvis-assistant-0.1.0.ebuild" manifest clean package
+        find "$task_build/binpkgs" -type f -name '*.gpkg.tar' -exec cp '{}' "$task_output/" \;
+        ;;
     void-glibc)
         . /etc/os-release
         [ "$ID" = void ] || { echo 'Alvo void-glibc exige ambiente Void Linux.' >&2; exit 2; }
@@ -61,7 +80,19 @@ PY
         export REPODEST=$task_output
         cd "$task_build"
         abuild checksum
-        abuild -r
+        if [ "${JARVIS_TEST_PACKAGE_UPGRADE:-0}" = 1 ]; then
+            # Compile once, then create two revisions from the same native build.
+            # Keep temporary outputs only until the second packaging pass ends.
+            abuild -r -K
+            grep -qx 'pkgrel=0' APKBUILD
+            sed -i 's/^pkgrel=0$/pkgrel=1/' APKBUILD
+            # rootpkg must not reuse control metadata from the first revision.
+            rm -rf "$task_build/pkg"
+            abuild rootpkg
+            abuild clean
+        else
+            abuild -r
+        fi
         ;;
     debian|ubuntu)
         . /etc/os-release

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-16T19:16:01.013030+00:00",
+  "verified_at_utc": "2026-10-17T13:25:00+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -265,15 +265,13 @@
       "package": "apk",
       "capability": "native_package_lifecycle",
       "status": "passed",
-      "command": "signed apk add, then sh scripts/test-native-package.sh alpine /packages/jarvis-assistant-0.1.0-r0.apk",
+      "command": "signed apk add, then sh scripts/test-native-package.sh alpine <native-package>",
       "evidence": [
         {
-          "kind": "local_validation_log",
-          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/alpine-full-source-signed-lifecycle.log",
-          "artifact": "jarvis-assistant-0.1.0-r0.apk",
-          "sha256": "28ac3d085cddb9a50a58934aac5b541da2f6332dcb70cce9569c2865cf880668",
-          "source_commit": null,
-          "provenance": "Local source checkout; artifact checksum identifies the tested package."
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38953368727/job/117150036116",
+          "source_commit": "09d6fa794bcabfa880f138f933c4de87c7955c73",
+          "conclusion": "success"
         }
       ]
     },
@@ -283,13 +281,20 @@
       "version": "3.24",
       "arch": "aarch64",
       "libc": "musl",
-      "desktop": null,
-      "session": null,
+      "desktop": "Xvfb fixture",
+      "session": "x11",
       "package": "apk",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "status": "passed",
+      "command": "signed apk add, then sh scripts/test-native-package.sh alpine <native-package>",
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/38953368727/job/117150036184",
+          "source_commit": "09d6fa794bcabfa880f138f933c4de87c7955c73",
+          "conclusion": "success"
+        }
+      ]
     },
     {
       "target": "void-glibc",
@@ -350,21 +355,35 @@
     {
       "target": "gentoo",
       "distro": "gentoo",
-      "version": null,
+      "version": "rolling",
       "arch": "x86_64",
       "libc": "glibc",
-      "desktop": null,
-      "session": null,
+      "desktop": "Weston headless fixture",
+      "session": "wayland",
       "package": "ebuild",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "status": "passed",
+      "command": "ebuild native gpkg; emerge -K install; doctor/private ABI/imports; isolated Weston relaunch; emerge --unmerge",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/gentoo-native-artifacts/jarvis-assistant-0.1.0-1.gpkg.tar",
+          "sha256": "93963ba6e38931b50709d790cd79604ecedb709c2beab87c2c33bd0564ece0e6"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/gentoo-native-revised-lifecycle.log"
+        },
+        {
+          "kind": "local_build_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/gentoo-package-qa-rebuild.log"
+        }
+      ]
     },
     {
       "target": "gentoo",
       "distro": "gentoo",
-      "version": null,
+      "version": "rolling",
       "arch": "aarch64",
       "libc": "glibc",
       "desktop": null,
@@ -478,6 +497,27 @@
           "artifact_sha256": "28ac3d085cddb9a50a58934aac5b541da2f6332dcb70cce9569c2865cf880668",
           "word_error_rate": 0.13333333333333333,
           "audio_seconds": 5.097
+        }
+      ]
+    },
+    {
+      "target": "alpine",
+      "distro": "alpine",
+      "version": "3.24",
+      "arch": "x86_64",
+      "libc": "musl",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "apk",
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "JARVIS_TEST_PACKAGE_UPGRADE=1; signed apk add r0, then signed apk update r0 to r1 and remove",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/alpine-full-source-signed-upgrade-retry.log",
+          "r0_sha256": "f81adad7954d3b7e44df4009a8055b14e595501628a1854a0aac9245d5f53ec7",
+          "r1_sha256": "6f80400154441f360e034d9740d540bf53b6f634eae671162d179783a8b1bce4"
         }
       ]
     }

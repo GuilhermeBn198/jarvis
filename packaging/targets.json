@@ -113,7 +113,8 @@
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64"
+      "x86_64",
+      "aarch64"
     ]
   },
   "void-glibc": {
@@ -146,17 +147,19 @@
   },
   "gentoo": {
     "distro": "gentoo",
-    "version": null,
+    "version": "rolling",
     "libc": "glibc",
     "architectures": [
       "x86_64",
       "aarch64"
     ],
     "format": "ebuild",
-    "recipe": null,
-    "implementation": "pending",
-    "validation": "unverified",
-    "validated_architectures": []
+    "recipe": "packaging/gentoo/jarvis-assistant-0.1.0.ebuild",
+    "implementation": "recipe",
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "nix": {
     "distro": "nixos",

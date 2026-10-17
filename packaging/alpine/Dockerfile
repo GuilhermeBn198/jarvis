@@ -17,7 +17,9 @@ USER root
 RUN cp /home/builder/.abuild/*.pub /etc/apk/keys/
 USER builder
 # The Docker context is already filtered. Inventory it for source-archive.py.
+ARG JARVIS_TEST_PACKAGE_UPGRADE=0
 RUN git init -q && git add -A && \
+    JARVIS_TEST_PACKAGE_UPGRADE="$JARVIS_TEST_PACKAGE_UPGRADE" \
     sh scripts/build-package.sh --target alpine --output /out
 # Export into bind mounts whose host UID may differ from the abuild user.
 USER root
