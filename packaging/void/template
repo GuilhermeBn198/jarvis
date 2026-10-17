@@ -10,6 +10,7 @@ hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git"
 makedepends="gtk+3-devel libwebkit2gtk41-devel libffi-devel python3-devel"
 depends="python3>=3.14<3.15 ffmpeg pulseaudio-utils python3-gobject
  at-spi2-core alsa-utils xdotool wl-clipboard xclip"
+python_version=3
 short_desc="Voice assistant with native Linux overlay"
 maintainer="Jarvis local build contributors <jarvis@localhost.invalid>"
 license="Apache-2.0, MIT, GPL-3.0-or-later"
@@ -18,7 +19,7 @@ homepage="https://github.com/GuilhermeBn198/jarvis"
 post_extract() {
     # This local recipe ships the sanitized checkout archive in FILESDIR.
     printf '%s  %s\n' '@JARVIS_SOURCE_SHA256@' "${FILESDIR}/jarvis-${version}.tar.gz" | sha256sum -c -
-    tar -xzf "${FILESDIR}/jarvis-${version}.tar.gz" --strip-components=1 -C "$wrksrc"
+    bsdtar -xf "${FILESDIR}/jarvis-${version}.tar.gz" --strip-components=1 -C "$wrksrc"
 }
 
 do_build() {
@@ -32,6 +33,17 @@ do_install() {
     python3 scripts/prepare-package.py --prefix /usr --destdir "$DESTDIR" \
         --overlay gui/src-tauri/target/release/jarvis-overlay \
         --python /usr/bin/python3 --opencode opencode-package
+    # The optional npm archive includes both libc variants. Keep only native
+    # glibc addons so XBPS does not infer foreign musl runtime dependencies.
+    find "$DESTDIR/usr/lib/jarvis/.opencode/node_modules/@msgpackr-extract" \
+        -type f -name '*.musl.node' -delete
+    NODE_PATH="$DESTDIR/usr/lib/jarvis/.opencode/node_modules" node -e '
+        const assert = require("node:assert/strict");
+        const codec = require("msgpackr");
+        assert.equal(codec.isNativeAccelerationEnabled, true);
+        assert.deepEqual(codec.unpack(codec.pack({text: "voz Linux", count: 3})), {text: "voz Linux", count: 3});
+        console.log("Native glibc msgpackr round-trip passed");
+    '
     vlicense LICENSE
     python3 - "${DESTDIR}/usr" <<'PY'
 from pathlib import Path
