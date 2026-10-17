@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-17T13:25:00+00:00",
+  "verified_at_utc": "2026-10-17T14:49:42+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -302,13 +302,32 @@
       "version": "rolling",
       "arch": "x86_64",
       "libc": "glibc",
-      "desktop": null,
-      "session": null,
+      "desktop": "Xvfb fixture",
+      "session": "x11",
       "package": "xbps",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "status": "passed",
+      "command": "xbps-install local XBPS package (with mesa dependency); sh scripts/test-native-package.sh void-glibc <package>",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-native-artifacts/jarvis-assistant-0.1.0_2.x86_64.xbps",
+          "sha256": "0e0356daac8a42fb57357e2dcffcff7bdff8780c361accc000ca7e2dd1828597"
+        },
+        {
+          "kind": "local_build_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-python-version-rebuild.log"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-v2-test.log"
+        },
+        {
+          "kind": "local_root_cause_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-no-mesa-isolation.log"
+        }
+      ],
+      "notes": "Revision 2 used the native XBPS tool to repack the unchanged source-built payload with mesa as an explicit runtime dependency. Clean no-Mesa test reproduced EGL failure; XBPS auto-installed Mesa and the lifecycle passed. The xbps-src regeneration of revision 2 remains to be confirmed."
     },
     {
       "target": "void-glibc",
@@ -322,7 +341,8 @@
       "capability": "native_package_lifecycle",
       "status": "unverified",
       "command": null,
-      "evidence": []
+      "evidence": [],
+      "notes": "Recipe exists; no native aarch64 build or lifecycle evidence yet."
     },
     {
       "target": "void-musl",

@@ -1,7 +1,7 @@
 # Local source-checkout recipe, populated by scripts/build-package.sh.
 pkgname=jarvis-assistant
 version=0.1.0
-revision=1
+revision=2
 archs="x86_64 aarch64"
 nocross=yes
 nostrip=yes
@@ -9,7 +9,7 @@ nodebug=yes
 hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git"
 makedepends="gtk+3-devel libwebkit2gtk41-devel libffi-devel python3-devel"
 depends="python3>=3.14<3.15 ffmpeg pulseaudio-utils python3-gobject
- at-spi2-core alsa-utils xdotool wl-clipboard xclip"
+ at-spi2-core alsa-utils xdotool wl-clipboard xclip mesa"
 python_version=3
 short_desc="Voice assistant with native Linux overlay"
 maintainer="Jarvis local build contributors <jarvis@localhost.invalid>"
