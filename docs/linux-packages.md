@@ -269,15 +269,13 @@ permanecer restrito ao container de build. A receita declara Mesa em runtime:
 o WebKitGTK precisa de um backend EGL no Void. Um teste sem Mesa reproduziu a
 falha EGL e a janela inacessível; instalado Mesa, o relançamento GTK passou.
 
-O payload do pacote foi compilado com `xbps-src` em x86_64. Para testar a
-dependência nova sem recompilar o payload inalterado, a revisão XBPS `_2` foi
-reempacotada com `xbps-create`; instalada num ambiente sem Mesa, o XBPS trouxe
-Mesa automaticamente. Doctor, imports/ABI privados, recursos, integridade,
-janela X11 em Xvfb, remoção e preservação de dados passaram. O artefato e os
-logs locais estão em `.superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-native-artifacts`
-e `void-glibc-v2-test.log`. A geração da revisão `_2` pelo driver `xbps-src`
-continua pendente; a validação não cobre desktop real nem áudio. A arquitetura
-aarch64 também segue pendente.
+A revisão XBPS `_2` foi gerada diretamente com `xbps-src`. Num ambiente sem
+Mesa, o XBPS instalou Mesa automaticamente pela dependência declarada. Doctor,
+imports/ABI privados, recursos, integridade, janela X11 em Xvfb, remoção e
+preservação de dados passaram. O artefato e o log de validação estão em
+`.superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-native-artifacts` e
+`void-glibc-xbps-src-v2-lifecycle.log`. A validação não cobre desktop real nem
+áudio; a arquitetura aarch64 também segue pendente.
 
 A variante musl depende da construção nativa do ONNX Runtime, ausente nos
 repositórios Void consultados; ela não reutiliza as bibliotecas glibc. Void

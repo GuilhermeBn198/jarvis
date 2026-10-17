@@ -312,22 +312,18 @@
         {
           "kind": "local_package_artifact",
           "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-native-artifacts/jarvis-assistant-0.1.0_2.x86_64.xbps",
-          "sha256": "0e0356daac8a42fb57357e2dcffcff7bdff8780c361accc000ca7e2dd1828597"
+          "sha256": "69b997474926007370ef392aac1c9cc32d6f328770b111e264c9f9ba3d8a77f3"
         },
         {
           "kind": "local_build_log",
-          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-python-version-rebuild.log"
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-xbps-src-revision2.log"
         },
         {
           "kind": "local_validation_log",
-          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-v2-test.log"
-        },
-        {
-          "kind": "local_root_cause_log",
-          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-no-mesa-isolation.log"
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-xbps-src-v2-lifecycle.log"
         }
       ],
-      "notes": "Revision 2 used the native XBPS tool to repack the unchanged source-built payload with mesa as an explicit runtime dependency. Clean no-Mesa test reproduced EGL failure; XBPS auto-installed Mesa and the lifecycle passed. The xbps-src regeneration of revision 2 remains to be confirmed."
+      "notes": "Revision 2 generated directly by xbps-src with mesa as an explicit runtime dependency. Removing Mesa before installation caused XBPS to install it from the package dependency; the clean lifecycle passed."
     },
     {
       "target": "void-glibc",
