@@ -9,6 +9,7 @@
              (guix utils)
              (gnu packages audio)
              (gnu packages base)
+             (gnu packages cmake)
              (gnu packages commencement)
              (gnu packages compression)
              (gnu packages elf)
@@ -20,6 +21,7 @@
              (gnu packages linux)
              (gnu packages machine-learning)
              (gnu packages node)
+             (gnu packages ninja)
              (gnu packages pulseaudio)
              (gnu packages pkg-config)
              (gnu packages python)
@@ -177,7 +179,6 @@
 
 (define-public python-piper-tts-jarvis
   (package
-    (inherit python-piper-tts)
     (name "python-piper-tts-jarvis")
     (version "1.8.0")
     (source (origin
@@ -187,6 +188,41 @@
                     (commit (string-append "v" version))))
               (file-name (git-file-name name version))
               (sha256 (base32 "1gxwrg3fvsp6hq879nb89h994jccy15gy2xfwgzrfn44gzk32nmf"))))
+    (build-system pyproject-build-system)
+    (arguments
+     (list
+      #:phases
+      #~(modify-phases %standard-phases
+          (add-after 'unpack 'no-embedded-git-fetch
+            (lambda* (#:key inputs #:allow-other-keys)
+              (use-modules (ice-9 regex)
+                           (ice-9 rdelim))
+              (let ((pattern (make-regexp
+                              "ExternalProject_Add\\(espeak_ng_external[^)]+\\)"
+                              regexp/extended))
+                    (replacement "add_library(espeak_ng_external INTERFACE)"))
+                (with-atomic-file-replacement "CMakeLists.txt"
+                  (lambda (in out)
+                    (display (regexp-substitute/global
+                              #f pattern (read-string in) 'pre replacement 'post)
+                             out))))
+              (let ((espeak (assoc-ref inputs "espeak-ng"))
+                    (espeak-lib (search-input-file inputs "lib/libespeak-ng.so.1"))
+                    (espeak-data (search-input-directory inputs
+                                  "share/espeak-ng-data"))
+                    (cmake-setter (lambda (key value)
+                                    (string-append "set(" key " \"" value "\")\n"))))
+                (substitute* "CMakeLists.txt"
+                  (("set\\(ESPEAKNG_INSTALL_DIR .*")
+                   (cmake-setter "ESPEAKNG_INSTALL_DIR" espeak))
+                  (("set\\(ESPEAKNG_STATIC_LIB .*")
+                   (cmake-setter "ESPEAKNG_STATIC_LIB" espeak-lib))
+                  (("set\\(UCD_STATIC_LIB .*")
+                   (cmake-setter "UCD_STATIC_LIB" ""))
+                  (("set\\(DATA_SRC .*")
+                   (cmake-setter "DATA_SRC" espeak-data)))))))))
+    (native-inputs (list ninja python-scikit-build python-setuptools
+                         python-pytest))
     (propagated-inputs (list espeak-ng python-pathvalidate python-numpy
                              (list onnxruntime "python")))))
 
