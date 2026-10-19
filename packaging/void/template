@@ -6,7 +6,7 @@ archs="x86_64 aarch64"
 nocross=yes
 nostrip=yes
 nodebug=yes
-hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git"
+hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git tar"
 makedepends="gtk+3-devel libwebkit2gtk41-devel libffi-devel python3-devel"
 depends="python3>=3.14<3.15 ffmpeg pulseaudio-utils python3-gobject
  at-spi2-core alsa-utils xdotool wl-clipboard xclip mesa"

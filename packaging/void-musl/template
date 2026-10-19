@@ -6,7 +6,7 @@ archs="x86_64-musl aarch64-musl"
 nocross=yes
 nostrip=yes
 nodebug=yes
-hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git cmake ninja patchelf"
+hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git cmake ninja patchelf tar"
 makedepends="gtk+3-devel libwebkit2gtk41-devel libffi-devel python3-devel
  python3-numpy python3-pybind11 python3-setuptools python3-wheel openblas-devel protobuf protobuf-devel
  abseil-cpp-devel gtest-devel re2-devel icu-devel"

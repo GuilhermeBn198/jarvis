@@ -413,6 +413,13 @@ def test_void_builder_keeps_binary_repository_and_source_snapshot_aligned():
     assert driver.count('fetch --depth 1 origin "$task_void_commit"') == 2
 
 
+def test_void_recipes_install_tar_for_source_archive_extraction():
+    for recipe_path in ('packaging/void/template', 'packaging/void-musl/template'):
+        recipe=(ROOT/recipe_path).read_text()
+        hostdeps=next(line for line in recipe.splitlines() if line.startswith('hostmakedepends='))
+        assert 'tar' in hostdeps.split('=',1)[1].strip('"').split()
+
+
 def test_native_driver_builds_the_nix_flake(tmp_path):
     import os, subprocess
     tools=tmp_path/'tools';tools.mkdir()
