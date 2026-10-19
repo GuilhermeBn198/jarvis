@@ -26,6 +26,11 @@ do_build() {
     python3 -c 'import sys; assert sys.version_info[:2] == (3,14), "Void recipe requires rebuilding its Python ABI metadata"'
     cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
     npm ci --prefix .opencode --ignore-scripts
+    if ! NODE_PATH="$PWD/.opencode/node_modules" node -e \
+        'process.exit(require("msgpackr").isNativeAccelerationEnabled ? 0 : 1)'; then
+        npm rebuild --prefix .opencode msgpackr-extract \
+            --build-from-source --foreground-scripts
+    fi
     python3 scripts/fetch-opencode.py --target "${XBPS_TARGET_MACHINE}-glibc" --output opencode-package
 }
 
