@@ -118,6 +118,22 @@
       "aarch64"
     ]
   },
+  "flatpak": {
+    "distro": "universal-linux",
+    "version": "GNOME Platform 49",
+    "libc": "glibc",
+    "architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "format": "flatpak",
+    "recipe": "packaging/flatpak/com.jarvis.overlay.yml",
+    "implementation": "recipe",
+    "validation": "bundle-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
+  },
   "void-glibc": {
     "distro": "void",
     "version": "rolling",

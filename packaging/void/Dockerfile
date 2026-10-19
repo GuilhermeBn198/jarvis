@@ -16,7 +16,7 @@ RUN mkdir -p /rootfs/var/db/xbps /rootfs/var/cache/xbps /rootfs/etc/xbps.d && \
     -R "$task_repo" \
     -R "$task_bootstrap" \
     base-chroot git rust cargo nodejs python3 python3-devel \
-    python3-pip pkg-config gtk+3-devel libwebkit2gtk41-devel libffi-devel ca-certificates && \
+    python3-pip pkg-config gtk+3-devel libwebkit2gtk41-devel libffi-devel ca-certificates mesa && \
     rm -rf /rootfs/var/cache/xbps
 FROM scratch
 ARG JARVIS_VOID_TARGET=void-glibc

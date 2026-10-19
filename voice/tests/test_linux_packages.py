@@ -169,12 +169,12 @@ def test_native_driver_rejects_slackware_target_on_arch(tmp_path):
 def test_target_catalog_records_recipe_and_validation_separately():
     import json
     catalog=json.loads((ROOT/'packaging/targets.json').read_text())
-    assert {'arch','debian','fedora','suse','alpine','void-glibc','void-musl',
+    assert {'arch','debian','fedora','suse','alpine','flatpak','void-glibc','void-musl',
             'gentoo','nix','guix','slackware','solus'} <= set(catalog)
     for target,item in catalog.items():
         assert item['libc'] in ('glibc','musl')
         assert item['architectures'] and set(item['architectures']) <= {'x86_64','aarch64'}
-        assert item['validation'] in ('unverified','extracted-smoke','installed-smoke')
+        assert item['validation'] in ('unverified','extracted-smoke','installed-smoke','bundle-smoke')
         if item['recipe'] is not None:
             assert (ROOT/item['recipe']).is_file(),target
         else:
@@ -187,6 +187,7 @@ def test_target_catalog_records_recipe_and_validation_separately():
     for item in catalog.values():
         assert set(item['validated_architectures']) <= set(item['architectures'])
         if item['validation']=='unverified':assert not item['validated_architectures']
+        elif item['validation']=='bundle-smoke':assert item['validated_architectures']
         else:assert item['validated_architectures']
 
 
@@ -195,9 +196,11 @@ def test_target_catalog_validation_matches_passed_package_lifecycle_evidence():
     catalog=json.loads((ROOT/'packaging/targets.json').read_text())
     matrix=json.loads((ROOT/'docs/notes/linux-matrix.json').read_text())
     for target,item in catalog.items():
+        capability=('flatpak_native_bundle_lifecycle'
+                    if item['validation']=='bundle-smoke' else 'native_package_lifecycle')
         lifecycle=[row for row in matrix['results']
                    if row.get('target')==target
-                   and row.get('capability')=='native_package_lifecycle']
+                   and row.get('capability')==capability]
         passed={row['arch'] for row in lifecycle if row['status']=='passed'}
         assert passed==set(item['validated_architectures']),target
 
@@ -348,7 +351,11 @@ def test_linux_target_claims_match_recipe_files_and_lifecycle_evidence():
         assert (ROOT/item['recipe']).is_file(),target
         assert set(item['validated_architectures']) <= set(item['architectures']),target
         for arch in item['validated_architectures']:
-            assert (target,arch) in passed,(target,arch)
+            if item['validation']=='bundle-smoke':
+                assert any(r['target']==target and r['arch']==arch and r['status']=='passed'
+                           and r['capability']=='flatpak_native_bundle_lifecycle' for r in matrix['results']), (target,arch)
+            else:
+                assert (target,arch) in passed,(target,arch)
     for result in matrix['results']:
         assert result['target'] in catalog,result['target']
         if result['capability']=='native_package_lifecycle' and result['status']=='passed':
@@ -389,6 +396,11 @@ def test_void_builder_supports_a_musl_target_without_changing_glibc_defaults():
     for required in ('--build-arg JARVIS_VOID_LIBC=musl', '--build-arg JARVIS_VOID_TARGET=void-musl',
                      'ghcr.io/void-linux/void-musl-full:latest', 'timeout-minutes: 360'):
         assert required in workflow
+
+
+def test_void_arm_bootstrap_installs_binary_mesa_before_xbps_src_build():
+    dockerfile=(ROOT/'packaging/void/Dockerfile').read_text()
+    assert 'libffi-devel ca-certificates mesa && \\' in dockerfile
 
 
 def test_native_driver_builds_the_nix_flake(tmp_path):
