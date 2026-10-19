@@ -65,7 +65,7 @@ case "$task_target" in
         [ "$(xbps-uhelper arch)" = "$task_arch-musl" ] || { echo 'Alvo void-musl exige libc musl nativa.' >&2; exit 2; }
         task_build=$(mktemp -d)
         task_collection=${JARVIS_VOID_PACKAGES:-$task_build/void-packages}
-        task_void_commit=dbf843f5f1dad63846b6d147ec10662cf8e8078a
+        task_void_commit=${JARVIS_VOID_PACKAGES_COMMIT:-08c37783199592347f91cc3e3bf6f97213450ec5}
         if [ ! -d "$task_collection" ]; then
             git init -q "$task_collection"
             git -C "$task_collection" remote add origin https://github.com/void-linux/void-packages.git
@@ -94,7 +94,7 @@ PY
         [ "$(xbps-uhelper arch)" = "$task_arch" ] || { echo 'Alvo void-glibc exige libc glibc nativa.' >&2; exit 2; }
         task_build=$(mktemp -d)
         task_collection=${JARVIS_VOID_PACKAGES:-$task_build/void-packages}
-        task_void_commit=dbf843f5f1dad63846b6d147ec10662cf8e8078a
+        task_void_commit=${JARVIS_VOID_PACKAGES_COMMIT:-08c37783199592347f91cc3e3bf6f97213450ec5}
         if [ ! -d "$task_collection" ]; then
             git init -q "$task_collection"
             git -C "$task_collection" remote add origin https://github.com/void-linux/void-packages.git

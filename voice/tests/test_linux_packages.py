@@ -403,6 +403,16 @@ def test_void_arm_bootstrap_installs_binary_mesa_before_xbps_src_build():
     assert 'libffi-devel ca-certificates mesa && \\' in dockerfile
 
 
+def test_void_builder_keeps_binary_repository_and_source_snapshot_aligned():
+    dockerfile=(ROOT/'packaging/void/Dockerfile').read_text()
+    driver=(ROOT/'scripts/build-package.sh').read_text()
+    snapshot='08c37783199592347f91cc3e3bf6f97213450ec5'
+    assert f'ARG JARVIS_VOID_PACKAGES_COMMIT={snapshot}' in dockerfile
+    assert 'fetch --depth 1 origin "$JARVIS_VOID_PACKAGES_COMMIT"' in dockerfile
+    assert f'${{JARVIS_VOID_PACKAGES_COMMIT:-{snapshot}}}' in driver
+    assert driver.count('fetch --depth 1 origin "$task_void_commit"') == 2
+
+
 def test_native_driver_builds_the_nix_flake(tmp_path):
     import os, subprocess
     tools=tmp_path/'tools';tools.mkdir()

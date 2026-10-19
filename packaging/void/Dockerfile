@@ -20,19 +20,21 @@ RUN mkdir -p /rootfs/var/db/xbps /rootfs/var/cache/xbps /rootfs/etc/xbps.d && \
     rm -rf /rootfs/var/cache/xbps
 FROM scratch
 ARG JARVIS_VOID_TARGET=void-glibc
+ARG JARVIS_VOID_PACKAGES_COMMIT=08c37783199592347f91cc3e3bf6f97213450ec5
 COPY --from=bootstrap /rootfs /
 WORKDIR /build/jarvis
 # The upstream ethereal mode is restricted to this disposable build image.
 # It deliberately uses the container root as its native build environment.
 RUN git init -q /build/void-packages && \
     git -C /build/void-packages remote add origin https://github.com/void-linux/void-packages.git && \
-    git -C /build/void-packages fetch --depth 1 origin dbf843f5f1dad63846b6d147ec10662cf8e8078a && \
+    git -C /build/void-packages fetch --depth 1 origin "$JARVIS_VOID_PACKAGES_COMMIT" && \
     git -C /build/void-packages checkout --detach FETCH_HEAD && \
     ln -s / /build/void-packages/masterdir && \
     xbps-uhelper arch > /.xbps_chroot_init
 ENV XBPS_CHROOT_CMD=ethereal \
     XBPS_ALLOW_CHROOT_BREAKOUT=yes \
-    JARVIS_VOID_PACKAGES=/build/void-packages
+    JARVIS_VOID_PACKAGES=/build/void-packages \
+    JARVIS_VOID_PACKAGES_COMMIT=$JARVIS_VOID_PACKAGES_COMMIT
 COPY . .
 ENV CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10
 RUN git init -q && git add -A && \
