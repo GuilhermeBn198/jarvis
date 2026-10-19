@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-19T15:26:28+00:00",
+  "verified_at_utc": "2026-10-19T21:00:19+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -718,17 +718,16 @@
       "evidence": [
         {
           "kind": "local_validation_log",
-          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/linux-voice-tests-2026-10-19.log",
-          "artifact_sha256": "36254e25be16a07a611259b6934299f8fec1b5bd127785fbc65953341d2c8acb",
-          "passed": 452,
-          "skipped": 10,
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/linux-voice-tests-full-2026-10-19.log",
+          "artifact_sha256": "84ceb2f5e480ab770589165af53f23449d587e61e9d35baf123fb8d8ef0bcfee",
+          "passed": 466,
+          "skipped": 1,
           "skip_reasons": [
-            "interactive desktop test requires authorization",
-            "dbus_next unavailable in host Python",
-            "faster_whisper unavailable in host Python"
+            "interactive desktop test requires authorized desktop"
           ]
         }
-      ]
+      ],
+      "notes": "Full voice Python regression suite ran in the project virtualenv on the native Arch Linux Wayland host. The one skipped test needs an authorized interactive desktop session."
     },
     {
       "target": "arch",
