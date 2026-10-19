@@ -224,7 +224,12 @@
     (native-inputs (list ninja python-scikit-build python-setuptools
                          python-pytest))
     (propagated-inputs (list espeak-ng python-pathvalidate python-numpy
-                             (list onnxruntime "python")))))
+                             (list onnxruntime "python")))
+    (home-page "https://github.com/OHF-Voice/piper1-gpl")
+    (synopsis "Fast and local neural TTS engine")
+    (description "Piper is a fast and local neural text-to-speech engine
+that embeds espeak-ng for phonemization.")
+    (license license:gpl3+)))
 
 (define rust-lock-inputs
   (map (lambda (source index)

@@ -229,6 +229,10 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     assert '(inherit python-piper-tts)' not in recipe_text
     assert "add-after 'unpack 'no-embedded-git-fetch" in recipe_text
     assert '(gnu packages cmake)' in recipe_text and '(gnu packages ninja)' in recipe_text
+    piper_recipe=recipe_text.split('(define-public python-piper-tts-jarvis',1)[1].split('(define rust-lock-inputs',1)[0]
+    assert '(home-page "https://github.com/OHF-Voice/piper1-gpl")' in piper_recipe
+    assert '(synopsis "Fast and local neural TTS engine")' in piper_recipe
+    assert '(license license:gpl3+)' in piper_recipe
     assert '(gnu packages elf)' in recipe_text
     assert 'jarvis-opencode-1.18.23' in recipe_text
     assert 'copy-file\n               (string-append (assoc-ref outputs "out")' in recipe_text
