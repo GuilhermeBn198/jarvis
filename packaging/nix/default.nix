@@ -139,7 +139,15 @@ stdenvNoCC.mkDerivation {
   dontUnpack = true;
   dontStrip = true;
   nativeBuildInputs = [ python makeWrapper autoPatchelfHook ];
-  buildInputs = [ stdenv.cc.cc.lib zlib openssl ] ++ runtimeTools;
+  buildInputs = [
+    stdenv.cc.cc.lib
+    zlib
+    openssl
+    gtk3
+    webkitgtk_4_1
+    libsoup_3
+    glib
+  ] ++ runtimeTools;
   installPhase = ''
     runHook preInstall
     export HOME="$TMPDIR"

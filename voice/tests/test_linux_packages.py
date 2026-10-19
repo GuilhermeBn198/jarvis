@@ -311,6 +311,9 @@ def test_nix_target_is_a_profile_installable_package():
     assert 'npmDepsHash = "sha256-lnyoIScrNdPeu9J7XUpbteOUQVENF7tzJqrII0fwTbY=";' in recipe
     assert 'cargoBuildFlags = [ "--locked" ];' in recipe
     assert 'target/${stdenv.hostPlatform.rust.rustcTarget}/release/jarvis-overlay' in recipe
+    assistant_derivation=recipe.split('pname = "jarvis-assistant";',1)[1]
+    for dependency in ('gtk3', 'webkitgtk_4_1', 'libsoup_3', 'glib'):
+        assert dependency in assistant_derivation
     assert 'tar -xOzf "${opencodeArchive}" opencode > "$out/bin/opencode"' in recipe
     assert 'package/bin/opencode' not in recipe
     assert '--expected-opencode-version "1.18.23"' in recipe
