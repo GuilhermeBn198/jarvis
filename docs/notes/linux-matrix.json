@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-19T21:00:19+00:00",
+  "verified_at_utc": "2026-10-19T21:26:23+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -936,6 +936,38 @@
         }
       ],
       "notes": "The aarch64-linux derivation evaluates successfully in the official nixos/nix arm64 container under QEMU user-mode emulation. This validates flake evaluation only; build, profile installation and runtime lifecycle remain unverified on aarch64."
+    },
+    {
+      "target": "flatpak",
+      "distro": "universal-linux",
+      "version": "GNOME Platform 49",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Flatpak sandbox runtime",
+      "session": "Wayland diagnostic; Piper offline synthesis",
+      "package": "flatpak bundle",
+      "capability": "flatpak_native_bundle_lifecycle",
+      "status": "passed",
+      "command": "scripts/build-flatpak.sh <output>; flatpak install --user; jarvis --doctor; verify OpenCode/imports; synthesize WAV with Piper; flatpak uninstall",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/flatpak-native-2026-10-19/jarvis-x86_64.flatpak",
+          "sha256": "7dc0ae541cbe30af3a59e74dac029524cb1b74305e967d5a1404e794ded38b61",
+          "size_bytes": 178289496
+        },
+        {
+          "kind": "local_build_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/flatpak-native-build-2026-10-19.log",
+          "sha256": "9180e5ec181cf3ee648c9c2b578ced945132c9fcb926a633eff288765615b431"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/flatpak-native-validation-2026-10-19.log",
+          "sha256": "86f795da6aa966fa4116a7b2db314bdb42698db8edcbf4c1288daa4c6a90a72e"
+        }
+      ],
+      "notes": "Native x86_64 Flatpak bundle built with pinned GNOME SDK/runtime commits, installed and removed from the user profile. Doctor found bundled Piper/model, OpenCode 1.18.23 and voice/MCP/AT-SPI imports passed; Piper synthesized a 2.67 s WAV. Real portal grants, desktop control/AT-SPI and audio capture/playback remain unverified."
     }
   ],
   "pending_gates": [
