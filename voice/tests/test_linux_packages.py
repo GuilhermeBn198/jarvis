@@ -291,6 +291,12 @@ def test_nix_target_is_a_profile_installable_package():
     assert 'test-overlay-instance.py' in lifecycle_text
 
 
+def test_nix_opencode_binary_is_not_stripped():
+    recipe=(ROOT/'packaging/nix/default.nix').read_text()
+    opencode=recipe.split('opencode = stdenvNoCC.mkDerivation {',1)[1].split('\n  };',1)[0]
+    assert 'dontStrip = true;' in opencode
+
+
 def test_nix_lifecycle_script_uses_an_isolated_profile_and_preserves_user_data(tmp_path):
     import os, subprocess
     store=tmp_path/'store'

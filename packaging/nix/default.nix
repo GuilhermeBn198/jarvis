@@ -39,6 +39,8 @@ let
     pname = "jarvis-opencode";
     version = opencodeSource.version;
     dontUnpack = true;
+    # Bun embeds version metadata in its executable; strip changes --version.
+    dontStrip = true;
     nativeBuildInputs = [ autoPatchelfHook ];
     buildInputs = [ stdenv.cc.cc.lib zlib openssl ];
     installPhase = ''
