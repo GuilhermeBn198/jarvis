@@ -154,7 +154,7 @@ def test_real_linux_supervised_server_exits_with_own_group(tmp_path):
     child=None
     def alive(pid):
         try:return Path('/proc',str(pid),'stat').read_text().rsplit(')',1)[1].split()[0]!='Z'
-        except FileNotFoundError:return False
+        except (FileNotFoundError,ProcessLookupError):return False
     try:
         deadline=time.monotonic()+4
         while not marker.exists() and time.monotonic()<deadline:time.sleep(.02)

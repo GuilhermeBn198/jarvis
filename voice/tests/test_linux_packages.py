@@ -378,6 +378,19 @@ def test_void_glibc_ci_builds_and_tests_native_xbps_on_both_architectures():
         assert required in text
 
 
+def test_void_builder_supports_a_musl_target_without_changing_glibc_defaults():
+    dockerfile=(ROOT/'packaging/void/Dockerfile').read_text()
+    assert 'ARG JARVIS_VOID_LIBC=glibc' in dockerfile
+    assert 'void-${JARVIS_VOID_LIBC}-full:latest' in dockerfile
+    assert 'ARG JARVIS_VOID_TARGET=void-glibc' in dockerfile
+    assert '--target "$JARVIS_VOID_TARGET"' in dockerfile
+    workflow=(ROOT/'.github/workflows/linux-void.yml').read_text()
+    assert 'void-musl:' in workflow
+    for required in ('--build-arg JARVIS_VOID_LIBC=musl', '--build-arg JARVIS_VOID_TARGET=void-musl',
+                     'ghcr.io/void-linux/void-musl-full:latest', 'timeout-minutes: 360'):
+        assert required in workflow
+
+
 def test_native_driver_builds_the_nix_flake(tmp_path):
     import os, subprocess
     tools=tmp_path/'tools';tools.mkdir()

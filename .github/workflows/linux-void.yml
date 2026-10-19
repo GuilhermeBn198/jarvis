@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [feat/linux-port, main]
-    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/void/**', 'packaging/opencode-sources.json', 'scripts/**', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-void.yml']
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/void/**', 'packaging/void-musl/**', 'packaging/opencode-sources.json', 'scripts/**', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-void.yml']
   pull_request:
-    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/void/**', 'packaging/opencode-sources.json', 'scripts/**', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-void.yml']
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/void/**', 'packaging/void-musl/**', 'packaging/opencode-sources.json', 'scripts/**', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-void.yml']
 permissions:
   contents: read
 concurrency:
@@ -49,6 +49,49 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: jarvis-void-glibc-${{ matrix.arch }}
+          path: dist/native/
+          retention-days: 7
+          if-no-files-found: error
+  void-musl:
+    name: void-musl-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: x86_64, runner: ubuntu-24.04}
+          - {arch: aarch64, runner: ubuntu-24.04-arm}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build musl .xbps in native Void environment
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          test "$(uname -m)" = "$ARCH"
+          docker build --progress=plain \
+            --build-arg JARVIS_VOID_LIBC=musl \
+            --build-arg JARVIS_VOID_TARGET=void-musl \
+            -f packaging/void/Dockerfile -t jarvis-void-musl .
+      - name: Export musl package and checksum
+        run: |
+          mkdir -p dist/native
+          docker run --rm -v "$PWD/dist/native:/export" jarvis-void-musl
+          package=$(find dist/native -maxdepth 1 -type f -name 'jarvis-assistant-*.*-musl.xbps' -print -quit)
+          test -n "$package"
+          (cd dist/native && sha256sum "$(basename "$package")" > SHA256SUMS)
+      - name: Install, inspect and remove in clean Void musl container
+        run: |
+          package=$(find dist/native -maxdepth 1 -type f -name 'jarvis-assistant-*.*-musl.xbps' -print -quit)
+          docker run --rm \
+            -v "$PWD/dist/native:/packages:ro" \
+            -v "$PWD/scripts:/checks:ro" \
+            ghcr.io/void-linux/void-musl-full:latest \
+            sh /checks/test-native-package.sh void-musl "/packages/$(basename "$package")"
+      - name: Upload native Void musl package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: jarvis-void-musl-${{ matrix.arch }}
           path: dist/native/
           retention-days: 7
           if-no-files-found: error

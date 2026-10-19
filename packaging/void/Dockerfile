@@ -1,4 +1,5 @@
-FROM ghcr.io/void-linux/void-glibc-full:latest AS bootstrap
+ARG JARVIS_VOID_LIBC=glibc
+FROM ghcr.io/void-linux/void-${JARVIS_VOID_LIBC}-full:latest AS bootstrap
 ARG JARVIS_VOID_REPOSITORY_BASE=https://repo-default.voidlinux.org/current
 RUN xbps-install -Syu xbps && xbps-install -Syu
 # base-chroot intentionally replaces normal shell/grep/util-linux packages.
@@ -18,6 +19,7 @@ RUN mkdir -p /rootfs/var/db/xbps /rootfs/var/cache/xbps /rootfs/etc/xbps.d && \
     python3-pip pkg-config gtk+3-devel libwebkit2gtk41-devel libffi-devel ca-certificates && \
     rm -rf /rootfs/var/cache/xbps
 FROM scratch
+ARG JARVIS_VOID_TARGET=void-glibc
 COPY --from=bootstrap /rootfs /
 WORKDIR /build/jarvis
 # The upstream ethereal mode is restricted to this disposable build image.
@@ -34,5 +36,5 @@ ENV XBPS_CHROOT_CMD=ethereal \
 COPY . .
 ENV CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10
 RUN git init -q && git add -A && \
-    sh scripts/build-package.sh --target void-glibc --output /out
+    sh scripts/build-package.sh --target "$JARVIS_VOID_TARGET" --output /out
 CMD ["sh", "-c", "find /out -name '*.xbps' -type f -exec cp '{}' /export/ ';'"]
