@@ -367,6 +367,17 @@ def test_nix_ci_builds_and_runs_profile_lifecycle_on_both_native_architectures()
         assert required in text
 
 
+def test_void_glibc_ci_builds_and_tests_native_xbps_on_both_architectures():
+    workflow=ROOT/'.github/workflows/linux-void.yml'
+    assert workflow.is_file()
+    text=workflow.read_text()
+    for required in ('ubuntu-24.04', 'ubuntu-24.04-arm', 'x86_64', 'aarch64',
+                     'packaging/void/Dockerfile', 'test-native-package.sh',
+                     'void-glibc', 'ghcr.io/void-linux/void-glibc-full:latest',
+                     'timeout-minutes: 240'):
+        assert required in text
+
+
 def test_native_driver_builds_the_nix_flake(tmp_path):
     import os, subprocess
     tools=tmp_path/'tools';tools.mkdir()
