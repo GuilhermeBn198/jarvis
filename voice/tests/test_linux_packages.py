@@ -278,6 +278,7 @@ def test_guix_native_builder_selects_aarch64_agent_and_system(tmp_path):
     assert result.returncode==0,result.stderr
     assert '--target aarch64-glibc' in python_log.read_text()
     assert '--system=aarch64-linux' in log.read_text()
+    assert '--root=' in log.read_text()
 
 
 def test_nix_target_is_a_profile_installable_package():

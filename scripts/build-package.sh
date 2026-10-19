@@ -60,7 +60,7 @@ case "$task_target" in
             "$task_root/packaging/guix/cargo-crate-sources.scm" "$task_build/"
         (cd "$task_build" && guix build -f ./jarvis.scm \
             --system="$task_system" \
-            --out-link "$task_output/jarvis-assistant")
+            --root="$task_output/jarvis-assistant")
         ;;
     void-musl)
         . /etc/os-release
