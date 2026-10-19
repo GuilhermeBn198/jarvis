@@ -224,6 +224,7 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     listed=set(re.findall(r'^\s+(rust-[^\s)]+)',cargo_inputs,re.M))
     assert defined <= listed
     recipe_text=recipe.read_text()
+    assert '(supported-systems \'("x86_64-linux" "aarch64-linux"))' in recipe_text
     assert '(gnu packages elf)' in recipe_text
     assert 'jarvis-opencode-1.18.23' in recipe_text
     assert 'copy-file\n               (string-append (assoc-ref outputs "out")' in recipe_text
@@ -256,6 +257,27 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     driver=(ROOT/'scripts/build-package.sh').read_text()
     assert 'guix)' in driver and 'guix build' in driver
     assert (ROOT/'scripts/test-guix-package.sh').is_file()
+
+
+def test_guix_native_builder_selects_aarch64_agent_and_system(tmp_path):
+    import os
+    import subprocess
+    bindir=tmp_path/'bin'; bindir.mkdir()
+    uname=bindir/'uname'
+    uname.write_text('#!/bin/sh\nprintf "aarch64\\n"\n'); uname.chmod(0o755)
+    python=bindir/'python3'
+    python.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$PYTHON_TEST_LOG"\nwhile [ "$#" -gt 0 ]; do if [ "$1" = --output ]; then shift; : > "$1"; exit 0; fi; shift; done\nexit 2\n')
+    python.chmod(0o755)
+    guix=bindir/'guix'
+    guix.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$GUIX_TEST_LOG"\n')
+    guix.chmod(0o755)
+    log=tmp_path/'guix-args.log'
+    python_log=tmp_path/'python-args.log'
+    env=os.environ|{'PATH':f'{bindir}:{os.environ["PATH"]}','GUIX_TEST_LOG':str(log),'PYTHON_TEST_LOG':str(python_log)}
+    result=subprocess.run(['sh',str(ROOT/'scripts/build-package.sh'),'--target','guix','--arch','aarch64','--output',str(tmp_path/'out')],env=env,capture_output=True,text=True)
+    assert result.returncode==0,result.stderr
+    assert '--target aarch64-glibc' in python_log.read_text()
+    assert '--system aarch64-linux' in log.read_text()
 
 
 def test_nix_target_is_a_profile_installable_package():
@@ -375,7 +397,7 @@ def test_nix_ci_builds_and_runs_profile_lifecycle_on_both_native_architectures()
     text=workflow.read_text()
     for required in ('ubuntu-24.04', 'ubuntu-24.04-arm', 'x86_64-linux',
                      'aarch64-linux', 'scripts/test-nix-package.sh',
-                     'releases.nixos.org/nix/nix-2.35.1/install',
+                         'releases.nixos.org/nix/nix-2.35.3/install',
                      'xvfb', 'dbus-x11', 'gir1.2-atspi-2.0', '--gui'):
         assert required in text
 

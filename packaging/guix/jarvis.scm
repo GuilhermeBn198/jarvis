@@ -288,6 +288,6 @@
     (description
      "Jarvis is a local voice assistant with speech recognition and a native desktop overlay.")
     (license (list license:asl2.0 license:expat license:gpl3+))
-    (supported-systems '("x86_64-linux"))))
+    (supported-systems '("x86_64-linux" "aarch64-linux"))))
 
 jarvis-assistant
