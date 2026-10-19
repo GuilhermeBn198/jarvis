@@ -295,6 +295,7 @@ def test_nix_target_is_a_profile_installable_package():
     assert lock['nodes']['nixpkgs']['locked']['rev'] in flake
     assert lock['nodes']['nixpkgs']['locked']['narHash'].startswith('sha256-')
     recipe=(ROOT/'packaging/nix/default.nix').read_text()
+    assert 'export HOME="$TMPDIR"' in recipe
     assert 'chmod -R u+w .' in recipe
     assert 'npmDepsHash = "sha256-lnyoIScrNdPeu9J7XUpbteOUQVENF7tzJqrII0fwTbY=";' in recipe
     assert 'cargoBuildFlags = [ "--locked" ];' in recipe

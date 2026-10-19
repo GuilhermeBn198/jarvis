@@ -141,6 +141,7 @@ stdenvNoCC.mkDerivation {
   buildInputs = [ stdenv.cc.cc.lib zlib openssl ] ++ runtimeTools;
   installPhase = ''
     runHook preInstall
+    export HOME="$TMPDIR"
     python "${src}/scripts/prepare-package.py" \
       --prefix "$out" --destdir "" \
       --overlay "${overlay}/bin/jarvis-overlay" \
