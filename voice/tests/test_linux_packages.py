@@ -225,6 +225,7 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     assert defined <= listed
     recipe_text=recipe.read_text()
     assert '(supported-systems \'("x86_64-linux" "aarch64-linux"))' in recipe_text
+    assert '(guix build-system python)' in recipe_text
     assert '(gnu packages elf)' in recipe_text
     assert 'jarvis-opencode-1.18.23' in recipe_text
     assert 'copy-file\n               (string-append (assoc-ref outputs "out")' in recipe_text

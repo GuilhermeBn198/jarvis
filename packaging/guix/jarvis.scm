@@ -3,6 +3,7 @@
              (guix git-download)
              (guix build-system cargo)
              (guix build-system pyproject)
+             (guix build-system python)
              ((guix licenses) #:prefix license:)
              (guix gexp)
              (guix utils)
