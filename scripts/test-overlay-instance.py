@@ -28,6 +28,13 @@ def wait_for(predicate, processes, timeout=30):
     raise AssertionError("overlay window did not become accessible")
 
 
+def read_atspi(operation, stale_error, fallback=None):
+    try:
+        return operation()
+    except stale_error:
+        return fallback
+
+
 def stop(process):
     if process.poll() is None:
         process.terminate()
@@ -67,8 +74,10 @@ def reap_helpers(excluded):
 def inside_session(binary):
     import gi
     gi.require_version("Atspi", "2.0")
-    from gi.repository import Atspi
-    Atspi.set_timeout(500, 1000)
+    from gi.repository import Atspi, GLib
+    # ARM emulation can take longer to answer an accessibility action than
+    # the default one-second reply window, even when the application is healthy.
+    Atspi.set_timeout(5000, 10000)
     # Own orphaned WebKit helpers as well, so cache writers are reaped before
     # removing the private data tree. This affects this fixture process only.
     libc = ctypes.CDLL(None, use_errno=True)
@@ -85,17 +94,24 @@ def inside_session(binary):
         return None
 
     def button(pid, name):
-        frame = owned_frame(pid)
+        frame = read_atspi(lambda: owned_frame(pid), GLib.Error)
         pending = [(frame, 0)] if frame else []
         visited = 0
         while pending and visited < 400:
             item, depth = pending.pop()
             visited += 1
-            if item.get_name() == name and item.get_state_set().contains(Atspi.StateType.SHOWING):
+            item_name = read_atspi(item.get_name, GLib.Error)
+            showing = read_atspi(
+                lambda: item.get_state_set().contains(Atspi.StateType.SHOWING),
+                GLib.Error,
+                False,
+            )
+            if item_name == name and showing:
                 return item
             if depth < 12:
-                for index in range(min(item.get_child_count(), 100)):
-                    child = item.get_child_at_index(index)
+                child_count = read_atspi(item.get_child_count, GLib.Error, 0)
+                for index in range(min(child_count, 100)):
+                    child = read_atspi(lambda: item.get_child_at_index(index), GLib.Error)
                     if child:
                         pending.append((child, depth + 1))
         return None

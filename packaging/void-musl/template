@@ -1,0 +1,82 @@
+# Local source-checkout recipe for the native Void musl repository.
+pkgname=jarvis-assistant
+version=0.1.0
+revision=2
+archs="x86_64-musl aarch64-musl"
+nocross=yes
+nostrip=yes
+nodebug=yes
+hostmakedepends="rust cargo nodejs python3 python3-pip pkg-config git cmake ninja patchelf"
+makedepends="gtk+3-devel libwebkit2gtk41-devel libffi-devel python3-devel
+ python3-numpy python3-pybind11 python3-setuptools python3-wheel openblas-devel protobuf protobuf-devel
+ abseil-cpp-devel gtest-devel re2-devel icu-devel"
+depends="python3>=3.14<3.15 python3-numpy ffmpeg pulseaudio-utils python3-gobject libprotobuf abseil-cpp
+ at-spi2-core alsa-utils xdotool wl-clipboard xclip mesa openblas musl"
+shlib_provides="libc.musl-x86_64.so.1 libc.musl-aarch64.so.1"
+distfiles="https://github.com/microsoft/onnxruntime/archive/refs/tags/v1.24.4.tar.gz>onnxruntime-1.24.4.tar.gz"
+checksum=0cf4d2ee4392fbb8aedaabc6b2ba11b4a680d1071fa4f75546c2289ca5b404cf
+skip_extraction="onnxruntime-1.24.4.tar.gz"
+python_version=3
+short_desc="Voice assistant with native musl runtime"
+maintainer="Jarvis local build contributors <jarvis@localhost.invalid>"
+license="Apache-2.0, MIT, GPL-3.0-or-later"
+homepage="https://github.com/GuilhermeBn/jarvis"
+
+post_extract() {
+	printf '%s  %s\n' '@JARVIS_SOURCE_SHA256@' "${FILESDIR}/jarvis-${version}.tar.gz" | sha256sum -c -
+	tar -xzf "${FILESDIR}/jarvis-${version}.tar.gz" --strip-components=1 -C "$wrksrc"
+}
+
+do_build() {
+	cd "$wrksrc"
+	JARVIS_BUILD_ONNXRUNTIME=1 \
+	JARVIS_ONNX_SOURCE_ARCHIVE="$XBPS_SRCDISTDIR/$pkgname-$version/onnxruntime-1.24.4.tar.gz" \
+		sh packaging/alpine/build-runtime.sh "$wrksrc" "$XBPS_BUILDDIR/native"
+	RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=-crt-static" \
+		cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
+	npm ci --prefix .opencode --ignore-scripts
+	python3 scripts/fetch-opencode.py --target "${XBPS_TARGET_MACHINE}" --output opencode-package
+}
+
+do_check() {
+	cd "$wrksrc"
+	LD_LIBRARY_PATH="$XBPS_BUILDDIR/native/ctranslate2/lib:$XBPS_BUILDDIR/native/ctranslate2/lib64" OPENBLAS_NUM_THREADS=1 \
+		"$XBPS_BUILDDIR/native/runtime/bin/python" -c \
+		'import ctranslate2,faster_whisper,onnxruntime,piper,mcp,httpx,dbus_next; assert "int8" in ctranslate2.get_supported_compute_types("cpu"); assert "CPUExecutionProvider" in onnxruntime.get_available_providers()'
+}
+
+do_install() {
+	cd "$wrksrc"
+	LD_LIBRARY_PATH="$XBPS_BUILDDIR/native/ctranslate2/lib:$XBPS_BUILDDIR/native/ctranslate2/lib64" OPENBLAS_NUM_THREADS=1 \
+		python3 scripts/prepare-package.py --prefix /usr --destdir "$DESTDIR" \
+		--overlay gui/src-tauri/target/release/jarvis-overlay --python /usr/bin/python3 \
+		--opencode opencode-package --python-environment "$XBPS_BUILDDIR/native/runtime" \
+		--python-report "$XBPS_BUILDDIR/native/python-report.json"
+	mkdir -p "$DESTDIR/usr/lib/jarvis/lib"
+	for libdir in lib lib64; do
+		if [ -d "$XBPS_BUILDDIR/native/ctranslate2/$libdir" ]; then
+			cp -a "$XBPS_BUILDDIR/native/ctranslate2/$libdir/"*.so* "$DESTDIR/usr/lib/jarvis/lib/"
+		fi
+	done
+	for task_extension in "$DESTDIR/usr/lib/jarvis/python/ctranslate2/"_ext*.so; do
+		patchelf --set-rpath '$ORIGIN/../../lib' "$task_extension"
+	done
+	printf '%s\n' 'OPENBLAS_NUM_THREADS=1' > "$DESTDIR/usr/lib/jarvis/local.conf"
+	find "$DESTDIR/usr/lib/jarvis/.opencode/node_modules/@msgpackr-extract" \
+		-type f -name '*.glibc.node' -delete
+	NODE_PATH="$DESTDIR/usr/lib/jarvis/.opencode/node_modules" node -e '
+		const assert = require("node:assert/strict");
+		const codec = require("msgpackr");
+		assert.equal(codec.isNativeAccelerationEnabled, true);
+		assert.deepEqual(codec.unpack(codec.pack({text: "voz Linux", count: 3})), {text: "voz Linux", count: 3});
+	'
+	vlicense LICENSE
+	python3 - "$DESTDIR/usr" <<'PY'
+from pathlib import Path
+import json,sys
+root=Path(sys.argv[1]);manifest=root/'lib/jarvis/install-manifest.json'
+data=json.loads(manifest.read_text())
+data['files']=sorted(str(p.relative_to(root)) for p in root.rglob('*') if p.is_file() or p.is_symlink())
+manifest.write_text(json.dumps(data,indent=2)+'\n')
+PY
+}

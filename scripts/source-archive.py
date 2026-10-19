@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 DIRECTORIES={'voice','gui','mcp_servers','.opencode','scripts','packaging','docs'}
-FILES={'LICENSE','README.md','jarvis','opencode.json'}
+FILES={'LICENSE','README.md','jarvis','opencode.json','flake.nix','flake.lock'}
 EXCLUDED={'.venv','node_modules','target','__pycache__','.pytest_cache','.superpowers','.worktrees'}
 
 

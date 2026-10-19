@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-17T14:49:42+00:00",
+  "verified_at_utc": "2026-10-19T15:26:28+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -36,13 +36,25 @@
       "version": "rolling",
       "arch": "aarch64",
       "libc": "glibc",
-      "desktop": null,
-      "session": null,
-      "package": "pkg.tar.zst",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "pkg.tar.xz",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh arch <native-package>",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-aarch64-artifacts/jarvis-assistant-0.1.0-1-aarch64.pkg.tar.xz",
+          "sha256": "da4c1261c127abf874edba9554a0d3d027e0e5074929f43017b66508ace39e9b"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-aarch64-package-lifecycle-2026-10-19-retry.log",
+          "sha256": "3ca8c72fa735bf5cf7f9ed16b86c5b841049f317cd38d1599066bdd1563686b8"
+        }
+      ],
+      "notes": "Arch Linux ARM AArch64 package build and native install/verify/remove lifecycle passed under QEMU user-mode emulation in Docker. Arch Linux ARM makepkg emitted .pkg.tar.xz; real ARM hardware and a complete desktop/audio session remain unverified."
     },
     {
       "target": "debian",
@@ -329,6 +341,37 @@
       "target": "void-glibc",
       "distro": "void",
       "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "xbps",
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "xbps-install local repo revision _1; xbps-install -u from local repo revision _2; remove package",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-native-artifacts/jarvis-assistant-0.1.0_1.x86_64.xbps",
+          "sha256": "edf68086e2a52861b8e098c58f5fdc34cc6a8c87450fece9b011bdc544d6840e"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-native-artifacts/jarvis-assistant-0.1.0_2.x86_64.xbps",
+          "sha256": "69b997474926007370ef392aac1c9cc32d6f328770b111e264c9f9ba3d8a77f3"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-upgrade-preservation.log",
+          "sha256": "b6976840d83b24fc8b7ba3eb52c02702b0988d36f32be4f45dd8958c08e7182e"
+        }
+      ],
+      "notes": "XBPS updated Jarvis from revision _1 to _2; jarvis --doctor passed before and after, user data sentinel remained unchanged, and package removal preserved it."
+    },
+    {
+      "target": "void-glibc",
+      "distro": "void",
+      "version": "rolling",
       "arch": "aarch64",
       "libc": "glibc",
       "desktop": null,
@@ -343,16 +386,59 @@
     {
       "target": "void-musl",
       "distro": "void",
-      "version": null,
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "musl",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "xbps",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh void-musl /tmp/jarvis-repo/jarvis-assistant-0.1.0_2.x86_64-musl.xbps",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-musl-native-artifacts/jarvis-assistant-0.1.0_2.x86_64-musl.xbps",
+          "sha256": "e159f50017508d0169202e66dab58a0c3a1106b8f14b5d52850687a9730c4278"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-musl-native-lifecycle.log",
+          "sha256": "e49bcfbf03090e3a57a8d16a0401506c3d0bad9dcc3ef2a2b2f95bd73dda7de3"
+        }
+      ],
+      "notes": "XBPS install, doctor, private ABI/imports and AT-SPI, Xvfb xdotool/xclip smoke, overlay relaunch, package database checks, removal and user data preservation passed on x86_64-musl. Real desktop/audio, version upgrade and aarch64 remain pending."
+    },
+    {
+      "target": "void-musl",
+      "distro": "void",
+      "version": "rolling",
       "arch": "x86_64",
       "libc": "musl",
       "desktop": null,
       "session": null,
       "package": "xbps",
-      "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "xbps-install local repo revision _1; xbps-install -u from local repo revision _2; remove package",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-musl-native-artifacts/jarvis-assistant-0.1.0_1.x86_64-musl.xbps",
+          "sha256": "7611940ed54a5a35a12155e883c0584274a52039b23e1469512c6498a714c343"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-musl-native-artifacts/jarvis-assistant-0.1.0_2.x86_64-musl.xbps",
+          "sha256": "e159f50017508d0169202e66dab58a0c3a1106b8f14b5d52850687a9730c4278"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-musl-upgrade-preservation.log",
+          "sha256": "89eebcbfeaa24e50acbb7c8eb86bd49925001e35dbc59ca19435a5d44a125e3a"
+        }
+      ],
+      "notes": "XBPS updated Jarvis from revision _1 to _2; jarvis --doctor passed before and after, user data sentinel remained unchanged, and package removal preserved it."
     },
     {
       "target": "void-musl",
@@ -416,13 +502,18 @@
       "version": null,
       "arch": "x86_64",
       "libc": "glibc",
-      "desktop": null,
-      "session": null,
+      "desktop": "Xvfb fixture",
+      "session": "x11",
       "package": "nix",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "status": "passed",
+      "command": "nix build; nix profile install; jarvis --doctor; Xvfb/D-Bus overlay smoke with Nix Store graphics and AT-SPI paths",
+      "evidence": [
+        {
+          "kind": "local_validation_report",
+          "path": "docs/notes/linux-verification.md"
+        }
+      ]
     },
     {
       "target": "nix",
@@ -448,9 +539,20 @@
       "session": null,
       "package": "guix",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "status": "passed",
+      "command": "guix build -f ./jarvis.scm --no-substitutes --no-grafts; sh scripts/test-guix-package.sh <store-output>",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/guix-installed-smoke-x86_64.log",
+          "artifact_sha256": "b3d628e9509bd3578610fed4abf699a9646513823e50cd171e928bfee9db4542",
+          "guix_version": "03460e6f8812291b3cf6183bde32366607f46379",
+          "store_output": "/gnu/store/1pwpi865n6mashq0aw5wphv9ylva2v70-jarvis-assistant-0.1.0",
+          "rust_tests": "7 passed",
+          "opencode_version": "1.18.23",
+          "profile_lifecycle": "install, doctor, runtime imports, remove, user data preserved"
+        }
+      ]
     },
     {
       "target": "guix",
@@ -469,30 +571,75 @@
     {
       "target": "slackware",
       "distro": "slackware",
-      "version": null,
+      "version": "current",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "txz",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh slackware <native-package>",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/slackware-current-package-helpers-lifecycle.log",
+          "sha256": "c0ff45761382736e9bf430f56defdd83b8923f15c559332b3134ec493f8c992f"
+        }
+      ],
+      "notes": "installpkg, runtime imports and AT-SPI, doctor, bundled xdotool/wl-clipboard/xclip, Xvfb xdotool/xclip smoke, overlay relaunch, removepkg and user data preservation passed. Native Slackware Wayland integration, physical audio and aarch64 remain pending."
+    },
+    {
+      "target": "slackware",
+      "distro": "slackware",
+      "version": "current",
       "arch": "x86_64",
       "libc": "glibc",
       "desktop": null,
       "session": null,
       "package": "txz",
-      "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "installpkg revision 1; upgradepkg revision-1%revision-2; jarvis --doctor; removepkg revision 2",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/slackware-upgrade-artifacts/jarvis-assistant-0.1.0-x86_64-1_local-fixed.txz",
+          "sha256": "1d37ab9428a3595699de44e1ffdddfe33f53e83ec55cc05f0b5239f7981710e1"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/slackware-upgrade-artifacts/jarvis-assistant-0.1.0-x86_64-2_local.txz",
+          "sha256": "2db41c52361a2fc7fa9a6fbdaa3fab8a22b0ffc968e0c31c55ab439a12ad21fa"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/slackware-upgrade-preservation-2026-10-19.log",
+          "sha256": "93fb6ae1c7fe8db4ea58e6f594c8a0fcfc0d1be0450b21e44220c840cc956a2d"
+        }
+      ],
+      "notes": "Slackware upgradepkg replaced revision 1 with revision 2, whose documentation payload includes a revision marker; jarvis --doctor passed before and after, the XDG_DATA_HOME sentinel survived upgrade and removal. This validates package-manager update and data preservation, not an application database migration."
     },
     {
-      "target": "solus",
-      "distro": "solus",
-      "version": null,
+      "target": "slackware",
+      "distro": "slackware",
+      "version": "current",
       "arch": "x86_64",
       "libc": "glibc",
-      "desktop": null,
-      "session": null,
-      "package": "eopkg",
-      "capability": "native_package_lifecycle",
-      "status": "unverified",
-      "command": null,
-      "evidence": []
+      "desktop": "Weston 14.0.2 X11 backend on Xvfb (Gentoo host)",
+      "session": "wayland",
+      "package": "txz",
+      "capability": "wayland_clipboard_roundtrip",
+      "status": "passed",
+      "command": "package-built wl-copy/wl-paste roundtrip on Weston X11 virtual seat",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/slackware-wl-clipboard-cross-distro.log",
+          "sha256": "41b4470155c5a5813ac11ef590d37fc5ddd60143491bf66754cdd9e3c824f8bd"
+        }
+      ],
+      "notes": "The wl-clipboard binaries came from the Slackware current package staging and ran successfully in a Wayland session hosted by Weston on a virtual X11 seat in Gentoo. This does not validate native Slackware desktop integration."
     },
     {
       "target": "alpine",
@@ -536,6 +683,260 @@
           "r1_sha256": "6f80400154441f360e034d9740d540bf53b6f634eae671162d179783a8b1bce4"
         }
       ]
+    },
+    {
+      "target": "solus",
+      "distro": "solus",
+      "version": "4.9",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "eopkg",
+      "capability": "native_package_lifecycle",
+      "status": "passed",
+      "command": "sh scripts/test-native-package.sh solus <native-package>",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/solus-eopkg-lifecycle-x86_64.log"
+        }
+      ]
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "native Wayland host",
+      "session": "wayland",
+      "package": "source-tests",
+      "capability": "voice_python_regression_suite",
+      "status": "passed",
+      "command": "python3 -m pytest -q -rs voice/tests",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/linux-voice-tests-2026-10-19.log",
+          "artifact_sha256": "36254e25be16a07a611259b6934299f8fec1b5bd127785fbc65953341d2c8acb",
+          "passed": 452,
+          "skipped": 10,
+          "skip_reasons": [
+            "interactive desktop test requires authorization",
+            "dbus_next unavailable in host Python",
+            "faster_whisper unavailable in host Python"
+          ]
+        }
+      ]
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "native Wayland host",
+      "session": "wayland",
+      "package": "source-tests",
+      "capability": "overlay_rust_unit_tests",
+      "status": "passed",
+      "command": "cargo test --locked --manifest-path gui/src-tauri/Cargo.toml",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-overlay-rust-tests-2026-10-18.log",
+          "artifact_sha256": "1053763b398b6a2e9ca812e47b2f511defbb57b1e73272a68ccf0904532f6cb3",
+          "passed": 7,
+          "failed": 0
+        }
+      ]
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "private portal D-Bus harness",
+      "session": "dbus-run-session",
+      "package": "source-tests",
+      "capability": "portal_private_dbus_lifecycle",
+      "status": "passed",
+      "command": "venv with dbus-next==0.2.3: python -m pytest -q -rs voice/tests/test_portal.py",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-private-dbus-portal-tests-2026-10-18.log",
+          "artifact_sha256": "638946dbfd890f8b2866e8b8abf520364a4af9df6a8376dcb1f824f83c4ca036",
+          "passed": 12
+        }
+      ],
+      "notes": "Private D-Bus portal harness only; real GNOME/KDE portal grants and revocation remain pending."
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "pacman container",
+      "session": "headless",
+      "package": "pkg.tar.zst",
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "pacman -U 0.1.0-1; pacman -U 0.1.0-2; jarvis --doctor; pacman -Qkk; pacman -R",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/packages/jarvis-assistant-0.1.0-1-x86_64.pkg.tar.zst",
+          "sha256": "1874c6dae03d48e1b071b2b7f81dffe24e78154f8421b35bd70e7b98cf587cda"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-upgrade-artifacts/jarvis-assistant-0.1.0-2-x86_64.pkg.tar.zst",
+          "sha256": "7d4bbd90a894b3d613946840920206a64064ea9990710c8afff4cee5baab148f"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-package-upgrade-2026-10-18.log",
+          "sha256": "6ff9961f278e27f944030672cd2d57764d5630be45cf9d4abfe2a6df62d2053d"
+        }
+      ],
+      "source_commit": "7ba6968e00fb1ce86e835a4d329d90c0e0157e3d",
+      "notes": "Old package artifact from the prior Arch validation upgraded to a current worktree build. The builder changed PKGBUILD pkgrel to 2 for this test only. Doctor, OpenCode 1.18.23, pacman -Qkk, user-data hash preservation and removal passed; this does not validate migration from arbitrary historical user configs."
+    },
+    {
+      "target": "debian",
+      "distro": "debian",
+      "version": "13",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "deb",
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "apt install 0.1.0-1; apt install 0.1.0-2; jarvis --doctor; dpkg -V; apt remove",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/packages/jarvis-assistant_0.1.0-1_amd64.deb",
+          "sha256": "e0a419bd466b843e9b3e1dca6f4dc35cd5db0b8c0cdf864c7b4d4eadeb868fd0"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/debian-upgrade-artifacts/jarvis-assistant_0.1.0-2_amd64.deb",
+          "sha256": "54ec184f5701d09c70cae53d8edf06c1820302df8be5c9e7995b90dece434f07"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/debian-package-upgrade-2026-10-18.log",
+          "sha256": "1b0bce720c868d5ae3c255e645ddcb5f63c6b66f264e8fe10f96d1323adcea21"
+        }
+      ],
+      "source_commit": "7ba6968e00fb1ce86e835a4d329d90c0e0157e3d",
+      "notes": "Old Debian 13 artifact updated to a current worktree build. The builder changed the copied debian/changelog to 0.1.0-2 for this test only. Doctor, OpenCode 1.18.23, dpkg -V, user-data hash preservation, Xvfb overlay relaunch and removal passed."
+    },
+    {
+      "target": "fedora",
+      "distro": "fedora",
+      "version": "44",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "rpm",
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "dnf install 0.1.0-1; dnf upgrade 0.1.0-2; jarvis --doctor; rpm -V; dnf remove",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/packages/jarvis-assistant-0.1.0-1.fc44.x86_64.rpm",
+          "sha256": "ca73f4201a1c971db36aec4163012f437c36f12977301b4a13693b305e88e091"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/fedora-upgrade-artifacts/jarvis-assistant-0.1.0-2.fc44.x86_64.rpm",
+          "sha256": "2fdca5595432c78b6ca1f75fdf91a5f70291dd4451210429033a4f65f25ce06a"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/fedora-package-upgrade-2026-10-18.log",
+          "sha256": "1eb0eff7844677304d532d70388e479c060b6ea1857a8b69b7804c4553dce651"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/fedora-native-package-lifecycle-2026-10-18.log",
+          "sha256": "77986b6f5168ed015c9821a9582f21c0f2c319f176544400aa917b9c4cf9d989"
+        }
+      ],
+      "source_commit": "7ba6968e00fb1ce86e835a4d329d90c0e0157e3d",
+      "notes": "Fedora 44 x86_64 package updated from 0.1.0-1 to a current worktree build. Release 2 was set only in the temporary build container. Doctor, OpenCode 1.18.23, rpm -V, user-data SHA-256 preservation through upgrade/removal, package integrity, imports, Xvfb clipboard/pointer checks and overlay relaunch passed. Does not validate GNOME/KDE desktop or physical audio."
+    },
+    {
+      "target": "suse",
+      "distro": "opensuse-tumbleweed",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "rpm",
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "zypper install 0.1.0-1; zypper install 0.1.0-2; jarvis --doctor; rpm -V; zypper remove",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/suse-upgrade-artifacts/jarvis-assistant-0.1.0-1.x86_64.rpm",
+          "sha256": "bc62eefdd575aecc5d2a0209e53cba02d3210e5fe9f53c8f1981360328eda1b0"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/suse-upgrade-artifacts/jarvis-assistant-0.1.0-2.x86_64.rpm",
+          "sha256": "0dc831bd774c90d1d17527d5081c69c24aab5b3e426036b51418f2cd86521aff"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/suse-package-upgrade-2026-10-18.log",
+          "sha256": "442c7fb9d55569c909052fb36703157bb74d1358b268ca113965eeadf05df697"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/suse-native-package-lifecycle-2026-10-18.log",
+          "sha256": "6ab0fc69cd1475dae2d0e8b71136999d3d7f482677c20eff961d6dbda0f41e6a"
+        }
+      ],
+      "source_commit": "7ba6968e00fb1ce86e835a4d329d90c0e0157e3d",
+      "notes": "openSUSE Tumbleweed x86_64 RPM updated from 0.1.0-1 to a current worktree build. Release 2 was used only in the temporary build container. Doctor, OpenCode 1.18.23, rpm -V, user-data SHA-256 preservation through update/removal, private runtime imports, AT-SPI, Xvfb clipboard/pointer checks and overlay relaunch passed. Does not validate full desktop, physical audio or Leap."
+    },
+    {
+      "target": "nix",
+      "distro": "nixos",
+      "version": null,
+      "arch": "aarch64",
+      "libc": "glibc",
+      "desktop": null,
+      "session": null,
+      "package": "nix",
+      "capability": "nix_flake_evaluation",
+      "status": "passed",
+      "command": "nix --extra-experimental-features \"nix-command flakes\" eval \"path:/src#packages.aarch64-linux.jarvis-assistant.drvPath\"",
+      "evidence": [
+        {
+          "kind": "local_source_archive",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/nix-aarch64-artifacts/jarvis-source.tar.gz",
+          "sha256": "1e8db7d2f636a251a230984b2e7b060ba926b37d179d504adbda3d6f383ec143"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/nix-aarch64-artifacts/flake-evaluation.log",
+          "sha256": "20cc4b66fcbe7cd4c28b965938c1acb65a683110cbf77e8d963d07155afe32ad"
+        }
+      ],
+      "notes": "The aarch64-linux derivation evaluates successfully in the official nixos/nix arm64 container under QEMU user-mode emulation. This validates flake evaluation only; build, profile installation and runtime lifecycle remain unverified on aarch64."
     }
   ],
   "pending_gates": [

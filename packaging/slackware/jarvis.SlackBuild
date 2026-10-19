@@ -1,0 +1,87 @@
+#!/bin/sh
+# Native Slackware package builder for Jarvis.
+set -eu
+task_recipe_dir=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+task_root=${JARVIS_SOURCE_ROOT:-$(CDPATH= cd -P "$task_recipe_dir/../.." && pwd)}
+task_version=0.1.0
+task_name=jarvis-assistant
+task_arch=${ARCH:-$(uname -m)}
+task_build=${BUILD:-1}
+task_tag=${TAG:-_local}
+task_tmp=${JARVIS_BUILD_ROOT:-${TMP:-/tmp}/jarvis-slackbuild}
+task_output=${JARVIS_PACKAGE_OUTPUT:-${OUTPUT:-/tmp}}
+case "$task_arch" in x86_64) ;; *) echo "Unsupported Slackware architecture: $task_arch" >&2; exit 2 ;; esac
+for task_tool in makepkg rustc cargo node npm pkg-config python3; do
+    command -v "$task_tool" >/dev/null 2>&1 || { echo "SlackBuild requires $task_tool." >&2; exit 2; }
+done
+for task_tool in make gcc ar autoconf automake m4 meson ninja git; do
+    command -v "$task_tool" >/dev/null 2>&1 || { echo "SlackBuild requires $task_tool to build desktop helpers." >&2; exit 2; }
+done
+python3 -c 'import sys; assert sys.version_info >= (3,10), "Jarvis requires Python 3.10 or newer"' || {
+    echo 'SlackBuild requires Python 3.10 or newer.' >&2
+    exit 2
+}
+python3 -m pip --version >/dev/null 2>&1 || { echo 'SlackBuild requires pip for Python 3.' >&2; exit 2; }
+pkg-config --exists gtk+-3.0 webkit2gtk-4.1 x11 xtst xinerama xkbcommon xmu xt ice sm wayland-client wayland-protocols || {
+    echo 'SlackBuild requires GTK+3, WebKitGTK 4.1, X11 and Wayland development files.' >&2
+    exit 2
+}
+mkdir -p "$task_tmp" "$task_output"
+task_archive=$task_tmp/$task_name-$task_version.tar.gz
+python3 "$task_root/scripts/source-archive.py" --output "$task_archive"
+rm -rf "$task_tmp/$task_name-$task_version" "$task_tmp/package"
+tar -xzf "$task_archive" -C "$task_tmp"
+task_source=$task_tmp/jarvis-$task_version
+task_package=$task_tmp/package
+mkdir -p "$task_package/install" "$task_package/usr/doc/$task_name-$task_version"
+
+cd "$task_source"
+cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
+npm ci --prefix .opencode --ignore-scripts
+python3 scripts/fetch-opencode.py --target "$task_arch-glibc" --output opencode-package
+python3 scripts/prepare-package.py --prefix /usr --destdir "$task_package" \
+    --overlay gui/src-tauri/target/release/jarvis-overlay \
+    --python /usr/bin/python3 --opencode opencode-package
+python3 "$task_root/scripts/build-slackware-helpers.py" \
+    --workdir "$task_tmp/helpers" --destdir "$task_package"
+cp LICENSE "$task_package/usr/doc/$task_name-$task_version/"
+cp docs/linux.md "$task_package/usr/doc/$task_name-$task_version/"
+task_python_abi=$(python3 -c 'import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+cat > "$task_package/usr/doc/$task_name-$task_version/README" <<EOF
+Jarvis Slackware package
+
+Build-time tools: Rust/Cargo, Node.js/npm, Python 3 with pip, pkg-config, make,
+GCC/binutils, autoconf/automake/m4, Meson, Ninja, Git, and X11/Wayland headers.
+Runtime packages: Python ${task_python_abi}, same Python minor version used to build
+this package; GTK+3, WebKitGTK 4.1, ffmpeg, PulseAudio utilities/libraries, ALSA
+libraries and utilities, AT-SPI2, Mesa, libXmu, libXt, libICE, libSM, libXtst,
+libXinerama, libxkbcommon, and Wayland client libraries. This package includes
+xdotool, wl-clipboard, and xclip built from pinned upstream revisions; their
+licenses are in the third-party documentation directory. Install runtime
+packages from Slackware or a configured third-party repository before
+installing Jarvis; Slackware packages do not resolve dependencies automatically.
+Check transitive shared-library dependencies with:
+  ldd /usr/bin/ffmpeg /usr/bin/ffplay
+Install a Slackware package for every library reported as 'not found'; the
+ffmpeg dependency closure can be large on minimal installations.
+
+Install: installpkg jarvis-assistant-0.1.0-x86_64-1_local.txz
+Upgrade: upgradepkg old-package.txz%new-package.txz (keep both package files)
+Remove:  removepkg $task_name-$task_version-$task_arch-$task_build$task_tag
+EOF
+cat > "$task_package/install/slack-desc" <<'EOF'
+jarvis-assistant: Jarvis assistant for Linux
+jarvis-assistant:
+jarvis-assistant: Voice assistant with native desktop overlay, speech
+jarvis-assistant: recognition, speech synthesis, local tools, and MCP support.
+jarvis-assistant:
+jarvis-assistant: Install the runtime dependencies listed in
+jarvis-assistant: /usr/doc/jarvis-assistant-0.1.0/README before use.
+jarvis-assistant:
+jarvis-assistant: Homepage: https://github.com/GuilhermeBn198/jarvis
+jarvis-assistant:
+jarvis-assistant:
+EOF
+chown -R root:root "$task_package"
+cd "$task_package"
+makepkg -l y -c n "$task_output/$task_name-$task_version-$task_arch-$task_build$task_tag.txz"

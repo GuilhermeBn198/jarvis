@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Fetch a pinned target-specific agent and verify its registry integrity."""
 import argparse
-import base64
 import hashlib
 import io
 import json
@@ -14,11 +13,11 @@ ROOT=Path(__file__).resolve().parents[1]
 
 
 def extract_verified(data: bytes,integrity: str,destination: Path):
-    algorithm,expected=integrity.split('-',1)
-    if algorithm!='sha512' or base64.b64encode(hashlib.sha512(data).digest()).decode()!=expected:
-        raise ValueError('integridade SHA512 do agente incorreta')
+    algorithm,expected=integrity.split(':',1)
+    if algorithm!='sha256' or hashlib.sha256(data).hexdigest()!=expected:
+        raise ValueError('integridade SHA256 do agente incorreta')
     with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as archive:
-        member=archive.getmember('package/bin/opencode')
+        member=archive.getmember('opencode')
         if not member.isfile():raise ValueError('agente nao e arquivo regular')
         binary=archive.extractfile(member).read()
     if not binary.startswith(b'\x7fELF'):raise ValueError('agente Linux nao e ELF')

@@ -1,6 +1,6 @@
 # jarvis
 
-**Porte Linux em implementação:** veja [instalação nativa e estado da validação](docs/linux.md). Pacotes nativos e Flatpak ainda estão em preparação.
+**Porte Linux em implementação:** veja [instalação nativa e estado da validação](docs/linux.md). Há um Flatpak experimental com smoke de instalação em x86_64/ARM64; pacotes nativos por gerenciador e validação completa de desktop seguem em expansão.
 
 Assistente pessoal por voz, **sempre ligado**, que roda no seu PC: o "cérebro" vive no **WSL (Python)** e conversa com o **Windows** para ouvir o microfone, falar, ver a tela e executar ações. Há uma presença visual discreta no Windows — um **orbe** que mostra o que o Jarvis está fazendo.
 

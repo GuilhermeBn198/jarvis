@@ -19,6 +19,37 @@ pendente em desktops reais; esses resultados não são intercambiáveis.
 - Teste antigo de raiz do projeto corrigido para não depender do nome da pasta.
 - Suite após etapa 1: 324 passed (Python 3.14, Arch Linux).
 
+### Regressão Python no Arch Linux rolling x86_64 — 2026-10-18
+
+- `python3 -m pytest -q -rs voice/tests`: 444 passed, 10 skipped no host
+  Wayland. Os skips foram o teste interativo de desktop (opt-in), testes de
+  portal por falta de `dbus_next` no Python do host e STT por falta de
+  `faster_whisper` no Python do host. Esses módulos foram importados no smoke
+  do pacote Guix; este resultado mede a regressão Python sintética, não a
+  captura de áudio nem a integração completa com portais/desktop.
+- Log local: `.superpowers/sdd/2026-10-14-jarvis-linux/arch-full-voice-tests-2026-10-18.log`.
+- Reexecução em 2026-10-19 no mesmo host Arch Linux x86_64: 452 passed, 10 skipped; log `.superpowers/sdd/2026-10-14-jarvis-linux/linux-voice-tests-2026-10-19.log`, SHA-256 `36254e25be16a07a611259b6934299f8fec1b5bd127785fbc65953341d2c8acb`. A suíte de pacotes Linux também passou: 44 passed.
+
+### Portal D-Bus privado no Arch Linux rolling x86_64 — 2026-10-18
+
+- Com `dbus-next==0.2.3` instalado em um venv temporário, os 12 testes de
+  `voice/tests/test_portal.py` passaram, incluindo respostas forjadas,
+  cancelamento, negação, timeout, sessão D-Bus persistente e endereço inválido.
+  O harness usa `dbus-run-session` e serviços privados; não valida concessão,
+  negação ou revogação em portais reais de GNOME/KDE.
+- Log local: `.superpowers/sdd/2026-10-14-jarvis-linux/arch-private-dbus-portal-tests-2026-10-18.log`.
+
+### Atualização do pacote Arch x86_64 — 2026-10-18
+
+- Em container Arch rolling, o pacman atualizou o artefato anterior `0.1.0-1`
+  para uma reconstrução do código atual em `0.1.0-2`. O build alterou `pkgrel`
+  apenas dentro da imagem de teste; a revisão da receita no checkout continua
+  inalterada. `jarvis --doctor`, OpenCode 1.18.23, `pacman -Qkk` (8138 arquivos),
+  hash do dado de usuário antes/depois, ciclo de instalação/remoção e preservação
+  do dado após a remoção passaram.
+- Artefato atual: `.superpowers/sdd/2026-10-14-jarvis-linux/arch-upgrade-artifacts/jarvis-assistant-0.1.0-2-x86_64.pkg.tar.zst`.
+- Log: `.superpowers/sdd/2026-10-14-jarvis-linux/arch-package-upgrade-2026-10-18.log`.
+
 ## Áudio observado nesta máquina
 
 Ambiente: Arch Linux rolling, x86_64, Wayland, PipeWire com compatibilidade
@@ -251,3 +282,193 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
   prazos explícitos continuam valendo. Testes com relógio controlado reproduziram
   a falha aos 21 segundos e passaram com a mudança (16 testes de servidor).
 - Após o ajuste do prazo: suíte no venv de voz com dependências instaladas: 430 passaram, 1 teste de desktop opt-in ignorado. A integração do código de servidor atualizado com o agente do Flatpak instalado também passou (12,73 segundos).
+
+### Slackware current x86_64 — 2026-10-17
+
+- O SlackBuild compilou no container Slackware current com Python 3.12, Rust,
+  Node/npm e WebKitGTK 4.1 do repositório comunitário `slackware.lngn.net`.
+  A primeira execução revelou que `makepkg` era chamado na raiz do código-fonte
+  e incluía os artefatos de compilação Cargo. O SlackBuild agora muda para a
+  árvore de staging antes de empacotar; o teste de regressão falhava antes e
+  passou depois. O `.txz` validado não contém `gui/src-tauri/target`.
+- O pacote foi instalado com `installpkg`; `jarvis --doctor`, OpenCode 1.18.23,
+  imports privados de faster-whisper, Piper, MCP, httpx, DBus, PyAV,
+  CTranslate2 e ONNX Runtime, além do typelib AT-SPI, passaram. O teste
+  `test-overlay-instance.py` em Xvfb/D-Bus passou: a segunda execução saiu e a
+  janela da primeira permaneceu. `removepkg` removeu os arquivos do pacote e
+  preservou um sentinel em `XDG_DATA_HOME`.
+- O overlay compilado no Slackware também passou por `test-overlay-wayland.py`
+  em um container Gentoo com Weston headless: a segunda execução saiu e a
+  janela primária permaneceu. Isso valida a execução cruzada desse binário em
+  Wayland/Gentoo; não comprova Wayland nativo no Slackware.
+- Em 2026-10-19, `upgradepkg pacote-antigo%pacote-novo` substituiu a revisão
+  `_1_local-fixed` pela `_2_local`, com um marcador distinto na documentação do
+  payload novo. `jarvis --doctor` passou antes e depois; o sentinel em
+  `XDG_DATA_HOME` sobreviveu à atualização e à remoção. Artefatos, hashes e log
+  estão em `slackware-upgrade-artifacts/` e
+  `slackware-upgrade-preservation-2026-10-19.log`. Isso valida o fluxo de
+  atualização do gerenciador e preservação de dados, não uma migração de banco
+  de dados do aplicativo.
+- `scripts/test-native-package.sh slackware ...` agora automatiza a instalação
+  por `installpkg`, doctor, imports privados/AT-SPI, comandos de áudio disponíveis,
+  janela X11 sob Xvfb/D-Bus, remoção por `removepkg` e preservação dos dados do
+  usuário. O ciclo completo passou no container current. O harness não declara
+  integridade via banco de pacotes para Slackware nem testa os utilitários
+  opcionais de clipboard/automação ainda ausentes no container.
+- O teste precisou dos pacotes oficiais `pygobject3`, `gobject-introspection`,
+  Xvfb, nettle, libXfont2, libxshmfence, libfontenc, xkeyboard-config, xkbcomp e
+  libxkbfile no container mínimo. Também instalei as dependências transitivas
+  oficiais de ffmpeg/ffplay e PulseAudio, conferindo cada pacote com o
+  `CHECKSUMS.md5` oficial. `ldd` não mostra bibliotecas ausentes em ffmpeg,
+  ffplay ou pactl; `pactl --version` passou.
+- FFmpeg capturou um segundo do dispositivo ALSA virtual `null` para WAV e
+  reproduziu um tom nele. O pacote Jarvis instalado enumerou `default` e `null`
+  com `AUDIO_BACKEND=alsa` e `capture.record` gerou WAV de aproximadamente 785
+  kB. Piper sintetizou uma frase e o `ffplay` tocou o WAV via ALSA `null`.
+  Esses testes validam o caminho de software com dispositivo virtual, não
+  microfone/alto-falante físico nem servidor PulseAudio em sessão real.
+- `scripts/build-slackware-helpers.py` busca e confere os commits fixados de
+  xdotool 4.20260303.1, xclip 0.13 e wl-clipboard 2.3.0, compila os três e os
+  instala no staging privado `/usr/lib/jarvis/bin`, incluindo as licenças.
+  Builder executado no Slackware current: compilação dos três passou; `ldd` não
+  encontrou bibliotecas ausentes nos binários resultantes.
+- `scripts/test-x11-tools.py` passou com os binários staged: `xdotool
+  getmouselocation --shell` e roundtrip do `xclip` em Xvfb. Weston headless
+  não fornece um seat para `wl-copy`; em seguida, o roundtrip Wayland foi
+  validado com Weston 14.0.2 usando backend X11 sobre Xvfb executado dentro do
+  container Gentoo. Os binários `wl-copy`/`wl-paste` saíram do staging do pacote
+  Slackware e trocaram o texto `Slackware wl-clipboard on Weston X11 seat`.
+  Log: `.superpowers/sdd/2026-10-14-jarvis-linux/slackware-wl-clipboard-cross-distro.log`
+  (SHA256 `41b4470155c5a5813ac11ef590d37fc5ddd60143491bf66754cdd9e3c824f8bd`).
+  Isso valida o helper em uma sessão Wayland com seat virtual, não uma sessão
+  Wayland nativa do Slackware.
+- O SlackBuild reconstruiu o `.txz` com os quatro helpers em
+  `/usr/lib/jarvis/bin` e as três licenças em `usr/doc/.../third-party`; `xz -t`
+  passou. O ciclo final por `installpkg` validou `command -v`, o smoke Xvfb de
+  xdotool/xclip, runtime/imports, overlay, `removepkg`, limpeza dos arquivos do
+  pacote e porta 4096 fechada. Log local:
+  `.superpowers/sdd/2026-10-14-jarvis-linux/slackware-current-package-helpers-lifecycle.log`.
+- A sessão Wayland nativa, áudio com dispositivos reais, atualização entre
+  versões distintas e aarch64 continuam pendentes. Por isso o catálogo mantém
+  Slackware como `unverified`.
+- O modelo `pt_BR-faber-medium.onnx` foi baixado pelo comando instalado
+  `jarvis --download-voice`; o downloader verificou tamanho e SHA256 fixados.
+  Com o Python privado do pacote, Piper sintetizou “Teste de voz no Slackware
+  Linux.” em WAV mono, 22.050 Hz, 38.656 frames. Com o XDG de teste, `--doctor`
+  reconheceu o modelo e a capacidade Piper. O WAV foi reproduzido via ffplay
+  sobre ALSA `null`; áudio em dispositivo físico e captura via PulseAudio seguem
+  sem validação.
+- Com o cache isolado em `/tmp`, faster-whisper baixou o modelo base padrão
+  selecionado pela biblioteca e executou inferência CPU int8 sobre WAVs de Piper. A
+  transcrição retornou texto e a amostra maior reconheceu corretamente a frase
+  “está funcionando corretamente”, mas distorceu palavras curtas/nome próprio;
+  isso comprova execução do backend, não a qualidade acústica final no Slackware.
+
+
+### Void glibc x86_64 — atualização XBPS — 2026-10-17
+
+- XBPS instalou a revisão `_1` do repositório local; `jarvis --doctor` passou.
+  Depois da criação do sentinel em `XDG_DATA_HOME`, o XBPS atualizou o pacote
+  para `_2`; doctor passou novamente, o sentinel permaneceu intacto e a remoção
+  do pacote também preservou os dados.
+- Os repositórios locais mantêm uma revisão por índice. Cada revisão foi
+  indexada em diretório próprio, permitindo verificar e instalar a versão
+  esperada antes e depois da atualização. Log:
+  `.superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-upgrade-preservation.log`;
+  artefatos e hashes constam no catálogo.
+
+### Void musl x86_64 — 2026-10-17
+
+- A revisão XBPS `_2` foi instalada pelo XBPS a partir de um repositório local
+  descartável. `jarvis --doctor`, imports e ABI Python privados, AT-SPI,
+  ferramentas de voz e versão do OpenCode passaram. O smoke executou xdotool e
+  xclip em Xvfb e validou a segunda execução do overlay mantendo a janela
+  primária. `xbps-pkgdb --checks files,dependencies,alternatives,pkgdb` passou;
+  a remoção do pacote deixou o sentinel do usuário intacto.
+- O teste ocorreu no container Void musl de smoke com dependências runtime já
+  instaladas; Xvfb e D-Bus foram adicionados via XBPS. A primeira tentativa com
+  o artefato renomeado para `jarvis-assistant.x86_64-musl.xbps` falhou na
+  verificação de checksum do repositório local. A repetição com o nome XBPS
+  completo, `jarvis-assistant-0.1.0_2.x86_64-musl.xbps`, passou.
+- Artefato SHA256
+  `e159f50017508d0169202e66dab58a0c3a1106b8f14b5d52850687a9730c4278`; log
+  SHA256 `e49bcfbf03090e3a57a8d16a0401506c3d0bad9dcc3ef2a2b2f95bd73dda7de3`.
+  Isso valida Void musl x86_64 em Xvfb, não desktop/áudio real nem aarch64.
+- XBPS atualizou o pacote instalado da revisão `_1` para `_2`; `jarvis --doctor`
+  passou nas duas revisões. O sentinel em `XDG_DATA_HOME` permaneceu idêntico
+  durante a atualização e após `xbps-remove`. Isso comprova preservação de dados
+  entre revisões do pacote, sem afirmar migração entre versões do aplicativo.
+  Log: `void-musl-upgrade-preservation.log`; revisões e hashes também constam no
+  catálogo de validação.
+
+### Nix x86_64 — perfil instalado e smoke X11 — 2026-10-18
+
+- O flake foi construído no SDK Nix com o nixpkgs fixado no `flake.lock`; o
+  pacote foi instalado em um perfil Nix e `jarvis --doctor` passou. O doctor
+  reconheceu Linux, ffmpeg/ffplay, Piper e OpenCode; sem baixar um modelo, a
+  capacidade de síntese de voz não fica disponível.
+- O overlay instalado passou por `scripts/test-overlay-instance.py` sob
+  Xvfb/D-Bus: a segunda execução saiu e a janela principal permaneceu; o botão
+  Sair encerrou a janela. O SDK não fornece os caminhos de sistema que o smoke
+  espera, então a execução apontou AT-SPI, D-Bus e Mesa EGL diretamente para o
+  Nix Store. Isso valida o pacote x86_64 e o overlay isolado; não substitui um
+  teste em sessão NixOS real. ARM64, áudio físico, portais e desktop real seguem
+  pendentes.
+
+### Solus 4.9 x86_64 — pacote eopkg instalado — 2026-10-17
+
+- O pacote foi compilado em Solus `solbuild` com a remoção automática de símbolos
+  desativada para preservar o executável Bun/OpenCode. `opencode --version`
+  retornou 1.18.23 após a instalação.
+- O ciclo eopkg passou por dependências Xvfb/D-Bus, doctor, imports e ABI do
+  runtime Python privado, recursos instalados, AT-SPI typelib, arquitetura ELF,
+  integridade do pacote, segunda execução do overlay mantendo a janela, remoção
+  e preservação do sentinel do usuário.
+- O log local completo é
+  `.superpowers/sdd/2026-10-14-jarvis-linux/solus-eopkg-lifecycle-x86_64.log`.
+  O ambiente headless com Xvfb não valida sessão Solus Wayland/X11 real,
+  microfone, playback em hardware ou atualização entre versões.
+
+### GNU Guix x86_64 — pacote e perfil instalado — 2026-10-18
+
+- A derivação Guix compilou o overlay e executou os 7 testes Rust com sucesso.
+  As fases de instalação, strip e restauração do binário OpenCode passaram;
+  `opencode --version` retornou 1.18.23.
+- `scripts/test-guix-package.sh` instalou o pacote em perfil descartável,
+  `jarvis --doctor` reconheceu os executáveis, os imports Python passaram usando
+  o caminho de módulos embutido no launcher, e a remoção preservou os dados do
+  usuário. O log local registra Guix commit `03460e6f` e o store output
+  `/gnu/store/1pwpi865n6mashq0aw5wphv9ylva2v70-jarvis-assistant-0.1.0`.
+- O teste foi headless em container GNU Guix, sem desktop, microfone ou áudio
+  físico; não valida GNOME/KDE, portais ou Wayland/X11 reais. aarch64 permanece
+  sem suporte verificado.
+
+### Fedora 44 x86_64 — atualização RPM — 2026-10-18
+
+- O DNF atualizou `jarvis-assistant` de `0.1.0-1.fc44` para `0.1.0-2.fc44`
+  em container Fedora 44 descartável. `jarvis --doctor`, OpenCode 1.18.23 e
+  `rpm -V jarvis-assistant` passaram após a atualização; o hash SHA-256 do
+  sentinel em `XDG_DATA_HOME` permaneceu igual durante atualização e remoção.
+- O pacote atualizado também passou pelo ciclo nativo de instalação, imports e
+  ABI Python privados, AT-SPI, ferramentas X11/clipboard, relançamento isolado
+  do overlay em Xvfb, integridade RPM, remoção e preservação de dados.
+- Para este teste, `Release: 2` foi aplicado somente à cópia dentro do container
+  de build; a receita versionada segue inalterada. Logs locais:
+  `fedora-package-upgrade-2026-10-18.log` e
+  `fedora-native-package-lifecycle-2026-10-18.log`. Evidências e hashes estão
+  em `docs/notes/linux-matrix.json`. Isso ainda não valida desktop GNOME/KDE
+  real, Wayland, áudio físico ou Fedora ARM64 além do smoke CI já registrado.
+
+### openSUSE Tumbleweed x86_64 — atualização RPM — 2026-10-18
+
+- O Zypper atualizou `jarvis-assistant` de `0.1.0-1` para `0.1.0-2` em
+  container Tumbleweed descartável. `jarvis --doctor`, OpenCode 1.18.23 e
+  `rpm -V jarvis-assistant` passaram; o sentinel em `XDG_DATA_HOME` manteve o
+  mesmo SHA-256 durante a atualização e após remover o pacote.
+- O RPM atualizado passou pelo ciclo de instalação, imports/ABI do runtime
+  privado, AT-SPI, ferramentas X11/clipboard, relançamento do overlay em Xvfb,
+  integridade, remoção e preservação de dados. O Release 2 foi aplicado apenas
+  à cópia da receita dentro do container de build.
+- Logs locais: `suse-package-upgrade-2026-10-18.log` e
+  `suse-native-package-lifecycle-2026-10-18.log`; artefatos e hashes estão na
+  matriz. Isso não cobre openSUSE Leap, desktop real, Wayland nem áudio físico.

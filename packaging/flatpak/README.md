@@ -11,8 +11,10 @@ com org.flatpak.Builder, org.gnome.Sdk//49, org.gnome.Platform//49 e a extensão
 org.freedesktop.Sdk.Extension.rust-stable//25.08 instalados para o usuário.
 O script exige os commits da arquitetura registrados em `runtime-pins.json`
 e recusa versões diferentes. Ele não altera automaticamente um runtime
-instalado. Há pins separados para x86_64 e ARM64; ARM64 ainda aguarda o
-resultado do build real. Não reutilize artefatos x86_64 nessa arquitetura.
+instalado. Há pins separados para x86_64 e ARM64; a CI construiu e instalou o
+bundle nas duas arquiteturas em runners nativos e aprovou doctor, versão do
+agente e imports de voz/MCP/AT-SPI. Isso valida o runtime básico, não a sessão
+gráfica, áudio ou portais. Não reutilize artefatos x86_64 em ARM64.
 
 ```sh
 scripts/build-flatpak.sh "$PWD/dist/flatpak"
@@ -54,10 +56,10 @@ Não há acesso geral ao filesystem do host. Pastas para ferramentas de arquivos
 precisam de uma permissão de pasta específica do Flatpak e da allowlist Jarvis.
 ALSA direto não é exposto por este sandbox.
 
-Ainda não há publicação no Flathub. Build, instalação, voz/desktop no sandbox,
-atualização, remoção e arquiteturas devem ser registrados separadamente em
-`docs/notes/linux-verification.md`; a presença desta receita não comprova toda
-a matriz Linux.
+Ainda não há publicação no Flathub. Testes de voz e desktop no sandbox,
+atualização e remoção precisam ser registrados separadamente em
+`docs/notes/linux-verification.md`; o smoke de instalação nas duas arquiteturas
+não comprova toda a matriz Linux.
 
 Para reaproveitar wheels de um preparo anterior da mesma arquitetura e SDK,
 use um novo snapshot com `scripts/prepare-flatpak.py --output NOVO_DIRETORIO

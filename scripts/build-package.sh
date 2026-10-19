@@ -40,6 +40,54 @@ case "$task_target" in
         ebuild "$task_package/jarvis-assistant-0.1.0.ebuild" manifest clean package
         find "$task_build/binpkgs" -type f -name '*.gpkg.tar' -exec cp '{}' "$task_output/" \;
         ;;
+    nix)
+        command -v nix >/dev/null || { echo 'Alvo nix requer o Nix package manager.' >&2; exit 2; }
+        nix --extra-experimental-features 'nix-command flakes' build \
+            "$task_root#jarvis-assistant" --out-link "$task_output/jarvis-assistant"
+        ;;
+    guix)
+        command -v guix >/dev/null || { echo 'Alvo guix requer o GNU Guix.' >&2; exit 2; }
+        case "$task_arch" in x86_64) ;; *) echo 'Alvo guix atualmente suporta apenas x86_64.' >&2; exit 2 ;; esac
+        task_build=$(mktemp -d "$task_output/.guix-build-XXXXXX")
+        python3 "$task_root/scripts/prepare-guix-source.py" \
+            --output "$task_build/jarvis-guix-source.tar.gz"
+        python3 "$task_root/scripts/fetch-opencode.py" \
+            --target "$task_arch-glibc" --output "$task_build/opencode-package"
+        cp "$task_root/packaging/guix/jarvis.scm" \
+            "$task_root/packaging/guix/cargo-crate-sources.scm" "$task_build/"
+        (cd "$task_build" && guix build -f ./jarvis.scm \
+            --out-link "$task_output/jarvis-assistant")
+        ;;
+    void-musl)
+        . /etc/os-release
+        [ "$ID" = void ] || { echo 'Alvo void-musl exige ambiente Void Linux.' >&2; exit 2; }
+        command -v bash >/dev/null || { echo 'Alvo void-musl requer bash para executar xbps-src.' >&2; exit 2; }
+        [ "$(xbps-uhelper arch)" = "$task_arch-musl" ] || { echo 'Alvo void-musl exige libc musl nativa.' >&2; exit 2; }
+        task_build=$(mktemp -d)
+        task_collection=${JARVIS_VOID_PACKAGES:-$task_build/void-packages}
+        task_void_commit=dbf843f5f1dad63846b6d147ec10662cf8e8078a
+        if [ ! -d "$task_collection" ]; then
+            git init -q "$task_collection"
+            git -C "$task_collection" remote add origin https://github.com/void-linux/void-packages.git
+            git -C "$task_collection" fetch --depth 1 origin "$task_void_commit"
+            git -C "$task_collection" checkout --detach FETCH_HEAD
+        fi
+        [ "$(git -C "$task_collection" rev-parse HEAD)" = "$task_void_commit" ] || { echo 'A colecao Void deve corresponder ao commit fixado da receita.' >&2; exit 2; }
+        task_collection=$(CDPATH= cd -P "$task_collection" && pwd)
+        task_template=$task_collection/srcpkgs/jarvis-assistant
+        [ ! -e "$task_template" ] || { echo 'Use uma colecao sem receita Jarvis preexistente.' >&2; exit 2; }
+        mkdir -p "$task_template/files"
+        python3 "$task_root/scripts/source-archive.py" --output "$task_template/files/jarvis-0.1.0.tar.gz"
+        python3 - "$task_root/packaging/void-musl/template" "$task_template" <<'PY'
+from pathlib import Path
+import hashlib,sys
+source=Path(sys.argv[1]);target=Path(sys.argv[2])
+with (target/'files/jarvis-0.1.0.tar.gz').open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
+(target/'template').write_text(source.read_text().replace('@JARVIS_SOURCE_SHA256@',digest))
+PY
+        (cd "$task_collection" && ./xbps-src -j2 pkg jarvis-assistant)
+        find "$task_collection/hostdir/binpkgs" -type f -name "jarvis-assistant-*.$task_arch-musl.xbps" -exec cp '{}' "$task_output/" \;
+        ;;
     void-glibc)
         . /etc/os-release
         [ "$ID" = void ] || { echo 'Alvo void-glibc exige ambiente Void Linux.' >&2; exit 2; }
@@ -146,13 +194,49 @@ PY
     arch)
         command -v makepkg >/dev/null
         . /etc/os-release
-        [ "$ID" = 'arch' ] || { echo 'Alvo arch exige ambiente Arch.' >&2; exit 2; }
+        case "$ID" in
+            arch|archarm) ;;
+            *) echo 'Alvo arch exige Arch Linux ou Arch Linux ARM.' >&2; exit 2 ;;
+        esac
         task_build=$(mktemp -d "$task_output/.arch-build-XXXXXX")
         cp "$task_root/packaging/arch/PKGBUILD" "$task_build/PKGBUILD"
         export JARVIS_SOURCE_ROOT=$task_root
         export PKGDEST=$task_output
         cd "$task_build"
         makepkg --nodeps --force
+        ;;
+    slackware)
+        [ -f /etc/slackware-version ] || { echo 'Alvo slackware exige Slackware Linux.' >&2; exit 2; }
+        command -v makepkg >/dev/null || { echo 'Slackware exige a ferramenta makepkg.' >&2; exit 2; }
+        task_build=$(mktemp -d "$task_output/.slackware-build-XXXXXX")
+        JARVIS_SOURCE_ROOT=$task_root JARVIS_BUILD_ROOT=$task_build \
+        JARVIS_PACKAGE_OUTPUT=$task_output ARCH=$task_arch \
+            sh "$task_root/packaging/slackware/jarvis.SlackBuild"
+        ;;
+    solus)
+        . /etc/os-release
+        [ "$ID" = solus ] || { echo 'Alvo solus exige ambiente Solus.' >&2; exit 2; }
+        [ "$task_arch" = x86_64 ] || { echo 'Alvo solus atualmente suporta apenas x86_64.' >&2; exit 2; }
+        command -v solbuild >/dev/null || { echo 'Alvo solus requer solbuild.' >&2; exit 2; }
+        task_build=$(mktemp -d "$task_output/.solus-build-XXXXXX")
+        task_source=$task_build/jarvis-0.1.0.tar.gz
+        python3 "$task_root/scripts/source-archive.py" --output "$task_source"
+        python3 "$task_root/scripts/prepare-solus-package.py" \
+            "$task_root/packaging/solus/package.yml" "$task_source" "$task_build/package.yml"
+        (
+            cd "$task_build"
+            if [ "$(id -u)" -eq 0 ]; then
+                solbuild build "$task_build/package.yml"
+            else
+                command -v sudo >/dev/null || { echo 'Solus package builds require root; install sudo or run this script as root.' >&2; exit 2; }
+                sudo solbuild build "$task_build/package.yml"
+            fi
+        )
+        task_artifact=$(find "$task_build" -maxdepth 1 -type f -name 'jarvis-assistant-*.eopkg' -print -quit)
+        [ -n "$task_artifact" ] || {
+            echo 'solbuild completed without producing an eopkg artifact.' >&2; exit 1;
+        }
+        cp "$task_artifact" "$task_output/"
         ;;
     *) echo "Alvo ainda nao implementado: $task_target" >&2; exit 2 ;;
 esac

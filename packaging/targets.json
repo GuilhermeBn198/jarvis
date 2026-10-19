@@ -7,12 +7,13 @@
       "x86_64",
       "aarch64"
     ],
-    "format": "pkg.tar.zst",
+    "format": "pkg.tar.{zst,xz}",
     "recipe": "packaging/arch/PKGBUILD",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64"
+      "x86_64",
+      "aarch64"
     ]
   },
   "debian": {
@@ -135,17 +136,19 @@
   },
   "void-musl": {
     "distro": "void",
-    "version": null,
+    "version": "rolling",
     "libc": "musl",
     "architectures": [
       "x86_64",
       "aarch64"
     ],
     "format": "xbps",
-    "recipe": null,
-    "implementation": "pending",
-    "validation": "unverified",
-    "validated_architectures": []
+    "recipe": "packaging/void-musl/template",
+    "implementation": "recipe",
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "gentoo": {
     "distro": "gentoo",
@@ -172,37 +175,42 @@
       "aarch64"
     ],
     "format": "nix",
-    "recipe": null,
-    "implementation": "pending",
-    "validation": "unverified",
-    "validated_architectures": []
+    "recipe": "packaging/nix/default.nix",
+    "implementation": "recipe",
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "guix": {
     "distro": "guix",
     "version": null,
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "guix",
-    "recipe": null,
-    "implementation": "pending",
-    "validation": "unverified",
-    "validated_architectures": []
+    "recipe": "packaging/guix/jarvis.scm",
+    "implementation": "recipe",
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "slackware": {
     "distro": "slackware",
-    "version": null,
+    "version": "current",
     "libc": "glibc",
     "architectures": [
       "x86_64"
     ],
     "format": "txz",
-    "recipe": null,
-    "implementation": "pending",
-    "validation": "unverified",
-    "validated_architectures": []
+    "recipe": "packaging/slackware/jarvis.SlackBuild",
+    "implementation": "recipe",
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   },
   "solus": {
     "distro": "solus",
@@ -212,9 +220,11 @@
       "x86_64"
     ],
     "format": "eopkg",
-    "recipe": null,
-    "implementation": "pending",
-    "validation": "unverified",
-    "validated_architectures": []
+    "recipe": "packaging/solus/package.yml",
+    "implementation": "recipe",
+    "validation": "installed-smoke",
+    "validated_architectures": [
+      "x86_64"
+    ]
   }
 }

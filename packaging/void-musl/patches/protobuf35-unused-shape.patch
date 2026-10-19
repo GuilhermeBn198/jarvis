@@ -1,0 +1,10 @@
+--- a/onnxruntime/core/graph/contrib_ops/bert_defs.cc
++++ b/onnxruntime/core/graph/contrib_ops/bert_defs.cc
+@@ -1313,7 +1313,6 @@
+     }
+ 
+     if (ctx.hasInput(2)) {
+-      ONNX_NAMESPACE::TensorShapeProto output_shape;
+       propagateShapeFromInputToOutput(ctx, 0, 0);
+     } else {  // packed QKV
+       ONNX_NAMESPACE::TensorShapeProto output_shape;

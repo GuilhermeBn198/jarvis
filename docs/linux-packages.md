@@ -3,6 +3,46 @@
 O porte ainda está em validação. A disponibilidade de uma receita não significa
 que áudio, captura e controle foram verificados em todas as distribuições.
 
+## NixOS
+
+A flake da raiz fornece `jarvis-assistant` para x86_64-linux e aarch64-linux.
+Ela fixa nixpkgs pelo `flake.lock`, compila o overlay com Rust e monta o runtime
+Python imutável com dependências do nixpkgs e Piper 1.8.0 fixado. A instalação
+não executa pip nem npm. O pacote coloca a aplicação sob o prefixo do Nix Store
+e adiciona os binários de áudio e controle ao wrapper do launcher.
+
+Instale diretamente pelo Nix:
+
+```sh
+nix --extra-experimental-features "nix-command flakes" profile install .#jarvis-assistant
+jarvis --doctor
+```
+
+Depois de compilar um output, o ciclo de instalação, verificação do runtime,
+remoção e preservação dos dados pode ser repetido em um ambiente Nix descartável:
+
+```sh
+sh scripts/test-nix-package.sh "$(readlink -f ./dist/nix/jarvis-assistant)"
+```
+
+Para incluir também o smoke do overlay X11 em Xvfb/AT-SPI, instale os pacotes
+de teste `xvfb`, `dbus-x11`, `python3-gi`, `gir1.2-atspi-2.0` e `at-spi2-core`
+e acrescente `--gui` ao comando.
+
+Ou construa um link do pacote para inspeção:
+
+```sh
+scripts/build-package.sh --target nix --output "$PWD/dist/nix"
+```
+
+Remova o perfil com `nix profile list` para localizar o índice do Jarvis e
+`nix profile remove <índice>`. Em x86_64, o build, a instalação no perfil,
+`jarvis --doctor` e o smoke do overlay sob Xvfb/D-Bus passaram em um SDK Nix.
+Esse smoke confirmou reabertura e saída pela interface; ARM64 e validação numa
+sessão NixOS real continuam pendentes. Veja o registro em
+`docs/notes/linux-verification.md`.
+
+
 ## Arch Linux
 
 No checkout, em ambiente Arch da mesma arquitetura do pacote:
@@ -15,12 +55,21 @@ jarvis --download-voice
 jarvis-overlay
 ```
 
-Para ARM64, use ambiente Arch Linux ARM e `--arch aarch64`. Essa arquitetura
-está declarada na receita, mas ainda não foi compilada nem validada.
+Para ARM64, use ambiente Arch Linux ARM e `--arch aarch64`. O pacote foi
+compilado e passou pelo ciclo de instalação, verificação do overlay em Xvfb e
+remoção sob QEMU; o `makepkg` do Arch Linux ARM gera `.pkg.tar.xz` por padrão.
+O teste em hardware ARM físico e numa sessão desktop/áudio completa ainda está
+pendente.
 O pacote inclui overlay, plugins, MCP, agente e dependências Python privadas.
 Os wheels são vinculados à versão minor do Python da distribuição; uma atualização
 de Python exige reconstruir o pacote. A instalação não executa pip ou npm.
 Modelos, configuração e autenticação ficam nos diretórios do usuário.
+
+Em container Arch rolling x86_64, o pacman atualizou o artefato anterior
+`0.1.0-1` para o pacote reconstruído do código atual (`0.1.0-2` de teste).
+`jarvis --doctor`, OpenCode 1.18.23, `pacman -Qkk`, a preservação do arquivo de
+dados do usuário e a remoção passaram. O número de revisão `-2` foi usado só no
+ensaio; não altera a revisão da receita publicada no checkout.
 
 ## Debian
 
@@ -43,7 +92,9 @@ o novo DEB com `apt install ./caminho/do/pacote.deb`; para remover, use
 Os DEBs x86_64 e ARM64 foram compilados no Debian 13 e passaram pela instalação com apt,
 diagnóstico, imports, verificação de arquivos e remoção em container limpo,
 preservando o dado de usuário usado no teste. O teste de abertura, segunda execução e saída da interface passou em X11
-isolado. Atualização de versão e uso completo no desktop continuam pendentes.
+isolado. A atualização Debian x86_64 de `0.1.0-1` para uma reconstrução de teste
+`0.1.0-2` passou com `apt`, preservando dados e integridade; atualização ARM64 e
+uso completo no desktop continuam pendentes.
 
 ## Ubuntu 24.04
 
@@ -87,8 +138,19 @@ interface em X11 isolado, saída e remoção preservando o dado de teste.
 Não substituem a matriz de áudio, portais, GNOME/KDE e sessões reais.
 Atualizações de versão dessas cinco famílias continuam pendentes.
 
-Alpine e RHEL 10 têm receitas adicionais em validação, descritas abaixo.
-Os demais alvos permanecem explicitamente pendentes em `packaging/targets.json`.
+Alpine 3.24 e RHEL 10 também passaram por smoke instalado em x86_64 e ARM64;
+as lacunas de desktop, áudio e atualização entre versões estão descritas abaixo.
+Slackware current tem um SlackBuild local; build, instalação e imports do runtime
+foram exercitados em container x86_64, incluindo a reinicialização isolada do
+overlay e remoção preservando os dados do usuário. O catálogo registra
+**installed-smoke** para x86_64. A receita inclui xdotool, xclip e wl-clipboard
+compilados de revisões fixas porque não há pacotes oficiais current para esses
+helpers; desktop e áudio reais seguem pendentes.
+Solus tem uma receita `package.yml`; build e ciclo eopkg foram validados em
+x86_64, incluindo imports privados, integridade, relançamento isolado do overlay,
+remoção e preservação dos dados do usuário. Desktop e áudio reais continuam
+pendentes. Guix tem receita local e passou por build e ciclo de perfil instalado
+em container GNU Guix x86_64; isso ainda não valida desktop ou áudio reais.
 Veja também os testes reais registrados em `docs/notes/linux-verification.md`.
 
 Os downloads do agente usam URLs e integridade SHA512 fixadas em
@@ -124,8 +186,11 @@ O arquivo `.src.rpm` contém fontes e receita e não instala a aplicação.
 
 O RPM Fedora 44 x86_64 passou pela instalação com dnf, doctor, imports, versão
 do agente, presença de pactl, verificação rpm e remoção com preservação do dado
-de usuário usado no teste. Não há RPM publicado em repositório oficial. O teste gráfico básico em X11
-isolado passou; a validação do desktop completo permanece pendente. O arquivo `packaging/targets.json` registra as famílias previstas,
+de usuário usado no teste. Também passou por uma atualização real de `0.1.0-1`
+para `0.1.0-2` com DNF, preservando os dados e passando `rpm -V`; o ciclo do
+pacote atualizado e o relançamento do overlay em Xvfb também passaram. Não há
+RPM publicado em repositório oficial. A validação do desktop completo e do
+áudio físico permanece pendente. O arquivo `packaging/targets.json` registra as famílias previstas,
 separa receita disponível de validação e marca explicitamente os alvos cuja
 implementação ainda está pendente. Suporte ARM64 declarado é um alvo de build,
 não evidência de execução nessa arquitetura.
@@ -143,8 +208,10 @@ A receita própria está em `packaging/rpm/suse`. Ela usa WebKit 4.1 fornecido p
 openSUSE. A CI 38797751372 validou builds e instalação em x86_64 e ARM64,
 imports de voz/MCP/AT-SPI, integridade RPM, remoção e preservação de dados.
 O teste gráfico isolado confirmou que uma segunda abertura mantém a janela
-original e que a saída pela interface funciona. Voz e portais em desktops
-openSUSE completos ainda precisam de validação.
+original e que a saída pela interface funciona. A atualização de `0.1.0-1` para
+`0.1.0-2` pelo Zypper também passou, preservando dados do usuário e verificando
+a integridade RPM. Voz e portais em desktops openSUSE completos ainda precisam
+de validação.
 
 ```sh
 docker build -f packaging/rpm/suse/Dockerfile -t jarvis-linux-suse:local .
@@ -274,12 +341,23 @@ Mesa, o XBPS instalou Mesa automaticamente pela dependência declarada. Doctor,
 imports/ABI privados, recursos, integridade, janela X11 em Xvfb, remoção e
 preservação de dados passaram. O artefato e o log de validação estão em
 `.superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-native-artifacts` e
-`void-glibc-xbps-src-v2-lifecycle.log`. A validação não cobre desktop real nem
-áudio; a arquitetura aarch64 também segue pendente.
+`void-glibc-xbps-src-v2-lifecycle.log`. Também passou uma atualização XBPS da
+revisão `_1` para `_2`, com doctor antes e depois e sentinel dos dados do usuário
+preservado; isso não substitui atualização entre versões de aplicativo
+publicadas. Desktop real, áudio e aarch64 seguem pendentes.
 
-A variante musl depende da construção nativa do ONNX Runtime, ausente nos
-repositórios Void consultados; ela não reutiliza as bibliotecas glibc. Void
-musl continua **não verificado** no catálogo.
+A variante musl tem uma receita XBPS em `packaging/void-musl/template`, que
+compila ONNX Runtime 1.24.4 dentro do build nativo em vez de reutilizar wheels
+glibc. A revisão `_2` foi construída por `xbps-src` e passou pelo ciclo XBPS
+x86_64: instalação, `jarvis --doctor`, ABI/imports privados e AT-SPI, smoke
+Xvfb de xdotool/xclip, reabertura do overlay, verificação do banco de pacotes,
+remoção e preservação de dados do usuário. O artefato e o log estão em
+`.superpowers/sdd/2026-10-14-jarvis-linux/void-musl-native-artifacts` e
+`void-musl-native-lifecycle.log`. Desktop real, áudio, portais, atualização
+entre versões reais e aarch64 continuam pendentes. O XBPS também passou uma
+atualização controlada da revisão `_1` para `_2`, com `jarvis --doctor` antes e
+depois e sentinel dos dados do usuário preservado; isso ainda não substitui uma
+atualização entre versões de aplicativo publicadas.
 
 ### Gentoo rolling: pacote local em validação
 
@@ -299,3 +377,136 @@ validação estão em `.superpowers/sdd/2026-10-14-jarvis-linux/gentoo-native-ar
 e `gentoo-native-revised-lifecycle.log`. O catálogo marca **installed-smoke**
 somente para x86_64. Atualização e aarch64 seguem pendentes. O overlay é local e
 não implica publicação no repositório oficial.
+
+### Slackware current: SlackBuild local
+
+`packaging/slackware/jarvis.SlackBuild` produz um pacote `.txz` local para
+x86_64. O ambiente de build precisa de Python 3.10+, pip, Rust/Cargo, Node.js/
+npm, pkg-config e headers GTK+3/WebKitGTK 4.1. O SlackBuild verifica essas
+ferramentas antes de compilar. Slackware não resolve dependências de runtime
+automaticamente: instale primeiro as dependências listadas em
+`/usr/doc/jarvis-assistant-0.1.0/README` dentro do pacote.
+
+WebKitGTK 4.1 não aparece na
+[lista de pacotes oficial do Slackware current](https://mirrors.slackware.com/slackware/slackware64-current/PACKAGES.TXT).
+No Slackware 15.0, há um SlackBuild comunitário para
+[`webkit2gtk4.1`](https://slackbuilds.org/repository/15.0/libraries/webkit2gtk4.1/),
+validado para essa versão e que requer unifdef, libsoup3, wpebackend-fdo,
+bubblewrap, geoclue2 e xdg-dbus-proxy. No current x86_64, o
+repositório comunitário [slackware.lngn.net](https://slackware.lngn.net/) publica
+o conjunto `webkitgtk`; depois de configurar o slackpkg+ conforme as instruções
+do repositório, instale-o com `slackpkg install webkitgtk`. O [Python 3 do
+Slackware 15.0](https://packages.slackware.com/?p=python3-3.9.25-x86_64-1_slack15.0.txz&r=slackware64-15.0)
+é 3.9, abaixo do mínimo 3.10 do projeto; é necessário
+disponibilizar Python 3.10+ no ambiente de build e runtime dessa versão.
+
+```sh
+scripts/build-package.sh --target slackware --arch x86_64 --output "$PWD/dist/native"
+sudo installpkg dist/native/jarvis-assistant-0.1.0-x86_64-1_local.txz
+jarvis --doctor
+# Após gerar uma revisão superior, por exemplo com BUILD=2:
+BUILD=2 scripts/build-package.sh --target slackware --arch x86_64 --output "$PWD/dist/upgrade"
+sudo upgradepkg dist/native/jarvis-assistant-0.1.0-x86_64-1_local.txz%dist/upgrade/jarvis-assistant-0.1.0-x86_64-2_local.txz
+sudo removepkg jarvis-assistant-0.1.0-x86_64-2_local
+```
+
+Em um container Slackware descartável com dependências gráficas e de áudio já
+instaladas, valide o ciclo completo e o overlay X11 isolado usando:
+
+```sh
+scripts/test-native-package.sh slackware "$PWD/dist/native/jarvis-assistant-0.1.0-x86_64-1_local.txz"
+```
+
+Slackware 15.0 fornece Python 3.9, abaixo do mínimo de Python 3.10 deste
+projeto; o alvo de build é Slackware current. A receita compila xdotool
+4.20260303.1, xclip 0.13 e wl-clipboard 2.3.0 de commits fixos e os instala em
+`/usr/lib/jarvis/bin`, priorizado pelo launcher. As licenças dos helpers são
+incluídas no pacote. O build x86_64 no container current passou e o pacote foi
+instalado com `installpkg`;
+`jarvis --doctor`, OpenCode 1.18.23, imports Python privados e o typelib AT-SPI
+passaram. O teste da janela X11 e da remoção preservando um sentinel também
+passou. O overlay compilado no Slackware passou também pelo teste de reabertura
+e saída sob Weston/Wayland em um container Gentoo; esse teste cruzado não
+substitui Wayland nativo no Slackware. Piper também sintetizou offline uma frase
+para WAV mono a 22.050 Hz com o modelo baixado e verificado pelo projeto. O
+catálogo continua como `unverified`: as bibliotecas transitivas oficiais foram
+instaladas e verificadas por MD5; `ldd` não encontrou dependências ausentes em
+ffmpeg, ffplay e pactl. `pactl --version`, captura FFmpeg para ALSA `null`,
+reprodução via ffplay nesse dispositivo e a captura `capture.record` do Jarvis
+com `AUDIO_BACKEND=alsa` passaram. Piper também sintetizou e reproduziu uma
+frase via ALSA `null`. Microfone/alto-falantes físicos, servidor PulseAudio em
+sessão, clipboard Wayland com seat, atualização entre versões distintas e
+aarch64 permanecem pendentes. O catálogo registra **installed-smoke** para
+x86_64. Para instalações mínimas,
+confira bibliotecas transitivas de ffmpeg/ffplay com `ldd /usr/bin/ffmpeg
+/usr/bin/ffplay`; o fechamento pode incluir muitos pacotes, inclusive
+`vulkan-sdk`. WebKitGTK 4.1 no current foi obtido do repositório comunitário
+citado acima.
+
+No catálogo oficial current, `ffmpeg` fornece `ffmpeg`/`ffplay`, `pulseaudio`
+fornece `pactl` e `alsa-utils` fornece `arecord`; xdotool, wl-clipboard e xclip
+não aparecem como pacotes oficiais. O SlackBuild compila os três helpers e os
+inclui no pacote Jarvis. `scripts/test-native-package.sh` verifica os comandos
+depois da instalação e executa um teste de xdotool e roundtrip xclip em Xvfb.
+Build e roundtrip X11 passaram no current; clipboard Wayland ainda requer um
+compositor com seat.
+
+### Solus: receita eopkg e smoke instalado
+
+`packaging/solus/package.yml` descreve a receita nativa do Solus para x86_64.
+O driver cria um arquivo-fonte do checkout, injeta seu SHA256 e URI local na
+receita e chama `solbuild`; assim, alterações locais ainda não publicadas podem
+ser compiladas. Inicialize e atualize o ambiente de build do Solus uma vez com
+`sudo solbuild init -u`, então construa e instale:
+
+```sh
+scripts/build-package.sh --target solus --arch x86_64 --output "$PWD/dist/solus"
+sudo eopkg install ./dist/solus/jarvis-assistant-0.1.0-1-1-x86_64.eopkg
+jarvis --doctor
+```
+
+Para atualizar, instale o novo `.eopkg` com `sudo eopkg install
+./dist/solus/<arquivo>.eopkg`; para remover, use `sudo eopkg remove
+jarvis-assistant`. O pacote foi compilado com `solbuild`, instalado e removido
+com eopkg em Solus 4.9 x86_64. Imports privados, ABI, OpenCode 1.18.23,
+integridade, relançamento isolado da janela e preservação dos dados passaram; o
+catálogo registra **installed-smoke** para x86_64. Desktop e áudio reais,
+atualização de versão e Wayland nativo continuam pendentes. O log está em
+`docs/notes/linux-verification.md` e no artefato local indicado na matriz.
+`networking: true` permite que o build atual baixe dependências npm/Python e o
+agente; a instalação do pacote não baixa dependências da aplicação.
+Depois de gerar o `.eopkg`, rode o ciclo em um container Solus x86_64:
+
+```sh
+scripts/test-native-package.sh solus "$PWD/dist/solus/jarvis-assistant-0.1.0-1-1-x86_64.eopkg"
+```
+
+### GNU Guix: pacote nativo local
+
+`packaging/guix/jarvis.scm` define o pacote Guix para x86_64. O driver cria um
+arquivo-fonte determinístico, instala `node_modules` a partir do lockfile e
+baixa o OpenCode fixado antes de chamar `guix build`; os crates Rust são
+declarados por hashes Guix em `packaging/guix/cargo-crate-sources.scm` e usados
+offline dentro da derivação.
+
+Em um sistema com GNU Guix, Python 3, npm e acesso aos substituters:
+
+```sh
+scripts/build-package.sh --target guix --arch x86_64 --output "$PWD/dist/guix"
+guix package --install "$(readlink -f ./dist/guix/jarvis-assistant)"
+jarvis --doctor
+```
+
+Em um container GNU Guix descartável, o ciclo de instalação em perfil isolado,
+imports Python, remoção e preservação de dados pode ser exercitado com:
+
+```sh
+sh scripts/test-guix-package.sh "$(readlink -f ./dist/guix/jarvis-assistant)"
+```
+
+O build local do Guix e o smoke de perfil instalado passaram em x86_64 num
+container GNU Guix (7 testes Rust, imports Python via caminho do launcher,
+OpenCode 1.18.23, remoção do perfil e preservação dos dados do usuário). Isso
+valida o pacote e seu lifecycle headless; desktop real, áudio/microfone e
+Wayland/X11 permanecem sem teste Guix. A receita cobre x86_64; aarch64 ainda
+precisa de uma fonte ONNX Runtime compatível e validação própria.

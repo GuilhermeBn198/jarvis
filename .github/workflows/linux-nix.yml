@@ -1,0 +1,54 @@
+name: Linux Nix package
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/linux-port, main]
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'flake.nix', 'flake.lock', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-nix.yml']
+  pull_request:
+    paths: ['voice/**', 'gui/**', 'mcp_servers/**', '.opencode/**', 'packaging/**', 'scripts/**', 'flake.nix', 'flake.lock', 'jarvis', 'LICENSE', 'opencode.json', '.github/workflows/linux-nix.yml']
+permissions:
+  contents: read
+concurrency:
+  group: linux-nix-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  nix:
+    name: nix-${{ matrix.system }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {system: x86_64-linux, runner: ubuntu-24.04}
+          - {system: aarch64-linux, runner: ubuntu-24.04-arm}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install pinned Nix
+        shell: bash
+        run: |
+          sudo mkdir -p /nix
+          sudo chown "$(id -u):$(id -g)" /nix
+          curl --fail --silent --show-error --location \
+            https://releases.nixos.org/nix/nix-2.35.1/install \
+            --output "$RUNNER_TEMP/nix-install"
+          NIX_INSTALLER_NO_MODIFY_PROFILE=1 \
+            sh "$RUNNER_TEMP/nix-install" --no-daemon
+          echo "$HOME/.nix-profile/bin" >> "$GITHUB_PATH"
+          mkdir -p "$HOME/.config/nix"
+          printf '%s\n' 'experimental-features = nix-command flakes' \
+            > "$HOME/.config/nix/nix.conf"
+      - name: Install X11 and accessibility test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb dbus-x11 python3-gi gir1.2-atspi-2.0 at-spi2-core
+      - name: Build package and resolve its store output
+        id: package
+        env:
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          output=$(nix --extra-experimental-features 'nix-command flakes' \
+            build -L --no-link --print-out-paths ".#packages.${SYSTEM}.jarvis-assistant")
+          echo "store=$output" >> "$GITHUB_OUTPUT"
+      - name: Install into a disposable profile and verify runtime
+        run: sh scripts/test-nix-package.sh '${{ steps.package.outputs.store }}' --gui

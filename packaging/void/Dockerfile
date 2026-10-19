@@ -1,15 +1,19 @@
 FROM ghcr.io/void-linux/void-glibc-full:latest AS bootstrap
+ARG JARVIS_VOID_REPOSITORY_BASE=https://repo-default.voidlinux.org/current
 RUN xbps-install -Syu xbps && xbps-install -Syu
 # base-chroot intentionally replaces normal shell/grep/util-linux packages.
 # Install into an empty root, as required by upstream's ethereal build mode.
+COPY packaging/void/repository-url.sh /usr/local/bin/jarvis-void-repository-url
 RUN mkdir -p /rootfs/var/db/xbps /rootfs/var/cache/xbps /rootfs/etc/xbps.d && \
     cp -a /var/db/xbps/keys /rootfs/var/db/xbps/ && \
     cp -a /var/cache/xbps/. /rootfs/var/cache/xbps/ && \
-    printf '%s\n' 'repository=https://repo-default.voidlinux.org/current/bootstrap' \
-    'repository=https://repo-default.voidlinux.org/current' > /rootfs/etc/xbps.d/00-repositories.conf && \
-    xbps-install -r /rootfs -c /var/cache/xbps -Sy \
-    -R https://repo-default.voidlinux.org/current \
-    -R https://repo-default.voidlinux.org/current/bootstrap \
+    task_arch=$(xbps-uhelper arch) && \
+    task_repo=$(jarvis-void-repository-url "$task_arch" main) && \
+    task_bootstrap=$(jarvis-void-repository-url "$task_arch" bootstrap) && \
+    printf 'repository=%s\nrepository=%s\n' "$task_bootstrap" "$task_repo" > /rootfs/etc/xbps.d/00-repositories.conf && \
+    XBPS_ARCH="$task_arch" xbps-install -r /rootfs -c /var/cache/xbps -Sy \
+    -R "$task_repo" \
+    -R "$task_bootstrap" \
     base-chroot git rust cargo nodejs python3 python3-devel \
     python3-pip pkg-config gtk+3-devel libwebkit2gtk41-devel libffi-devel ca-certificates && \
     rm -rf /rootfs/var/cache/xbps

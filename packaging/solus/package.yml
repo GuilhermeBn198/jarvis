@@ -1,0 +1,53 @@
+# Local Solus recipe. scripts/build-package.sh injects a checksummed source
+# archive from the current checkout before invoking solbuild.
+name       : jarvis-assistant
+version    : '0.1.0'
+release    : 1
+source     :
+    - "@JARVIS_SOURCE_URI@" : "@JARVIS_SOURCE_SHA256@"
+homepage   : https://github.com/GuilhermeBn198/jarvis
+license    :
+    - Apache-2.0
+    - MIT
+    - GPL-3.0-or-later
+component  : system.utils
+summary    : Assistente por voz com overlay Linux nativo
+description: |
+    Assistente por voz com reconhecimento, síntese, ferramentas locais e
+    overlay nativo. Instalação e remoção são controladas pelo eopkg.
+networking : true
+strip      : false
+builddeps  :
+    - gobject-introspection
+    - libgtk-3-devel
+    - libwebkit-gtk41-devel
+    - nodejs
+    - pip
+    - pkgconf
+    - python-gobject
+    - python3
+    - rust
+rundeps    :
+    - alsa-utils
+    - at-spi2
+    - espeak-ng
+    - ffmpeg
+    - gobject-introspection
+    - libgtk-3
+    - libwebkit-gtk41
+    - pulseaudio-utils
+    - python-gobject
+    - python3
+    - wl-clipboard
+    - xclip
+    - xdotool
+build      : |
+    cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
+    npm ci --prefix .opencode --ignore-scripts
+    python3 scripts/fetch-opencode.py --target x86_64-glibc --output opencode-package
+install    : |
+    python3 scripts/prepare-package.py --prefix /usr --destdir "$installdir" \
+        --overlay gui/src-tauri/target/release/jarvis-overlay \
+        --python /usr/bin/python3 --opencode opencode-package
+    %install_license LICENSE
+    %install_file docs/linux.md "$installdir/usr/share/doc/jarvis-assistant/linux.md"

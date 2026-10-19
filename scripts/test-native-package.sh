@@ -6,6 +6,8 @@ task_family=${1:?familia obrigatoria}
 task_package=${2:?artefato obrigatorio}
 task_checks=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
 . /etc/os-release
+PATH="/usr/lib/jarvis/bin:$PATH"
+export PATH
 task_user_data=$(mktemp -d)
 export XDG_DATA_HOME=$task_user_data
 export PYTHONDONTWRITEBYTECODE=1
@@ -15,13 +17,21 @@ case "$task_family:$ID" in
     debian:debian|ubuntu:ubuntu) apt-get update; apt-get install -y --no-install-recommends -o "Dpkg::Options::=--path-include=/usr/share/doc/*" "$task_package" xvfb dbus-daemon ;;
     fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" xorg-x11-server-Xvfb dbus-daemon ;;
     suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1-daemon ;;
-    arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
+    arch:arch|arch:archarm) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
     alpine:alpine)
         if [ "${JARVIS_APK_REQUIRE_SIGNATURE:-0}" = 1 ]; then
             apk add --no-cache "$task_package" xvfb dbus
         else
             apk add --no-cache --allow-untrusted "$task_package" xvfb dbus
         fi
+        ;;
+    slackware:slackware)
+        installpkg "$task_package"
+        task_slackware_package=$(basename "$task_package" .txz)
+        ;;
+    solus:solus)
+        eopkg -y install xorg-server-xvfb dbus
+        eopkg -y install "$task_package"
         ;;
     void-glibc:void|void-musl:void)
         task_repository=$(mktemp -d)
@@ -50,7 +60,7 @@ jarvis --doctor
 PYTHONPATH=/usr/lib/jarvis/python /usr/lib/jarvis/runtime/bin/python3 - <<'PY'
 from pathlib import Path
 import importlib,gi,platform,json,sys
-root=Path('/usr/lib/jarvis')
+root=Path('/usr/lib/jarvis').resolve()
 manifest=json.loads((root/'install-manifest.json').read_text())
 assert manifest['python_abi']==f'{sys.version_info.major}.{sys.version_info.minor}'
 assert (root/'runtime/bin/python3').resolve()==Path(sys.executable).resolve()
@@ -71,10 +81,12 @@ gi.require_version('Atspi','2.0')
 from gi.repository import Atspi
 print('Private runtime, resources and AT-SPI typelib passed')
 PY
-for task_tool in ffmpeg ffplay pactl arecord xdotool wl-paste xclip; do command -v "$task_tool"; done
+task_runtime_tools="ffmpeg ffplay pactl arecord xdotool wl-paste xclip"
+for task_tool in $task_runtime_tools; do command -v "$task_tool"; done
 ffmpeg -version >/dev/null
 ffplay -version >/dev/null
 pactl --version
+python3 "$task_checks/test-x11-tools.py"
 if [ "$task_family" = rhel ]; then
     python3 "$task_checks/test-overlay-wayland.py" /usr/bin/jarvis-overlay
 else
@@ -105,9 +117,18 @@ case "$task_family" in
         test -z "$task_changed"
         apk del jarvis-assistant
         ;;
+    slackware) removepkg "$task_slackware_package" ;;
+    solus) eopkg check jarvis-assistant; eopkg -y remove jarvis-assistant ;;
 esac
 test ! -e /usr/bin/jarvis
 test ! -e /usr/bin/jarvis-overlay
 test ! -e /usr/lib/jarvis
 test "$(cat "$XDG_DATA_HOME/jarvis/package-test")" = preserved
-printf '%s\n' 'PASS: package lifecycle/imports/integrity/data preservation and isolated GUI relaunch (full desktop/audio pending)'
+case "$task_family" in
+    slackware)
+        printf '%s\n' 'PASS: package lifecycle/imports/data preservation and isolated GUI relaunch (full desktop/audio pending)'
+        ;;
+    *)
+        printf '%s\n' 'PASS: package lifecycle/imports/integrity/data preservation and isolated GUI relaunch (full desktop/audio pending)'
+        ;;
+esac

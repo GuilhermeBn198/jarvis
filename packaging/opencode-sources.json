@@ -2,29 +2,29 @@
   "x86_64-glibc": {
     "package": "opencode-linux-x64-baseline",
     "version": "1.18.23",
-    "url": "https://registry.npmjs.org/opencode-linux-x64-baseline/-/opencode-linux-x64-baseline-1.18.23.tgz",
-    "integrity": "sha512-yUhBOXfTQour2JCdAkwD3DDqSnyxB0grefwdPqEhYmJHIkYxfJIIzyy6V//pyouvkE0XMouFtiuZXw8S6Wo0iQ==",
+    "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-linux-x64-baseline.tar.gz",
+    "integrity": "sha256:5f375b83a33ac67af12e0767baa3b987c8b9034c8f400f4a2e245c1cf371e897",
     "license": "MIT"
   },
   "aarch64-glibc": {
     "package": "opencode-linux-arm64",
     "version": "1.18.23",
-    "url": "https://registry.npmjs.org/opencode-linux-arm64/-/opencode-linux-arm64-1.18.23.tgz",
-    "integrity": "sha512-g1zDFhuE9FOYwjSGderlu69wfd4GQzS0xsDiIY11QUciuBmM6DrHqLvmhlLFsUVHYVnCPY1YeN1pq5ewE3x72Q==",
+    "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-linux-arm64.tar.gz",
+    "integrity": "sha256:86d3afaf4e8784f9adab189be2a315c12b27ec40a04b70defbe70595c3cc7c65",
     "license": "MIT"
   },
   "x86_64-musl": {
     "package": "opencode-linux-x64-baseline-musl",
     "version": "1.18.23",
-    "url": "https://registry.npmjs.org/opencode-linux-x64-baseline-musl/-/opencode-linux-x64-baseline-musl-1.18.23.tgz",
-    "integrity": "sha512-c1DPxauhzAurlIBhJBr/rokDpc65l084T4qTl36gDDT9Xzc/Nk5Q5yMDaPm1DDI3WeHKDt11MDlxT5AjQW5gtw==",
+    "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-linux-x64-baseline-musl.tar.gz",
+    "integrity": "sha256:af88dbf7fe80961f1fa1cd466ce3a92c20a6bbd161e8ce623168345585febcd6",
     "license": "MIT"
   },
   "aarch64-musl": {
     "package": "opencode-linux-arm64-musl",
     "version": "1.18.23",
-    "url": "https://registry.npmjs.org/opencode-linux-arm64-musl/-/opencode-linux-arm64-musl-1.18.23.tgz",
-    "integrity": "sha512-VyDkzUJfJgkx9h9RhazTW9xeTgSXBmVFPblsbPGBW9tR612f6gjQxfOfu4cpHnQHK1qjuW9ClzLKHWqv3EcJTA==",
+    "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-linux-arm64-musl.tar.gz",
+    "integrity": "sha256:f7488a9d10f4406aa582deca4b54716d0e2f610668524ce5c3697e5e4d61ff51",
     "license": "MIT"
   }
 }

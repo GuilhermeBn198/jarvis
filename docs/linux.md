@@ -2,7 +2,9 @@
 
 O porte está em implementação. Voz, screenshot, ações, contexto AT-SPI,
 arquivos e overlay já têm implementação nativa e evidências no Arch/KDE
-Wayland. Flatpak e pacotes de cada gerenciador ainda não foram entregues.
+Wayland. O Flatpak experimental passou por build e smoke de instalação em
+x86_64 e ARM64; ainda faltam testes completos de desktop/áudio/portais e
+publicação. Pacotes nativos por gerenciador continuam em expansão.
 Veja `docs/notes/linux-verification.md` para os testes e as lacunas atuais.
 
 ## Instalação por fonte
