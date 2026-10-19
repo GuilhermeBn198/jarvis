@@ -137,6 +137,7 @@ stdenvNoCC.mkDerivation {
   pname = "jarvis-assistant";
   version = "0.1.0";
   dontUnpack = true;
+  dontStrip = true;
   nativeBuildInputs = [ python makeWrapper autoPatchelfHook ];
   buildInputs = [ stdenv.cc.cc.lib zlib openssl ] ++ runtimeTools;
   installPhase = ''

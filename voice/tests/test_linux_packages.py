@@ -318,6 +318,8 @@ def test_nix_opencode_binary_is_not_stripped():
     recipe=(ROOT/'packaging/nix/default.nix').read_text()
     opencode=recipe.split('opencode = stdenvNoCC.mkDerivation {',1)[1].split('\n  };',1)[0]
     assert 'dontStrip = true;' in opencode
+    assistant=recipe.split('stdenvNoCC.mkDerivation {',2)[2]
+    assert 'dontStrip = true;' in assistant
 
 
 def test_nix_lifecycle_script_uses_an_isolated_profile_and_preserves_user_data(tmp_path):
