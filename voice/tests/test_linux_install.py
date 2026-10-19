@@ -33,6 +33,21 @@ def test_destdir_stage_keeps_target_prefix(tmp_path):
     assert (stage/'usr/lib/jarvis/mcp_servers/win_context/server.py').is_file()
 
 
+def test_staged_nix_wrapper_keeps_its_wrapped_executable(tmp_path):
+    binary=tmp_path/'jarvis-overlay'
+    wrapped=tmp_path/'.jarvis-overlay-wrapped'
+    wrapped.write_text('#!/bin/sh\nprintf "wrapped executable ran\\n"\n')
+    wrapped.chmod(0o755)
+    binary.write_text('#!/bin/sh\nexec "$(dirname "$0")/.jarvis-overlay-wrapped" "$@"\n')
+    binary.chmod(0o755)
+    prefix=tmp_path/'prefix'
+    subprocess.run(['python3',str(ROOT/'scripts/stage-linux.py'),'--prefix',str(prefix),'--overlay',str(binary)],check=True,capture_output=True,text=True)
+    staged=prefix/'bin'
+    assert (staged/'.jarvis-overlay-wrapped').is_file()
+    result=subprocess.run([str(staged/'jarvis-overlay')],capture_output=True,text=True,check=True)
+    assert result.stdout=='wrapped executable ran\n'
+
+
 def test_packaged_python_directory_is_used_after_relocation(tmp_path):
     import shutil,os
     prefix=tmp_path/'build-prefix'

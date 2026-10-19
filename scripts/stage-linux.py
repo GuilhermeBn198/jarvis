@@ -23,6 +23,9 @@ def stage(prefix: str,destdir: str,overlay: str | None,with_node_modules: bool=F
     if launcher.exists() or launcher.is_symlink():launcher.unlink()
     launcher.symlink_to('../lib/jarvis/jarvis')
     copy(binary,output/'bin/jarvis-overlay')
+    wrapped=binary.with_name(f'.{binary.name}-wrapped')
+    if wrapped.is_file():
+        copy(wrapped,output/'bin'/f'.{binary.name}-wrapped')
     (output/'bin/jarvis-overlay').chmod(0o755)
     copy(ROOT/'packaging/common/jarvis.desktop',output/'share/applications/com.jarvis.overlay.desktop')
     copy(ROOT/'gui/src-tauri/icons/icon.png',output/'share/icons/hicolor/128x128/apps/jarvis.png')
