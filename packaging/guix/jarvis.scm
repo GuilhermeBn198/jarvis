@@ -9,6 +9,7 @@
              (guix utils)
              (gnu packages audio)
              (gnu packages base)
+             (gnu packages check)
              (gnu packages cmake)
              (gnu packages commencement)
              (gnu packages compression)
