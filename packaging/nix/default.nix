@@ -14,6 +14,7 @@
   webkitgtk_4_1,
   libsoup_3,
   glib,
+  mesa,
   ffmpeg,
   pulseaudio,
   alsa-utils,
@@ -95,7 +96,7 @@ let
     doCheck = false;
     dontUseCargoInstallHook = true;
     nativeBuildInputs = [ pkg-config wrapGAppsHook3 ];
-    buildInputs = [ gtk3 webkitgtk_4_1 libsoup_3 glib ];
+    buildInputs = [ gtk3 webkitgtk_4_1 libsoup_3 glib mesa ];
     installPhase = ''
       runHook preInstall
       mkdir -p "$out/bin"
@@ -147,6 +148,7 @@ stdenvNoCC.mkDerivation {
     webkitgtk_4_1
     libsoup_3
     glib
+    mesa
   ] ++ runtimeTools;
   installPhase = ''
     runHook preInstall
