@@ -500,7 +500,7 @@ jarvis --doctor
 Em uma máquina Guix AArch64, use `--arch aarch64`. A receita usa uma variante
 oneDNN que desativa apenas os testes e benchmarks incompatíveis com AArch64,
 mantendo o recurso experimental requerido pelo PyTorch. A avaliação da receita
-cross-target passou; o build completo AArch64 ainda está em validação.
+para AArch64 passou; o build completo AArch64 ainda está em validação.
 
 Em um container GNU Guix descartável, o ciclo de instalação em perfil isolado,
 imports Python, remoção e preservação de dados pode ser exercitado com:
