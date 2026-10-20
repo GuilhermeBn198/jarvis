@@ -23,6 +23,7 @@
              (gnu packages machine-learning)
              (gnu packages node)
              (gnu packages ninja)
+             (gnu packages oneapi)
              (gnu packages pulseaudio)
              (gnu packages pkg-config)
              (gnu packages python)
