@@ -14,6 +14,7 @@
   webkitgtk_4_1,
   libsoup_3,
   glib,
+  libglvnd,
   mesa,
   ffmpeg,
   pulseaudio,
@@ -97,6 +98,19 @@ let
     dontUseCargoInstallHook = true;
     nativeBuildInputs = [ pkg-config wrapGAppsHook3 ];
     buildInputs = [ gtk3 webkitgtk_4_1 libsoup_3 glib mesa ];
+    # WebKit loads EGL and Mesa's DRI drivers with dlopen(), so autoPatchelf
+    # cannot discover them from the overlay's ELF dependencies. Preserve the
+    # host's graphics ICDs while making the Nix-provided software drivers
+    # available for headless sessions and systems without a NixOS driver link.
+    wrapPrefixVariables = "LD_LIBRARY_PATH LIBGL_DRIVERS_PATH __EGL_VENDOR_LIBRARY_DIRS";
+    LD_LIBRARY_PATH = lib.makeLibraryPath [ libglvnd mesa ];
+    LIBGL_DRIVERS_PATH = "/run/opengl-driver/lib/dri:${mesa}/lib/dri";
+    __EGL_VENDOR_LIBRARY_DIRS = lib.concatStringsSep ":" [
+      "/run/opengl-driver/share/glvnd/egl_vendor.d"
+      "/etc/glvnd/egl_vendor.d"
+      "/usr/share/glvnd/egl_vendor.d"
+      "${mesa}/share/glvnd/egl_vendor.d"
+    ];
     installPhase = ''
       runHook preInstall
       mkdir -p "$out/bin"
