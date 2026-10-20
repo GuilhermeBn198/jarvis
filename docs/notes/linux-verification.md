@@ -545,3 +545,17 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
 - Isto valida somente o lifecycle do overlay no KDE Wayland. O pacote instalado,
   concessões/revogação dos portais, áudio físico e outros desktops continuam
   pendentes.
+
+### Screenshot Wayland e testes D-Bus locais — 2026-10-20
+
+- Com `dbus-next==0.2.3` em um venv temporário, passaram os 12 testes do
+  harness privado D-Bus em `voice/tests/test_portal.py` e os 8 testes de
+  screenshot/X11 em `voice/tests/test_linux_screen.py`; nenhum ficou pulado.
+- Os testes confirmam despacho Wayland ao portal, validação/cópia da URI PNG,
+  tamanho da captura X11, falha sem retornar imagem antiga e erro explícito em
+  sessão headless. Eles usam portal simulado e não provam consentimento,
+  concessão ou revogação em GNOME/KDE reais.
+- Logs e hashes: `.superpowers/sdd/2026-10-14-jarvis-linux/arch-private-dbus-portal-tests-2026-10-20.log`
+  (`f8c66788eb652ca13bf9db1c01c05789f08d66b365605e3290b05ccc3c56b5a8`) e
+  `.superpowers/sdd/2026-10-14-jarvis-linux/arch-linux-screen-portal-tests-2026-10-20.log`
+  (`46531d98af9cf9dc800252a196ea7d13e555233134f913a8cd56263e6045ef03`).

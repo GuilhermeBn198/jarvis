@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T08:49:46+00:00",
+  "verified_at_utc": "2026-10-20T08:54:43+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1332,16 +1332,22 @@
       "package": "source-tests",
       "capability": "portal_private_dbus_lifecycle",
       "status": "passed",
-      "command": "venv with dbus-next==0.2.3: python -m pytest -q -rs voice/tests/test_portal.py",
+      "command": "temporary venv with dbus-next==0.2.3: python -m pytest voice/tests/test_portal.py -q -rs",
       "evidence": [
         {
           "kind": "local_validation_log",
           "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-private-dbus-portal-tests-2026-10-18.log",
           "artifact_sha256": "638946dbfd890f8b2866e8b8abf520364a4af9df6a8376dcb1f824f83c4ca036",
           "passed": 12
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-private-dbus-portal-tests-2026-10-20.log",
+          "sha256": "f8c66788eb652ca13bf9db1c01c05789f08d66b365605e3290b05ccc3c56b5a8",
+          "passed": 12
         }
       ],
-      "notes": "Private D-Bus portal harness only; real GNOME/KDE portal grants and revocation remain pending."
+      "notes": "The private D-Bus portal harness passed 12 tests, including response, denial, cancellation, timeout, session and invalid-address cases. Real GNOME/KDE portal authorization and revocation remain pending."
     },
     {
       "target": "arch",
@@ -1728,6 +1734,29 @@
       ],
       "source_commit": "cba55c571cc4fba0feaab4dd8fa8fa44ca6ba086",
       "notes": "On the active KDE Plasma Wayland compositor, the native GTK overlay launched, an accessible primary window remained present across a second launch, and the primary exited cleanly through its accessible controls. This used a private D-Bus session and temporary user configuration; installed package lifecycle, portal authorization/revocation, audio, and other desktops remain unverified."
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "portal and X11 unit fixtures",
+      "session": "pytest temporary venv",
+      "package": "source tests",
+      "capability": "linux_screen_portal_unit_tests",
+      "status": "passed",
+      "command": "temporary venv with dbus-next==0.2.3: python -m pytest voice/tests/test_linux_screen.py -q -rs",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-linux-screen-portal-tests-2026-10-20.log",
+          "sha256": "46531d98af9cf9dc800252a196ea7d13e555233134f913a8cd56263e6045ef03",
+          "passed": 8
+        }
+      ],
+      "source_commit": "cba55c571cc4fba0feaab4dd8fa8fa44ca6ba086",
+      "notes": "Eight unit tests passed for Wayland portal dispatch, portal URI image copying/validation, X11 root capture sizing, failed capture safety, and headless behavior. This is mocked/unit coverage; real portal grants and screenshot consent are still unverified."
     }
   ],
   "pending_gates": [
