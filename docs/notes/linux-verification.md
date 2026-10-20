@@ -472,3 +472,17 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
 - Logs locais: `suse-package-upgrade-2026-10-18.log` e
   `suse-native-package-lifecycle-2026-10-18.log`; artefatos e hashes estão na
   matriz. Isso não cobre openSUSE Leap, desktop real, Wayland nem áudio físico.
+
+### AlmaLinux 10 — ciclo RPM e Xwayland headless — 2026-10-20
+
+- A execução CI `39348581463` passou nos jobs x86_64 e AArch64. O RPM foi
+  instalado, inspecionado e removido em containers limpos; `jarvis --doctor`,
+  ABI e recursos do runtime privado, imports AT-SPI, integridade e preservação
+  do sentinel de dados passaram.
+- RHEL 10 não fornece Xvfb nesse ambiente. O teste X11 usa o `xwfb-run` de
+  `xwayland-run` com `-c weston`, executa o roundtrip real de xdotool e xclip
+  sobre Xwayland headless e, em seguida, valida o overlay nativo em Weston
+  headless. Logs CI e arquiteturas estão em `linux-matrix.json`.
+- O resultado valida os testes headless e o ciclo de pacote; não substitui
+  sessões GNOME/KDE reais, permissões de portal nem captura/reprodução em
+  hardware de áudio.
