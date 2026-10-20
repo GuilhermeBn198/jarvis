@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T03:42:02+00:00",
+  "verified_at_utc": "2026-10-20T03:50:04+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1466,6 +1466,28 @@
       ],
       "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
       "notes": "Ubuntu 24.04 x86_64 disposable-container test: installed 0.1.0-1, upgraded through APT to 0.1.0-2, checked doctor/runtime and isolated Xvfb GUI lifecycle, removed package, and verified unchanged config/model-data/cache hashes. Package was built in CI; upgrade test runner came from commit 4eecb4f."
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "KDE Plasma",
+      "session": "wayland",
+      "package": "source checkout",
+      "capability": "audio_server_source_enumeration",
+      "status": "passed",
+      "command": "./jarvis --doctor; pactl info; pactl list short sources",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/arch-kde-wayland-audio-discovery-2026-10-20.log",
+          "sha256": "340178410dcff006e20f92240a6b8f107cdae82e870e246cd4a79ffa87aba0fa"
+        }
+      ],
+      "source_commit": "4810480cc27787daf9f098bd5dd4bc3495c02824",
+      "notes": "Jarvis doctor recognized Linux and Wayland. PipeWire 1.6.9 exposed a default microphone source through the PulseAudio protocol. No audio was recorded; microphone capture/calibration, TTS model synthesis and Wayland portal/UI checks remain unverified."
     }
   ],
   "pending_gates": [
