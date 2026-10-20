@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T03:10:23+00:00",
+  "verified_at_utc": "2026-10-20T03:22:34+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1302,6 +1302,38 @@
         }
       ],
       "notes": "AArch64 bundle built on an ARM runner, installed and inspected in the sandbox. Doctor and imports passed. The CI smoke does not test uninstall, real desktop portals or physical audio; those remain separate validation gates."
+    },
+    {
+      "target": "ubuntu",
+      "distro": "ubuntu",
+      "version": "24.04",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "Xvfb fixture",
+      "session": "x11",
+      "package": "deb",
+      "capability": "native_package_upgrade_data_preservation",
+      "status": "passed",
+      "command": "apt install 0.1.0-1; apt install 0.1.0-2; jarvis --doctor; dpkg -V; apt remove",
+      "evidence": [
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/ubuntu-upgrade-artifacts/jarvis-assistant_0.1.0-1_amd64.deb",
+          "sha256": "50e84337ab358c0c80cef6a2303f03948f9ab972597c77414ccdb8027f3782c0"
+        },
+        {
+          "kind": "local_package_artifact",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/ubuntu-upgrade-artifacts/jarvis-assistant_0.1.0-2_amd64.deb",
+          "sha256": "d6f82c7f663aca80f579038943008f53b9db59cc5932dc583d652c1ab51c3af3"
+        },
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/ubuntu-package-upgrade-2026-10-20.log",
+          "sha256": "a77a43f47fa0139601371d583eb32b481cf17c2134c88c0952a11d0e7b7979fa"
+        }
+      ],
+      "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+      "notes": "Ubuntu 24.04 x86_64 disposable-container test: installed 0.1.0-1, upgraded through APT to 0.1.0-2, checked doctor/runtime and isolated Xvfb GUI lifecycle, removed package, and verified unchanged config/model-data/cache hashes. Package was built in CI; upgrade test runner came from commit 4eecb4f."
     }
   ],
   "pending_gates": [
