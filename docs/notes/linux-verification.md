@@ -150,14 +150,17 @@ o teste, com o arquivo temporário removido. A ferramenta retornou
 `unconfirmed`, como projetado. No primeiro teste o Kate não apareceu na árvore
 AT-SPI; a documentação do Qt 6 indica `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`
 como alternativa às propriedades AT-SPI no D-Bus ([Qt QAccessible](https://doc.qt.io/qt-6/qaccessible.html)).
-Com essa variável, a sessão expôs a aplicação e o frame `probe.txt — Kate`, mas
-não o texto do documento. Isso confirma o dispatch e a janela, não a
-renderização do conteúdo nem o resultado da ação; a API segue `unconfirmed`.
+Com essa variável, a árvore AT-SPI expôs o frame de um arquivo com nome único
+(`JarvisOpenProbe_<id>.txt — Kate`), confirmando que o desktop abriu o alvo.
+O conteúdo não foi exposto; por isso, a matriz aprova somente o dispatch e a
+janela, enquanto a API mantém `unconfirmed` por não confirmar o conteúdo.
 Logs locais:
 `.superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-2026-10-20.log`
 (primeiro teste, SHA256 `b946e9f0a8d97d20f33ddca6e08d9b09190b07ec918f0db2c34672a891d8a820`) e
 `.superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-atspi-2026-10-20.log`
-(AT-SPI Qt 6, SHA256 `29b4dab296514b52c9e80a43908846e64eae539a1088d1e2fead2227deb3efa2`).
+(AT-SPI Qt 6, SHA256 `29b4dab296514b52c9e80a43908846e64eae539a1088d1e2fead2227deb3efa2`) e
+`.superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-confirmed-2026-10-20.log`
+(nome de arquivo único visível no frame, SHA256 `fc282bf7d75a78365b7fb0b44c1f32dab98af0bc9b40feb098d58db6adb699a3`).
 
 ## Aplicativo instalado e lifecycle
 

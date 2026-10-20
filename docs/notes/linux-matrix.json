@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T04:28:02+00:00",
+  "verified_at_utc": "2026-10-20T04:29:03+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1511,17 +1511,17 @@
       "session": "wayland",
       "package": "source checkout",
       "capability": "desktop_open_dispatch",
-      "status": "unverified",
-      "command": "QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1; open_target(temp_file)",
+      "status": "passed",
+      "command": "QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1; open_target(unique_temp_file); verify Kate frame name by AT-SPI",
       "evidence": [
         {
           "kind": "local_validation_log",
-          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-atspi-2026-10-20.log",
-          "sha256": "29b4dab296514b52c9e80a43908846e64eae539a1088d1e2fead2227deb3efa2"
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-confirmed-2026-10-20.log",
+          "sha256": "fc282bf7d75a78365b7fb0b44c1f32dab98af0bc9b40feb098d58db6adb699a3"
         }
       ],
       "source_commit": "cce2a41728fcccb96635ae569e2e46ae9f1631ca",
-      "notes": "xdg-open iniciou /usr/bin/kate com o caminho exato e a árvore AT-SPI expôs o frame probe.txt — Kate, mas o texto com marcador único não ficou acessível. open_target retornou unconfirmed; dispatch/janela parcialmente verificados, conteúdo e confirmação não verificados; não contar como aprovado."
+      "notes": "In real KDE Plasma Wayland, xdg-open launched Kate with a unique temporary file path and AT-SPI exposed the exact unique file name in the Kate frame title. This proves desktop dispatch/opening; document contents were not exposed. open_target appropriately returns unconfirmed because it does not independently verify content."
     }
   ],
   "pending_gates": [
