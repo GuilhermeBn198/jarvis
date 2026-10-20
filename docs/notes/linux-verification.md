@@ -143,6 +143,16 @@ Pendências: click real pelo portal, abertura real pelo desktop, clipboard,
 revogação real de sessão, lifecycle ligado ao cérebro/overlay, instalação,
 Flatpak e pacotes/matriz de distros. As evidências acima não concluem o porte.
 
+Verificação parcial do abridor no host KDE Wayland (2026-10-20):
+`open_target` encaminhou um arquivo temporário por `xdg-open`; o processo real
+`/usr/bin/kate -b <arquivo>` iniciou com o caminho exato e foi encerrado após
+o teste, com o arquivo temporário removido. A ferramenta retornou
+`unconfirmed`, como projetado, e o Kate não apareceu na árvore AT-SPI desta
+sessão; portanto, isso prova o dispatch ao aplicativo, mas não a renderização
+nem a confirmação do conteúdo. Log local:
+`.superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-2026-10-20.log`
+(SHA256 `b946e9f0a8d97d20f33ddca6e08d9b09190b07ec918f0db2c34672a891d8a820`).
+
 ## Aplicativo instalado e lifecycle
 
 - Overlay Linux compilado com GTK3/WebKitGTK 4.1; 6 testes Rust passaram.
