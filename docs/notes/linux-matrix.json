@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T03:32:43+00:00",
+  "verified_at_utc": "2026-10-20T03:42:02+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -659,6 +659,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054381/job/118420992455",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293806/job/118434280442",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ],
       "notes": "Revision 2 generated directly by xbps-src with mesa as an explicit runtime dependency. Removing Mesa before installation caused XBPS to install it from the package dependency; the clean lifecycle passed."
@@ -729,6 +735,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054381/job/118420991317",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293806/job/118434280687",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ],
