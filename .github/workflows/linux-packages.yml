@@ -75,6 +75,29 @@ jobs:
             docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "$IMAGE" \
               sh /checks/test-native-package.sh "$FAMILY" "/packages/$(basename "$package")"
           fi
+      - name: Prepare second DEB revision for upgrade test
+        if: matrix.family == 'debian' || matrix.family == 'ubuntu'
+        run: |
+          package=$(find dist/native -maxdepth 1 -type f -name 'jarvis-assistant_*.deb' -print -quit)
+          test -n "$package"
+          deb_arch=$(dpkg-deb -f "$package" Architecture)
+          work=$(mktemp -d)
+          dpkg-deb --raw-extract "$package" "$work/root"
+          sed -i 's/^Version: 0\.1\.0-1$/Version: 0.1.0-2/' "$work/root/DEBIAN/control"
+          test "$(sed -n 's/^Version: //p' "$work/root/DEBIAN/control")" = 0.1.0-2
+          dpkg-deb --build --root-owner-group "$work/root" "dist/native/jarvis-assistant_0.1.0-2_${deb_arch}.deb"
+          cd dist/native
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - name: Upgrade DEB and verify user data preservation
+        if: matrix.family == 'debian' || matrix.family == 'ubuntu'
+        env:
+          FAMILY: ${{ matrix.family }}
+        run: |
+          old_package=$(find dist/native -maxdepth 1 -type f -name 'jarvis-assistant_0.1.0-1_*.deb' -print -quit)
+          new_package=$(find dist/native -maxdepth 1 -type f -name 'jarvis-assistant_0.1.0-2_*.deb' -print -quit)
+          test -n "$old_package" && test -n "$new_package"
+          docker run --rm -v "$PWD/dist/native:/packages:ro" -v "$PWD/scripts:/checks:ro" "${{ matrix.image }}" \
+            sh /checks/test-native-deb-upgrade.sh "$FAMILY" "/packages/$(basename "$old_package")" "/packages/$(basename "$new_package")"
       - name: Check signed Alpine revision update and user data preservation
         if: matrix.family == 'alpine'
         run: |

@@ -853,3 +853,11 @@ def test_native_driver_rejects_gentoo_target_on_arch(tmp_path):
     result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','gentoo','--output',str(tmp_path)],capture_output=True,text=True)
     assert result.returncode==2
     assert 'exige ambiente Gentoo' in result.stderr
+
+
+def test_deb_upgrade_runner_refuses_to_run_outside_disposable_container():
+    import subprocess
+    script=ROOT/'scripts/test-native-deb-upgrade.sh'
+    result=subprocess.run(['sh',str(script),'debian','old.deb','new.deb'],capture_output=True,text=True)
+    assert result.returncode==2
+    assert 'container descartavel' in result.stderr
