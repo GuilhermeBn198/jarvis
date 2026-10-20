@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T03:26:19+00:00",
+  "verified_at_utc": "2026-10-20T03:32:43+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -44,6 +44,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633821",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200134",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ]
@@ -110,6 +116,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633864",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434199885",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ]
     },
@@ -149,6 +161,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633754",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200158",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ]
     },
@@ -181,6 +199,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633897",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200090",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ]
@@ -221,6 +245,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633585",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200194",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ]
     },
@@ -259,6 +289,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633953",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200196",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ]
@@ -299,6 +335,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633905",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200002",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ]
     },
@@ -337,6 +379,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633772",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200211",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ]
@@ -377,6 +425,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633943",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200147",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ]
     },
@@ -409,6 +463,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633950",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200268",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ],
@@ -450,6 +510,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420634010",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200204",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ],
       "notes": "AlmaLinux 10 package lifecycle passed on aarch64. xdotool pointer and xclip clipboard roundtrip ran through headless Xwayland using xwfb-run with Weston; the installed native Wayland overlay passed relaunch/exit. Full desktop, portal and physical audio remain unverified."
@@ -490,6 +556,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633734",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200113",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ]
     },
@@ -528,6 +600,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39359054295/job/118420633803",
           "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200076",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ]
@@ -811,6 +889,12 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39352796507/job/118400656403",
           "source_commit": "a4718da236228543295f7567600d83f10262aef5",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293699/job/118434200335",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ]
     },
@@ -837,6 +921,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39352796507/job/118400656838",
           "source_commit": "a4718da236228543295f7567600d83f10262aef5",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293699/job/118434199973",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ]
@@ -1251,6 +1341,12 @@
           "kind": "local_validation_log",
           "path": ".superpowers/sdd/2026-10-14-jarvis-linux/nix-aarch64-artifacts/flake-evaluation.log",
           "sha256": "20cc4b66fcbe7cd4c28b965938c1acb65a683110cbf77e8d963d07155afe32ad"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293699/job/118434199973",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ],
       "notes": "The aarch64-linux derivation evaluates successfully in the official nixos/nix arm64 container under QEMU user-mode emulation. This validates flake evaluation only; build, profile installation and runtime lifecycle remain unverified on aarch64."
@@ -1283,6 +1379,12 @@
           "kind": "local_validation_log",
           "path": ".superpowers/sdd/2026-10-14-jarvis-linux/flatpak-native-validation-2026-10-19.log",
           "sha256": "86f795da6aa966fa4116a7b2db314bdb42698db8edcbf4c1288daa4c6a90a72e"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293774/job/118434200150",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ],
       "notes": "Native x86_64 Flatpak bundle built with pinned GNOME SDK/runtime commits, installed and removed from the user profile. Doctor found bundled Piper/model, OpenCode 1.18.23 and voice/MCP/AT-SPI imports passed; Piper synthesized a 2.67 s WAV. Real portal grants, desktop control/AT-SPI and audio capture/playback remain unverified."
@@ -1304,6 +1406,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39352796571/job/118400656615",
           "source_commit": "a4718da236228543295f7567600d83f10262aef5",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293774/job/118434199820",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
         }
       ],
