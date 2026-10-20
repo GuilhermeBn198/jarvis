@@ -24,8 +24,8 @@ case "$task_target" in
     gentoo)
         . /etc/os-release
         [ "$ID" = gentoo ] || { echo 'Alvo gentoo exige ambiente Gentoo.' >&2; exit 2; }
-        command -v ebuild >/dev/null
-        command -v git >/dev/null
+        command -v ebuild >/dev/null 2>&1 || { echo 'Alvo gentoo requer Portage (ebuild).' >&2; exit 2; }
+        command -v git >/dev/null 2>&1 || { echo 'Alvo gentoo requer Git para gerar o arquivo de fontes.' >&2; exit 2; }
         task_build=$(mktemp -d)
         chmod 0755 "$task_build"
         task_overlay=$task_build/overlay
