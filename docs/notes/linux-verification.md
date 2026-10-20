@@ -412,8 +412,16 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
   Sair encerrou a janela. O SDK não fornece os caminhos de sistema que o smoke
   espera, então a execução apontou AT-SPI, D-Bus e Mesa EGL diretamente para o
   Nix Store. Isso valida o pacote x86_64 e o overlay isolado; não substitui um
-  teste em sessão NixOS real. ARM64, áudio físico, portais e desktop real seguem
-  pendentes.
+  teste em sessão NixOS real.
+- Atualização em 2026-10-20: a execução CI `39345908495` concluiu os jobs
+  x86_64 e AArch64. Em ambos, o pacote foi compilado e instalado em perfil
+  descartável e passou doctor, imports do runtime, smoke Xvfb/AT-SPI, remoção e
+  preservação de dados (`PASS: Nix profile install, runtime imports, removal
+  and user data preservation`). Evidência AArch64:
+  https://github.com/GuilhermeBn198/jarvis/actions/runs/39345908495/job/118378324844;
+  x86_64: https://github.com/GuilhermeBn198/jarvis/actions/runs/39345908495/job/118378325163.
+  Isso valida o ciclo do pacote sob runner ARM, não uma sessão NixOS real;
+  áudio físico, portais e desktop real seguem pendentes.
 
 ### Solus 4.9 x86_64 — pacote eopkg instalado — 2026-10-17
 

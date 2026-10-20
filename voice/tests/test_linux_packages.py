@@ -298,7 +298,7 @@ def test_nix_target_is_a_profile_installable_package():
     assert item['implementation']=='recipe'
     assert item['recipe']=='packaging/nix/default.nix'
     assert item['validation']=='installed-smoke'
-    assert item['validated_architectures']==['x86_64']
+    assert item['validated_architectures']==['x86_64','aarch64']
     flake=(ROOT/'flake.nix').read_text()
     assert 'jarvis-assistant' in flake
     assert 'x86_64-linux' in flake

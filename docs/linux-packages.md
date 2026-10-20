@@ -36,10 +36,10 @@ scripts/build-package.sh --target nix --output "$PWD/dist/nix"
 ```
 
 Remova o perfil com `nix profile list` para localizar o índice do Jarvis e
-`nix profile remove <índice>`. Em x86_64, o build, a instalação no perfil,
-`jarvis --doctor` e o smoke do overlay sob Xvfb/D-Bus passaram em um SDK Nix.
-Esse smoke confirmou reabertura e saída pela interface; ARM64 e validação numa
-sessão NixOS real continuam pendentes. Veja o registro em
+`nix profile remove <índice>`. Builds e ciclo de instalação/verificação/remoção
+passaram em x86_64 e AArch64 na CI, com smoke do overlay em Xvfb/D-Bus. A CI
+AArch64 executou o pacote no runner ARM; isso ainda não substitui validação numa
+sessão NixOS real nem testes com áudio físico e portais. Veja o registro em
 `docs/notes/linux-verification.md`.
 
 
