@@ -296,11 +296,19 @@ def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
     assert '(define onednn-aarch64-jarvis' in recipe
     assert '"-DDNNL_BUILD_TESTS=OFF"' in recipe
     assert '(define python-pytorch-aarch64-jarvis' in recipe
-    assert '(replace "onednn" onednn-aarch64-jarvis)' in recipe
+    assert recipe.count('(replace "onednn" onednn-aarch64-jarvis)') == 2
     assert '(define onnxruntime-aarch64-jarvis' in recipe
     assert '(replace "python-pytorch" python-pytorch-aarch64-jarvis)' in recipe
+    assert '(define ctranslate2-aarch64-jarvis' in recipe
+    assert '(define python-ctranslate2-aarch64-jarvis' in recipe
+    assert '(replace "ctranslate2" ctranslate2-aarch64-jarvis)' in recipe
+    assert '(define python-faster-whisper-aarch64-jarvis' in recipe
+    assert '(replace "python-ctranslate2" python-ctranslate2-aarch64-jarvis)' in recipe
+    assert '(replace "onnxruntime" (list onnxruntime-aarch64-jarvis "python"))' in recipe
+    assert '(if (target-aarch64?)\n                       python-faster-whisper-aarch64-jarvis\n                       python-faster-whisper)' in recipe
+    assert '(if (target-aarch64?)\n                       python-ctranslate2-aarch64-jarvis\n                       python-ctranslate2)' in recipe
     assert 'onnxruntime-aarch64-jarvis' in recipe
-    assert recipe.count('(target-aarch64?)') == 2
+    assert recipe.count('(target-aarch64?)') == 4
     assert 'DNNL_EXPERIMENTAL_UKERNEL=OFF' not in recipe
 
 

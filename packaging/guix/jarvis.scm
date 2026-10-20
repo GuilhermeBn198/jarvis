@@ -62,6 +62,28 @@
      (modify-inputs (package-inputs python-pytorch)
        (replace "onednn" onednn-aarch64-jarvis)))))
 
+(define ctranslate2-aarch64-jarvis
+  (package/inherit ctranslate2
+    (name "ctranslate2-aarch64-jarvis")
+    (native-inputs
+     (modify-inputs (package-native-inputs ctranslate2)
+       (replace "onednn" onednn-aarch64-jarvis)))))
+
+(define python-ctranslate2-aarch64-jarvis
+  (package/inherit python-ctranslate2
+    (name "python-ctranslate2-aarch64-jarvis")
+    (native-inputs
+     (modify-inputs (package-native-inputs python-ctranslate2)
+       (replace "ctranslate2" ctranslate2-aarch64-jarvis)))))
+
+(define python-faster-whisper-aarch64-jarvis
+  (package/inherit python-faster-whisper
+    (name "python-faster-whisper-aarch64-jarvis")
+    (propagated-inputs
+     (modify-inputs (package-propagated-inputs python-faster-whisper)
+       (replace "onnxruntime" (list onnxruntime-aarch64-jarvis "python"))
+       (replace "python-ctranslate2" python-ctranslate2-aarch64-jarvis)))))
+
 (define onnxruntime-aarch64-jarvis
   (package/inherit onnxruntime
     (name "onnxruntime-aarch64-jarvis")
@@ -348,7 +370,13 @@ that embeds espeak-ng for phonemization.")
                        ,(string-append (assoc-ref inputs "glibc") "/lib")))))))))))
     (inputs
      (list python-wrapper
-                   python-faster-whisper python-ctranslate2 python-av
+                   (if (target-aarch64?)
+                       python-faster-whisper-aarch64-jarvis
+                       python-faster-whisper)
+                   (if (target-aarch64?)
+                       python-ctranslate2-aarch64-jarvis
+                       python-ctranslate2)
+                   python-av
                    (list (if (target-aarch64?)
                              onnxruntime-aarch64-jarvis
                              onnxruntime)
