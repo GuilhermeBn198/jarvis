@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T03:22:34+00:00",
+  "verified_at_utc": "2026-10-20T03:26:19+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1144,6 +1144,12 @@
           "kind": "local_validation_log",
           "path": ".superpowers/sdd/2026-10-14-jarvis-linux/debian-package-upgrade-2026-10-18.log",
           "sha256": "1b0bce720c868d5ae3c255e645ddcb5f63c6b66f264e8fe10f96d1323adcea21"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434199885",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ],
       "source_commit": "7ba6968e00fb1ce86e835a4d329d90c0e0157e3d",
@@ -1330,6 +1336,12 @@
           "kind": "local_validation_log",
           "path": ".superpowers/sdd/2026-10-14-jarvis-linux/ubuntu-package-upgrade-2026-10-20.log",
           "sha256": "a77a43f47fa0139601371d583eb32b481cf17c2134c88c0952a11d0e7b7979fa"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293683/job/118434200196",
+          "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
         }
       ],
       "source_commit": "c4679f6c768345a8a7d625e0ae74399c4b633b3e",
