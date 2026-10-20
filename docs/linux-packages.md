@@ -483,11 +483,11 @@ scripts/test-native-package.sh solus "$PWD/dist/solus/jarvis-assistant-0.1.0-1-1
 
 ### GNU Guix: pacote nativo local
 
-`packaging/guix/jarvis.scm` define o pacote Guix para x86_64. O driver cria um
-arquivo-fonte determinístico, instala `node_modules` a partir do lockfile e
-baixa o OpenCode fixado antes de chamar `guix build`; os crates Rust são
-declarados por hashes Guix em `packaging/guix/cargo-crate-sources.scm` e usados
-offline dentro da derivação.
+`packaging/guix/jarvis.scm` define pacotes Guix para x86_64 e aarch64. O driver
+cria um arquivo-fonte determinístico, instala `node_modules` a partir do
+lockfile e baixa o OpenCode fixado antes de chamar `guix build`; os crates Rust
+são declarados por hashes Guix em `packaging/guix/cargo-crate-sources.scm` e
+usados offline dentro da derivação.
 
 Em um sistema com GNU Guix, Python 3, npm e acesso aos substituters:
 
@@ -496,6 +496,11 @@ scripts/build-package.sh --target guix --arch x86_64 --output "$PWD/dist/guix"
 guix package --install "$(readlink -f ./dist/guix/jarvis-assistant)"
 jarvis --doctor
 ```
+
+Em uma máquina Guix AArch64, use `--arch aarch64`. A receita usa uma variante
+oneDNN que desativa apenas os testes e benchmarks incompatíveis com AArch64,
+mantendo o recurso experimental requerido pelo PyTorch. A avaliação da receita
+cross-target passou; o build completo AArch64 ainda está em validação.
 
 Em um container GNU Guix descartável, o ciclo de instalação em perfil isolado,
 imports Python, remoção e preservação de dados pode ser exercitado com:
@@ -507,6 +512,7 @@ sh scripts/test-guix-package.sh "$(readlink -f ./dist/guix/jarvis-assistant)"
 O build local do Guix e o smoke de perfil instalado passaram em x86_64 num
 container GNU Guix (7 testes Rust, imports Python via caminho do launcher,
 OpenCode 1.18.23, remoção do perfil e preservação dos dados do usuário). Isso
-valida o pacote e seu lifecycle headless; desktop real, áudio/microfone e
-Wayland/X11 permanecem sem teste Guix. A receita cobre x86_64; aarch64 ainda
-precisa de uma fonte ONNX Runtime compatível e validação própria.
+valida o pacote e seu lifecycle headless em x86_64; desktop real,
+áudio/microfone e Wayland/X11 permanecem sem teste Guix. A compilação AArch64
+usa variantes próprias de PyTorch e ONNX Runtime e ainda requer build e smoke
+completos antes de ser considerada validada.
