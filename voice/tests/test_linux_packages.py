@@ -183,7 +183,7 @@ def test_target_catalog_records_recipe_and_validation_separately():
     assert catalog['void-musl']['implementation']=='recipe'
     assert catalog['void-musl']['recipe']=='packaging/void-musl/template'
     assert catalog['void-musl']['validation']=='installed-smoke'
-    assert catalog['void-musl']['validated_architectures']==['x86_64']
+    assert catalog['void-musl']['validated_architectures']==['x86_64','aarch64']
     for item in catalog.values():
         assert set(item['validated_architectures']) <= set(item['architectures'])
         if item['validation']=='unverified':assert not item['validated_architectures']

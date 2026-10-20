@@ -164,7 +164,8 @@
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64"
+      "x86_64",
+      "aarch64"
     ]
   },
   "gentoo": {
