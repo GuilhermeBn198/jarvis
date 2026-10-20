@@ -205,6 +205,28 @@ def test_target_catalog_validation_matches_passed_package_lifecycle_evidence():
         assert passed==set(item['validated_architectures']),target
 
 
+def test_guix_aarch64_onednn_disables_upstream_tests():
+    recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
+    onednn=recipe.split('(define onednn-aarch64-jarvis',1)[1].split('(define ctranslate2-aarch64-jarvis',1)[0]
+    assert '"-DONEDNN_BUILD_TESTS=OFF"' in onednn
+
+
+def test_guix_uv_dynamic_versioning_uses_compatible_dunamai():
+    recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
+    dunamai=recipe.split('(define python-dunamai-jarvis',1)[1].split('(define-public python-uv-dynamic-versioning-jarvis',1)[0]
+    assert '(version "1.26.1")' in dunamai
+    plugin=recipe.split('(define-public python-uv-dynamic-versioning-jarvis',1)[1].split('(define-public python-mcp-types',1)[0]
+    assert 'python-dunamai-jarvis' in plugin
+
+
+def test_guix_piper_uses_compatible_pathvalidate():
+    recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
+    pathvalidate=recipe.split('(define python-pathvalidate-jarvis',1)[1].split('(define-public python-piper-tts-jarvis',1)[0]
+    assert '(version "3.3.1")' in pathvalidate
+    piper=recipe.split('(define-public python-piper-tts-jarvis',1)[1].split('(define rust-lock-inputs',1)[0]
+    assert 'python-pathvalidate-jarvis' in piper
+
+
 def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     import json
     catalog=json.loads((ROOT/'packaging/targets.json').read_text())
@@ -294,7 +316,7 @@ def test_guix_native_builder_selects_aarch64_agent_and_system(tmp_path):
 def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
     recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
     assert '(define onednn-aarch64-jarvis' in recipe
-    assert '"-DDNNL_BUILD_TESTS=OFF"' in recipe
+    assert '"-DONEDNN_BUILD_TESTS=OFF"' in recipe
     assert '(define onnxruntime-aarch64-jarvis' in recipe
     onnxruntime_section=recipe.split('(define onnxruntime-aarch64-jarvis',1)[1].split('(define opencode-binary',1)[0]
     assert '((#:tests? tests? #t) #f)' in onnxruntime_section

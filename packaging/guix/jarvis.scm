@@ -53,7 +53,7 @@
     (arguments
      (substitute-keyword-arguments (package-arguments onednn)
        ((#:configure-flags flags)
-        #~(append #$flags '("-DDNNL_BUILD_TESTS=OFF")))))))
+        #~(append #$flags '("-DONEDNN_BUILD_TESTS=OFF")))))))
 
 (define ctranslate2-aarch64-jarvis
   (package/inherit ctranslate2
@@ -91,6 +91,26 @@
        (delete "python-pytorch")
        (delete "python-sentencepiece")))))
 
+(define python-dunamai-jarvis
+  (package/inherit python-dunamai
+    (name "python-dunamai-jarvis")
+    (version "1.26.1")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "dunamai" version))
+              (sha256
+               (base32 "12qchr98zm2ggm4ikhmrq872vljz6vp1l2md9s1b802vsrxh0iiv"))))))
+
+(define python-pathvalidate-jarvis
+  (package/inherit python-pathvalidate
+    (name "python-pathvalidate-jarvis")
+    (version "3.3.1")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "pathvalidate" version))
+              (sha256
+               (base32 "0xx13cmssda0p6h4x69njyiibkyd85hiv3mv8m1n5bgy5chhg35i"))))))
+
 (define opencode-binary
   (local-file "opencode-package" "jarvis-opencode-1.18.23"))
 
@@ -107,7 +127,7 @@
               (sha256 (base32 "0j3hwab4ywgiydir1rdrc9hl9akzz47wqdb2cb3pjmxapki6zlcg"))))
     (build-system pyproject-build-system)
     (arguments (list #:tests? #f))
-    (propagated-inputs (list python-dunamai python-jinja2 python-tomlkit))
+    (propagated-inputs (list python-dunamai-jarvis python-jinja2 python-tomlkit))
     (native-inputs (list python-hatchling))
     (home-page "https://github.com/ninoseki/uv-dynamic-versioning/")
     (synopsis "Dynamic versioning plugin for Hatch")
@@ -273,7 +293,7 @@
                    (cmake-setter "DATA_SRC" espeak-data)))))))))
     (native-inputs (list ninja python-scikit-build python-setuptools
                          python-pytest))
-    (propagated-inputs (list espeak-ng python-pathvalidate python-numpy
+    (propagated-inputs (list espeak-ng python-pathvalidate-jarvis python-numpy
                              (list (if (target-aarch64?)
                                        onnxruntime-aarch64-jarvis
                                        onnxruntime)
