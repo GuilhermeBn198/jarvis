@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T07:44:16+00:00",
+  "verified_at_utc": "2026-10-20T08:49:46+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1706,6 +1706,28 @@
       ],
       "source_commit": "09c44c31f5c6ed5d0127147f8c686287f38262da",
       "notes": "Recheck skipped safely before mutation: the test GTK window and its sentinel both reported active=false on the real Wayland session. This records a current test-environment limitation; it does not supersede the earlier successful background AT-SPI test recorded in docs/notes/linux-verification.md."
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "KDE Plasma",
+      "session": "wayland",
+      "package": "source checkout",
+      "capability": "native_wayland_overlay_lifecycle",
+      "status": "passed",
+      "command": "env GDK_BACKEND=wayland WAYLAND_DISPLAY=wayland-1 XDG_SESSION_TYPE=wayland GTK_USE_PORTAL=0 LIBGL_ALWAYS_SOFTWARE=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 dbus-run-session -- python3 scripts/test-overlay-instance.py --inside-session gui/src-tauri/target/debug/jarvis-overlay",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/host-kde-overlay-wayland-2026-10-20.log",
+          "sha256": "d930710bedce2b6185a2f96b446f47ca9f1ff26af81fa40ece18353a8dedd105"
+        }
+      ],
+      "source_commit": "cba55c571cc4fba0feaab4dd8fa8fa44ca6ba086",
+      "notes": "On the active KDE Plasma Wayland compositor, the native GTK overlay launched, an accessible primary window remained present across a second launch, and the primary exited cleanly through its accessible controls. This used a private D-Bus session and temporary user configuration; installed package lifecycle, portal authorization/revocation, audio, and other desktops remain unverified."
     }
   ],
   "pending_gates": [

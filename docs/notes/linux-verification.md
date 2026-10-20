@@ -529,3 +529,19 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
   `docs/notes/linux-matrix.json` com links diretos aos dois jobs. Isso valida o
   lifecycle de pacote nas duas arquiteturas; desktop real, atualização entre
   versões, captura de áudio e sessão Wayland continuam pendentes.
+
+### Overlay nativo na sessão KDE Wayland — 2026-10-20
+
+- O fixture de lifecycle do overlay foi executado no compositor KDE Wayland
+  ativo do host Arch x86_64, usando configuração de usuário temporária e uma
+  sessão D-Bus privada. A janela principal ficou acessível após um segundo
+  lançamento, e os controles acessíveis encerraram a janela sem erro.
+- Comando:
+  ```sh
+  env GDK_BACKEND=wayland WAYLAND_DISPLAY=wayland-1 XDG_SESSION_TYPE=wayland GTK_USE_PORTAL=0 LIBGL_ALWAYS_SOFTWARE=1 WEBKIT_DISABLE_COMPOSITING_MODE=1 dbus-run-session -- python3 scripts/test-overlay-instance.py --inside-session gui/src-tauri/target/debug/jarvis-overlay
+  ```
+- Log: `.superpowers/sdd/2026-10-14-jarvis-linux/host-kde-overlay-wayland-2026-10-20.log`
+  (SHA256 `d930710bedce2b6185a2f96b446f47ca9f1ff26af81fa40ece18353a8dedd105`).
+- Isto valida somente o lifecycle do overlay no KDE Wayland. O pacote instalado,
+  concessões/revogação dos portais, áudio físico e outros desktops continuam
+  pendentes.
