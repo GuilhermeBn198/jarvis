@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T01:28:07+00:00",
+  "verified_at_utc": "2026-10-20T01:30:10+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -277,6 +277,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39348581463/job/118387260953",
           "source_commit": "1e615b4f9e10a367c0bf15ffc5cba895acef14bb",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39352796586/job/118400656882",
+          "source_commit": "a4718da236228543295f7567600d83f10262aef5",
           "conclusion": "success"
         }
       ]
