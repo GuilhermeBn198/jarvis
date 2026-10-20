@@ -87,7 +87,7 @@ ffmpeg -version >/dev/null
 ffplay -version >/dev/null
 pactl --version
 if [ "$task_family" = rhel ]; then
-    JARVIS_X11_EXTERNAL=1 xwfb-run -- python3 "$task_checks/test-x11-tools.py"
+    JARVIS_X11_EXTERNAL=1 xwfb-run -c weston -- python3 "$task_checks/test-x11-tools.py"
     python3 "$task_checks/test-overlay-wayland.py" /usr/bin/jarvis-overlay
 else
     python3 "$task_checks/test-x11-tools.py"
