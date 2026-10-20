@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T00:10:57+00:00",
+  "verified_at_utc": "2026-10-20T00:16:11+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -538,9 +538,16 @@
       "session": null,
       "package": "nix",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
+      "status": "passed",
       "command": null,
-      "evidence": []
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39345908495/job/118378324844",
+          "source_commit": "c4bac432c47f0fa3f6c109e4ea040b7b42536cc7",
+          "conclusion": "success"
+        }
+      ]
     },
     {
       "target": "guix",
