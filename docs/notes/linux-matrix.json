@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T04:29:03+00:00",
+  "verified_at_utc": "2026-10-20T04:31:06+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1522,6 +1522,28 @@
       ],
       "source_commit": "cce2a41728fcccb96635ae569e2e46ae9f1631ca",
       "notes": "In real KDE Plasma Wayland, xdg-open launched Kate with a unique temporary file path and AT-SPI exposed the exact unique file name in the Kate frame title. This proves desktop dispatch/opening; document contents were not exposed. open_target appropriately returns unconfirmed because it does not independently verify content."
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "KDE Plasma",
+      "session": "wayland",
+      "package": "source tests",
+      "capability": "atspi_background_focus_preservation_recheck",
+      "status": "unverified",
+      "command": "JARVIS_DESKTOP_TESTS=1 python3 -m pytest voice/tests/test_atspi_desktop.py -q -rs",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/atspi-wayland-focus-skip-2026-10-20.log",
+          "sha256": "e58eae7ec920342a740a7dcc640307b179d493b3dd38edd1900d5093bf60e835"
+        }
+      ],
+      "source_commit": "09c44c31f5c6ed5d0127147f8c686287f38262da",
+      "notes": "Recheck skipped safely before mutation: the test GTK window and its sentinel both reported active=false on the real Wayland session. This records a current test-environment limitation; it does not supersede the earlier successful background AT-SPI test recorded in docs/notes/linux-verification.md."
     }
   ],
   "pending_gates": [

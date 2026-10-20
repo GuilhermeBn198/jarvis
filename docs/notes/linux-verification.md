@@ -126,6 +126,10 @@ com consentimento e execução em outros desktops ainda não foram verificadas.
   uma segunda janela de teste permaneceu ativa e seu campo não foi alterado;
   posição do ponteiro reportada pelo XWayland permaneceu idêntica. O teste
   opt-in `JARVIS_DESKTOP_TESTS=1` passou, sem modificar apps do usuário.
+- Rechecagem no host KDE Wayland (2026-10-20): o mesmo teste opt-in foi
+  pulado antes de qualquer mutação porque tanto a janela de teste quanto a
+  sentinela reportaram `active=false`. O log e o estado do fixture foram
+  preservados; essa rechecagem não valida nem invalida o resultado anterior.
 - Corrigida ambiguidade GI entre getter de interface `Accessible.get_text`
   e leitura `Atspi.Text.get_text`; falha real reproduzida antes da correção.
 - MCP inicializado pelo cliente stdio real: ferramentas neutras registradas e
