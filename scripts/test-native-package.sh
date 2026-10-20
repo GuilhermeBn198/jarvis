@@ -50,7 +50,7 @@ case "$task_family:$ID" in
             task_helpers=$((task_helpers+1))
         done
         [ "$task_helpers" -eq 1 ] || { echo 'Forneca exatamente um RPM xdotool da arquitetura do alvo junto ao Jarvis.' >&2; exit 2; }
-        dnf install -y --setopt=install_weak_deps=False "$@" weston dbus-daemon mesa-libEGL mesa-dri-drivers
+        dnf install -y --setopt=install_weak_deps=False "$@" weston xwayland-run dbus-daemon mesa-libEGL mesa-dri-drivers
         ;;
     *) echo 'Familia e ambiente nao correspondem.' >&2; exit 2 ;;
 esac
@@ -86,10 +86,11 @@ for task_tool in $task_runtime_tools; do command -v "$task_tool"; done
 ffmpeg -version >/dev/null
 ffplay -version >/dev/null
 pactl --version
-python3 "$task_checks/test-x11-tools.py"
 if [ "$task_family" = rhel ]; then
+    JARVIS_X11_EXTERNAL=1 xwfb-run -- python3 "$task_checks/test-x11-tools.py"
     python3 "$task_checks/test-overlay-wayland.py" /usr/bin/jarvis-overlay
 else
+    python3 "$task_checks/test-x11-tools.py"
     python3 "$task_checks/test-overlay-instance.py" /usr/bin/jarvis-overlay
 fi
 case "$task_family" in
