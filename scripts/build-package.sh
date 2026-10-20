@@ -26,6 +26,11 @@ case "$task_target" in
         [ "$ID" = gentoo ] || { echo 'Alvo gentoo exige ambiente Gentoo.' >&2; exit 2; }
         command -v ebuild >/dev/null 2>&1 || { echo 'Alvo gentoo requer Portage (ebuild).' >&2; exit 2; }
         command -v git >/dev/null 2>&1 || { echo 'Alvo gentoo requer Git para gerar o arquivo de fontes.' >&2; exit 2; }
+        case "$task_arch" in
+            x86_64) task_keyword=amd64 ;;
+            aarch64) task_keyword=arm64 ;;
+            *) echo "Alvo gentoo nao suporta arquitetura $task_arch." >&2; exit 2 ;;
+        esac
         task_build=$(mktemp -d)
         chmod 0755 "$task_build"
         task_overlay=$task_build/overlay
@@ -37,7 +42,11 @@ case "$task_target" in
         cp "$task_root/packaging/gentoo/jarvis-assistant-0.1.0.ebuild" "$task_package/"
         export PORTDIR_OVERLAY="${PORTDIR_OVERLAY:+$PORTDIR_OVERLAY }$task_overlay"
         export PORTAGE_TMPDIR=$task_build/tmp PKGDIR=$task_build/binpkgs BINPKG_FORMAT=gpkg
-        ebuild "$task_package/jarvis-assistant-0.1.0.ebuild" manifest clean package
+        ebuild "$task_package/jarvis-assistant-0.1.0.ebuild" manifest
+        ACCEPT_KEYWORDS="${ACCEPT_KEYWORDS:+$ACCEPT_KEYWORDS }~$task_keyword" \
+        USE="${USE:+$USE }X wayland introspection alsa pulseaudio sdl gles2 atomic-base64 harfbuzz icu opengl" \
+            emerge --oneshot --getbinpkg --usepkg --onlydeps =app-misc/jarvis-assistant-0.1.0::jarvis-local
+        ebuild "$task_package/jarvis-assistant-0.1.0.ebuild" clean package
         find "$task_build/binpkgs" -type f -name '*.gpkg.tar' -exec cp '{}' "$task_output/" \;
         ;;
     nix)

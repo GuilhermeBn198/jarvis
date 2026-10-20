@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T04:31:06+00:00",
+  "verified_at_utc": "2026-10-20T06:02:18+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -774,9 +774,15 @@
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293806/job/118434281294",
           "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/39373358259/job/118466317395",
+          "source_commit": "70f41c94d34e0d56be98cb9456e32563b487edc4",
+          "conclusion": "success"
         }
       ],
-      "notes": "XBPS install, doctor, private ABI/imports and AT-SPI, Xvfb xdotool/xclip smoke, overlay relaunch, package database checks, removal and user data preservation passed on x86_64-musl. Real desktop/audio, version upgrade and aarch64 remain pending."
+      "notes": "XBPS install, doctor, private ABI/imports and AT-SPI, Xvfb xdotool/xclip smoke, overlay relaunch, package database checks, removal and user data preservation passed on x86_64-musl. Real desktop/audio, version upgrade remain pending."
     },
     {
       "target": "void-musl",
@@ -838,6 +844,12 @@
           "kind": "ci_job",
           "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39363293806/job/118434280655",
           "source_commit": "4eecb4f262efbaf90d58842960fefdb7a9a53a22",
+          "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/39373358259/job/118466317602",
+          "source_commit": "70f41c94d34e0d56be98cb9456e32563b487edc4",
           "conclusion": "success"
         }
       ],

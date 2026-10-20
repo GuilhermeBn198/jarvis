@@ -863,6 +863,17 @@ def test_native_driver_rejects_gentoo_target_on_arch(tmp_path):
     assert 'exige ambiente Gentoo' in result.stderr
 
 
+def test_gentoo_builder_resolves_ebuild_dependencies_before_packaging():
+    driver=(ROOT/'scripts/build-package.sh').read_text()
+    gentoo_branch=driver.split('    gentoo)\n',1)[1].split('    nix)',1)[0]
+    resolve=gentoo_branch.index('emerge --oneshot --getbinpkg --usepkg --onlydeps')
+    package=gentoo_branch.index('ebuild "$task_package/jarvis-assistant-0.1.0.ebuild" clean package')
+    assert resolve < package
+    assert 'ACCEPT_KEYWORDS=' in gentoo_branch
+    assert 'USE=' in gentoo_branch
+    assert 'X wayland introspection alsa pulseaudio sdl gles2 atomic-base64 harfbuzz icu opengl' in gentoo_branch
+
+
 def test_deb_upgrade_runner_refuses_to_run_outside_disposable_container():
     import subprocess
     script=ROOT/'scripts/test-native-deb-upgrade.sh'
