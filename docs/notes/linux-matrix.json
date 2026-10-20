@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T00:03:05+00:00",
+  "verified_at_utc": "2026-10-20T00:10:57+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -333,6 +333,12 @@
         {
           "kind": "local_validation_log",
           "path": ".superpowers/sdd/2026-10-14-jarvis-linux/void-glibc-xbps-src-v2-lifecycle.log"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39344528760/job/118373818049",
+          "source_commit": "13deb179c85a0d277e0d5340979b449e61adb935",
+          "conclusion": "success"
         }
       ],
       "notes": "Revision 2 generated directly by xbps-src with mesa as an explicit runtime dependency. Removing Mesa before installation caused XBPS to install it from the package dependency; the clean lifecycle passed."
@@ -378,9 +384,16 @@
       "session": null,
       "package": "xbps",
       "capability": "native_package_lifecycle",
-      "status": "unverified",
+      "status": "passed",
       "command": null,
-      "evidence": [],
+      "evidence": [
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/GuilhermeBn198/jarvis/actions/runs/39344528760/job/118373818335",
+          "source_commit": "13deb179c85a0d277e0d5340979b449e61adb935",
+          "conclusion": "success"
+        }
+      ],
       "notes": "Recipe exists; no native aarch64 build or lifecycle evidence yet."
     },
     {
