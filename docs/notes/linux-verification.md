@@ -147,11 +147,17 @@ Verificação parcial do abridor no host KDE Wayland (2026-10-20):
 `open_target` encaminhou um arquivo temporário por `xdg-open`; o processo real
 `/usr/bin/kate -b <arquivo>` iniciou com o caminho exato e foi encerrado após
 o teste, com o arquivo temporário removido. A ferramenta retornou
-`unconfirmed`, como projetado, e o Kate não apareceu na árvore AT-SPI desta
-sessão; portanto, isso prova o dispatch ao aplicativo, mas não a renderização
-nem a confirmação do conteúdo. Log local:
+`unconfirmed`, como projetado. No primeiro teste o Kate não apareceu na árvore
+AT-SPI; a documentação do Qt 6 indica `QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1`
+como alternativa às propriedades AT-SPI no D-Bus ([Qt QAccessible](https://doc.qt.io/qt-6/qaccessible.html)).
+Com essa variável, a sessão expôs a aplicação e o frame `probe.txt — Kate`, mas
+não o texto do documento. Isso confirma o dispatch e a janela, não a
+renderização do conteúdo nem o resultado da ação; a API segue `unconfirmed`.
+Logs locais:
 `.superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-2026-10-20.log`
-(SHA256 `b946e9f0a8d97d20f33ddca6e08d9b09190b07ec918f0db2c34672a891d8a820`).
+(primeiro teste, SHA256 `b946e9f0a8d97d20f33ddca6e08d9b09190b07ec918f0db2c34672a891d8a820`) e
+`.superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-atspi-2026-10-20.log`
+(AT-SPI Qt 6, SHA256 `29b4dab296514b52c9e80a43908846e64eae539a1088d1e2fead2227deb3efa2`).
 
 ## Aplicativo instalado e lifecycle
 

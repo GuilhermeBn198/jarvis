@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T04:10:05+00:00",
+  "verified_at_utc": "2026-10-20T04:28:02+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -1500,6 +1500,28 @@
       ],
       "source_commit": "4810480cc27787daf9f098bd5dd4bc3495c02824",
       "notes": "Jarvis doctor recognized Linux and Wayland. PipeWire 1.6.9 exposed a default microphone source through the PulseAudio protocol. No audio was recorded; microphone capture/calibration, TTS model synthesis and Wayland portal/UI checks remain unverified."
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "KDE Plasma",
+      "session": "wayland",
+      "package": "source checkout",
+      "capability": "desktop_open_dispatch",
+      "status": "unverified",
+      "command": "QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1; open_target(temp_file)",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-14-jarvis-linux/host-kde-open-atspi-2026-10-20.log",
+          "sha256": "29b4dab296514b52c9e80a43908846e64eae539a1088d1e2fead2227deb3efa2"
+        }
+      ],
+      "source_commit": "cce2a41728fcccb96635ae569e2e46ae9f1631ca",
+      "notes": "xdg-open iniciou /usr/bin/kate com o caminho exato e a árvore AT-SPI expôs o frame probe.txt — Kate, mas o texto com marcador único não ficou acessível. open_target retornou unconfirmed; dispatch/janela parcialmente verificados, conteúdo e confirmação não verificados; não contar como aprovado."
     }
   ],
   "pending_gates": [
