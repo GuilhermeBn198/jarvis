@@ -43,6 +43,31 @@
 
 (load "cargo-crate-sources.scm")
 
+(define onednn-aarch64-jarvis
+  ;; The Guix oneDNN 3.10.2 benchdnn sources do not compile on AArch64 with
+  ;; DNNL_EXPERIMENTAL_UKERNEL enabled. Tests and benchmarks are not needed
+  ;; when oneDNN is a runtime dependency of PyTorch.
+  (package/inherit onednn
+    (name "onednn-aarch64-jarvis")
+    (arguments
+     (substitute-keyword-arguments (package-arguments onednn)
+       ((#:configure-flags flags)
+        #~(append #$flags '("-DDNNL_BUILD_TESTS=OFF")))))))
+
+(define python-pytorch-aarch64-jarvis
+  (package/inherit python-pytorch
+    (name "python-pytorch-aarch64-jarvis")
+    (inputs
+     (modify-inputs (package-inputs python-pytorch)
+       (replace "onednn" onednn-aarch64-jarvis)))))
+
+(define onnxruntime-aarch64-jarvis
+  (package/inherit onnxruntime
+    (name "onnxruntime-aarch64-jarvis")
+    (native-inputs
+     (modify-inputs (package-native-inputs onnxruntime)
+       (replace "python-pytorch" python-pytorch-aarch64-jarvis)))))
+
 (define opencode-binary
   (local-file "opencode-package" "jarvis-opencode-1.18.23"))
 
@@ -226,7 +251,10 @@
     (native-inputs (list ninja python-scikit-build python-setuptools
                          python-pytest))
     (propagated-inputs (list espeak-ng python-pathvalidate python-numpy
-                             (list onnxruntime "python")))
+                             (list (if (target-aarch64?)
+                                       onnxruntime-aarch64-jarvis
+                                       onnxruntime)
+                                   "python")))
     (home-page "https://github.com/OHF-Voice/piper1-gpl")
     (synopsis "Fast and local neural TTS engine")
     (description "Piper is a fast and local neural text-to-speech engine
@@ -320,7 +348,10 @@ that embeds espeak-ng for phonemization.")
     (inputs
      (list python-wrapper
                    python-faster-whisper python-ctranslate2 python-av
-                   (list onnxruntime "python") python-httpx python-jsonschema
+                   (list (if (target-aarch64?)
+                             onnxruntime-aarch64-jarvis
+                             onnxruntime)
+                         "python") python-httpx python-jsonschema
                    python-mcp-jarvis python-pygobject python-dbus-next-jarvis
                    python-piper-tts-jarvis ffmpeg pulseaudio alsa-utils
                    gtk+ webkitgtk-for-gtk3 libsoup glib at-spi2-core espeak-ng dbus

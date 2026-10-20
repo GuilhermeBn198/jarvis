@@ -291,6 +291,19 @@ def test_guix_native_builder_selects_aarch64_agent_and_system(tmp_path):
     assert '--root=' in log.read_text()
 
 
+def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
+    recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
+    assert '(define onednn-aarch64-jarvis' in recipe
+    assert '"-DDNNL_BUILD_TESTS=OFF"' in recipe
+    assert '(define python-pytorch-aarch64-jarvis' in recipe
+    assert '(replace "onednn" onednn-aarch64-jarvis)' in recipe
+    assert '(define onnxruntime-aarch64-jarvis' in recipe
+    assert '(replace "python-pytorch" python-pytorch-aarch64-jarvis)' in recipe
+    assert 'onnxruntime-aarch64-jarvis' in recipe
+    assert recipe.count('(target-aarch64?)') == 2
+    assert 'DNNL_EXPERIMENTAL_UKERNEL=OFF' not in recipe
+
+
 def test_nix_target_is_a_profile_installable_package():
     import json
     catalog=json.loads((ROOT/'packaging/targets.json').read_text())
