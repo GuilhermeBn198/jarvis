@@ -44,6 +44,23 @@
 
 (load "cargo-crate-sources.scm")
 
+(define sentencepiece-aarch64-jarvis
+  ;; TCMalloc's static TLS allocation fails when SentencePiece is loaded by
+  ;; Python on AArch64, including during Guix's package sanity check.
+  (package/inherit sentencepiece
+    (name "sentencepiece-aarch64-jarvis")
+    (native-inputs '())
+    (arguments
+     (list #:tests? #f
+           #:configure-flags #~(list "-DSPM_ENABLE_TCMALLOC=OFF")))))
+
+(define python-sentencepiece-aarch64-jarvis
+  (package/inherit python-sentencepiece
+    (name "python-sentencepiece-aarch64-jarvis")
+    (propagated-inputs
+     (modify-inputs (package-propagated-inputs python-sentencepiece)
+       (replace "sentencepiece" sentencepiece-aarch64-jarvis)))))
+
 (define onednn-aarch64-jarvis
   ;; The Guix oneDNN 3.10.2 benchdnn sources do not compile on AArch64 with
   ;; DNNL_EXPERIMENTAL_UKERNEL enabled. Tests and benchmarks are not needed
@@ -89,7 +106,8 @@
     (name "onnxruntime-aarch64-jarvis")
     (native-inputs
      (modify-inputs (package-native-inputs onnxruntime)
-       (replace "python-pytorch" python-pytorch-aarch64-jarvis)))))
+       (replace "python-pytorch" python-pytorch-aarch64-jarvis)
+       (replace "python-sentencepiece" python-sentencepiece-aarch64-jarvis)))))
 
 (define opencode-binary
   (local-file "opencode-package" "jarvis-opencode-1.18.23"))

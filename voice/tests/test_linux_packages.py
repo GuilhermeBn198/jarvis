@@ -312,6 +312,15 @@ def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
     assert 'DNNL_EXPERIMENTAL_UKERNEL=OFF' not in recipe
 
 
+def test_guix_aarch64_sentencepiece_disables_tcmalloc_static_tls_failure():
+    recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
+    assert '(define sentencepiece-aarch64-jarvis' in recipe
+    assert '"-DSPM_ENABLE_TCMALLOC=OFF"' in recipe
+    assert '(define python-sentencepiece-aarch64-jarvis' in recipe
+    assert '(replace "sentencepiece" sentencepiece-aarch64-jarvis)' in recipe
+    assert '(replace "python-sentencepiece" python-sentencepiece-aarch64-jarvis)' in recipe
+
+
 def test_nix_target_is_a_profile_installable_package():
     import json
     catalog=json.loads((ROOT/'packaging/targets.json').read_text())
