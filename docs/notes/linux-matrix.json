@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-20T06:43:21+00:00",
+  "verified_at_utc": "2026-10-20T07:41:45+00:00",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -792,9 +792,15 @@
           "url": "https://github.com/V1nic1us/jarvis/actions/runs/39373358259/job/118466317395",
           "source_commit": "70f41c94d34e0d56be98cb9456e32563b487edc4",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/39383364143/job/118497502469",
+          "source_commit": "cba55c571cc4fba0feaab4dd8fa8fa44ca6ba086",
+          "conclusion": "success"
         }
       ],
-      "notes": "XBPS install, doctor, private ABI/imports and AT-SPI, Xvfb xdotool/xclip smoke, overlay relaunch, package database checks, removal and user data preservation passed on x86_64-musl. Real desktop/audio, version upgrade remain pending."
+      "notes": "XBPS install, doctor, private ABI/imports and AT-SPI, Xvfb xdotool/xclip smoke, overlay relaunch, package database checks, removal and user data preservation passed on x86_64-musl. Real desktop/audio, version upgrade remain pending. A compilação nativa mais recente, exportação do pacote e lifecycle de instalação/inspeção/remoção em Void musl limpo passaram no commit cba55c5 (2026-10-20)."
     },
     {
       "target": "void-musl",
@@ -863,9 +869,15 @@
           "url": "https://github.com/V1nic1us/jarvis/actions/runs/39373358259/job/118466317602",
           "source_commit": "70f41c94d34e0d56be98cb9456e32563b487edc4",
           "conclusion": "success"
+        },
+        {
+          "kind": "ci_job",
+          "url": "https://github.com/V1nic1us/jarvis/actions/runs/39383364143/job/118497502809",
+          "source_commit": "cba55c571cc4fba0feaab4dd8fa8fa44ca6ba086",
+          "conclusion": "success"
         }
       ],
-      "notes": "GitHub Actions concluiu o build nativo do pacote Void musl AArch64, instalação em container Void musl limpo, inspeção e remoção. Desktop real, áudio e atualização entre versões publicadas ainda não foram verificados nessa arquitetura."
+      "notes": "GitHub Actions concluiu o build nativo do pacote Void musl AArch64, instalação em container Void musl limpo, inspeção e remoção. Desktop real, áudio e atualização entre versões publicadas ainda não foram verificados nessa arquitetura. A compilação nativa mais recente, exportação do pacote e lifecycle de instalação/inspeção/remoção em Void musl limpo passaram no commit cba55c5 (2026-10-20)."
     },
     {
       "target": "gentoo",

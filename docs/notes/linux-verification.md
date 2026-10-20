@@ -517,3 +517,15 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
 - O resultado valida os testes headless e o ciclo de pacote; não substitui
   sessões GNOME/KDE reais, permissões de portal nem captura/reprodução em
   hardware de áudio.
+
+### Void musl x86_64 e AArch64 — ciclo nativo — 2026-10-20
+
+- Os jobs `void-musl-x86_64` e `void-musl-aarch64` do workflow
+  `39383364143`, no commit `cba55c571cc4fba0feaab4dd8fa8fa44ca6ba086`,
+  concluíram com sucesso. Cada job compilou o XBPS no ambiente Void musl nativo,
+  exportou pacote e checksum, instalou em container limpo, inspecionou e removeu
+  o pacote, e publicou o artefato.
+- A evidência por arquitetura está registrada em
+  `docs/notes/linux-matrix.json` com links diretos aos dois jobs. Isso valida o
+  lifecycle de pacote nas duas arquiteturas; desktop real, atualização entre
+  versões, captura de áudio e sessão Wayland continuam pendentes.
