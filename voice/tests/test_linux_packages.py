@@ -295,10 +295,12 @@ def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
     recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
     assert '(define onednn-aarch64-jarvis' in recipe
     assert '"-DDNNL_BUILD_TESTS=OFF"' in recipe
-    assert '(define python-pytorch-aarch64-jarvis' in recipe
-    assert recipe.count('(replace "onednn" onednn-aarch64-jarvis)') == 2
     assert '(define onnxruntime-aarch64-jarvis' in recipe
-    assert '(replace "python-pytorch" python-pytorch-aarch64-jarvis)' in recipe
+    onnxruntime_section=recipe.split('(define onnxruntime-aarch64-jarvis',1)[1].split('(define opencode-binary',1)[0]
+    assert '((#:tests? tests? #t) #f)' in onnxruntime_section
+    assert '(delete "python-pytorch")' in onnxruntime_section
+    assert '(delete "python-sentencepiece")' in onnxruntime_section
+    assert recipe.count('(replace "onednn" onednn-aarch64-jarvis)') == 1
     assert '(define ctranslate2-aarch64-jarvis' in recipe
     assert '(define python-ctranslate2-aarch64-jarvis' in recipe
     assert '(replace "ctranslate2" ctranslate2-aarch64-jarvis)' in recipe
@@ -314,11 +316,8 @@ def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
 
 def test_guix_aarch64_sentencepiece_disables_tcmalloc_static_tls_failure():
     recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
-    assert '(define sentencepiece-aarch64-jarvis' in recipe
-    assert '"-DSPM_ENABLE_TCMALLOC=OFF"' in recipe
-    assert '(define python-sentencepiece-aarch64-jarvis' in recipe
-    assert '(replace "sentencepiece" sentencepiece-aarch64-jarvis)' in recipe
-    assert '(replace "python-sentencepiece" python-sentencepiece-aarch64-jarvis)' in recipe
+    onnxruntime_section=recipe.split('(define onnxruntime-aarch64-jarvis',1)[1].split('(define opencode-binary',1)[0]
+    assert '(delete "python-sentencepiece")' in onnxruntime_section
 
 
 def test_nix_target_is_a_profile_installable_package():

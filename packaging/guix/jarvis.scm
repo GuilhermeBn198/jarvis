@@ -44,23 +44,6 @@
 
 (load "cargo-crate-sources.scm")
 
-(define sentencepiece-aarch64-jarvis
-  ;; TCMalloc's static TLS allocation fails when SentencePiece is loaded by
-  ;; Python on AArch64, including during Guix's package sanity check.
-  (package/inherit sentencepiece
-    (name "sentencepiece-aarch64-jarvis")
-    (native-inputs '())
-    (arguments
-     (list #:tests? #f
-           #:configure-flags #~(list "-DSPM_ENABLE_TCMALLOC=OFF")))))
-
-(define python-sentencepiece-aarch64-jarvis
-  (package/inherit python-sentencepiece
-    (name "python-sentencepiece-aarch64-jarvis")
-    (propagated-inputs
-     (modify-inputs (package-propagated-inputs python-sentencepiece)
-       (replace "sentencepiece" sentencepiece-aarch64-jarvis)))))
-
 (define onednn-aarch64-jarvis
   ;; The Guix oneDNN 3.10.2 benchdnn sources do not compile on AArch64 with
   ;; DNNL_EXPERIMENTAL_UKERNEL enabled. Tests and benchmarks are not needed
@@ -71,13 +54,6 @@
      (substitute-keyword-arguments (package-arguments onednn)
        ((#:configure-flags flags)
         #~(append #$flags '("-DDNNL_BUILD_TESTS=OFF")))))))
-
-(define python-pytorch-aarch64-jarvis
-  (package/inherit python-pytorch
-    (name "python-pytorch-aarch64-jarvis")
-    (inputs
-     (modify-inputs (package-inputs python-pytorch)
-       (replace "onednn" onednn-aarch64-jarvis)))))
 
 (define ctranslate2-aarch64-jarvis
   (package/inherit ctranslate2
@@ -104,10 +80,16 @@
 (define onnxruntime-aarch64-jarvis
   (package/inherit onnxruntime
     (name "onnxruntime-aarch64-jarvis")
+    ;; PyTorch and SentencePiece are only used by ONNX Runtime's upstream
+    ;; Python tests.  Jarvis exercises the installed runtime separately; these
+    ;; test-only inputs pull in very large, broken-on-QEMU AArch64 builds.
+    (arguments
+     (substitute-keyword-arguments (package-arguments onnxruntime)
+       ((#:tests? tests? #t) #f)))
     (native-inputs
      (modify-inputs (package-native-inputs onnxruntime)
-       (replace "python-pytorch" python-pytorch-aarch64-jarvis)
-       (replace "python-sentencepiece" python-sentencepiece-aarch64-jarvis)))))
+       (delete "python-pytorch")
+       (delete "python-sentencepiece")))))
 
 (define opencode-binary
   (local-file "opencode-package" "jarvis-opencode-1.18.23"))
