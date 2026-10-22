@@ -1,9 +1,14 @@
 """Linux input backends. Sending an event is never proof of app acceptance."""
 import asyncio
+import configparser
 import math
+import os
 import re
 import subprocess
+import unicodedata
 import uuid
+from pathlib import Path
+from urllib.parse import urlparse
 from portal import PortalError
 
 REMOTE = 'org.freedesktop.portal.RemoteDesktop'
@@ -100,12 +105,92 @@ def x11_action(operation: str, args: dict,run=None) -> dict:
         return {'status':'error','detail':f'xdotool indisponivel: {exc}'}
 
 
+def _desktop_name(entry: configparser.SectionProxy, locales: list[str]) -> str:
+    for locale in locales:
+        for candidate in (locale, locale.split('@',1)[0]):
+            key=f'Name[{candidate}]'
+            if entry.get(key): return entry.get(key)
+        language=locale.split('_',1)[0].split('@',1)[0]
+        if language and entry.get(f'Name[{language}]'): return entry.get(f'Name[{language}]')
+    return entry.get('Name','')
+
+
+def _locale_candidates(env: dict[str,str]) -> list[str]:
+    raw=[]
+    raw.extend(env.get('LANGUAGE','').split(':'))
+    raw.extend((env.get('LC_MESSAGES',''),env.get('LANG','')))
+    locales=[]
+    for locale in raw:
+        locale=locale.split('.',1)[0]
+        if locale and locale not in ('C','POSIX') and locale not in locales:
+            locales.append(locale)
+    return locales
+
+
+def _normalized_app_name(value: str) -> str:
+    decomposed=unicodedata.normalize('NFKD',value.casefold())
+    return ' '.join(''.join(char for char in decomposed if not unicodedata.combining(char)).split())
+
+
+def _application_data_dirs(env: dict[str,str]) -> list[Path]:
+    home=env.get('XDG_DATA_HOME') or str(Path.home()/'.local/share')
+    system=env.get('XDG_DATA_DIRS') or '/usr/local/share:/usr/share'
+    dirs=[]
+    for root in (home,*system.split(':')):
+        path=Path(root)
+        if path.is_absolute() and path not in dirs:
+            dirs.append(path/'applications')
+    return dirs
+
+
+def _resolve_desktop_id(target: str, env: dict[str,str], which) -> tuple[str|None,Path|None,str|None]:
+    entries={}
+    # XDG_DATA_HOME is first; the first desktop ID shadows later copies.
+    for applications in _application_data_dirs(env):
+        if not applications.is_dir(): continue
+        for path in sorted(applications.rglob('*.desktop')):
+            relative=path.relative_to(applications).as_posix()
+            desktop_id=relative[:-len('.desktop')].replace('/','-')
+            normalized_id=_normalized_app_name(desktop_id)
+            if normalized_id in entries: continue
+            entries[normalized_id]=None  # Hidden entries also shadow lower-priority copies.
+            parser=configparser.RawConfigParser(interpolation=None,strict=False)
+            parser.optionxform=str
+            try:
+                with path.open(encoding='utf-8') as stream: parser.read_file(stream)
+                entry=parser['Desktop Entry']
+            except (OSError,UnicodeError,configparser.Error,KeyError):
+                continue
+            try:
+                if entry.get('Type')!='Application' or entry.getboolean('Hidden',fallback=False) or entry.getboolean('NoDisplay',fallback=False):
+                    continue
+            except ValueError:
+                continue
+            try_exec=entry.get('TryExec','').strip()
+            if try_exec and not (Path(try_exec).is_absolute() and Path(try_exec).is_file() and os.access(try_exec,os.X_OK)) and not which(try_exec):
+                continue
+            name=_desktop_name(entry,_locale_candidates(env))
+            if name: entries[normalized_id]=(desktop_id,name,path)
+
+    target_key=_normalized_app_name(target)
+    if not target_key: return None,None,None
+    matches=set()
+    for normalized_id,entry in entries.items():
+        if entry is None: continue
+        desktop_id,name,path=entry
+        if target_key in (normalized_id,_normalized_app_name(name)):
+            matches.add((desktop_id,path))
+    if len(matches)>1: return None,None,'nome de aplicativo ambiguo'
+    if matches:
+        desktop_id,path=next(iter(matches))
+        return desktop_id,path,None
+    return None,None,None
+
+
 def open_target(args: dict) -> dict:
-    import os
     import shutil
-    from urllib.parse import urlparse
     validate_action('act_open',args)
-    target=args['target']
+    target=args['target'].strip()
     try:
         # Executable paths and PATH names are a single argv, never shell text.
         executable=None
@@ -117,9 +202,18 @@ def open_target(args: dict) -> dict:
         if executable:
             subprocess.Popen([executable],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL,start_new_session=True)
+        elif not urlparse(target).scheme and not os.path.exists(target) and '/' not in target:
+            desktop_id,desktop_file,error=_resolve_desktop_id(target,os.environ,shutil.which)
+            if error: return {'status':'error','detail':error}
+            if not desktop_id: return {'status':'error','detail':'aplicativo nao encontrado no menu'}
+            launcher=shutil.which('gtk-launch') or shutil.which('gio')
+            if not launcher: return {'status':'error','detail':'gtk-launch ou gio necessario para abrir aplicativos do menu'}
+            argv=[launcher,desktop_id] if Path(launcher).name=='gtk-launch' else [launcher,'launch',str(desktop_file)]
+            subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL,start_new_session=True)
         else:
             proc=subprocess.run(['xdg-open',target],capture_output=True,text=True,errors='replace',timeout=20)
-            if proc.returncode: return {'status':'error','detail':proc.stderr.strip()[-300:]}
+            if proc.returncode: return {'status':'error','detail':proc.stderr.strip()[-300:] or 'xdg-open falhou'}
         return {'status':'unconfirmed','detail':'abertura solicitada ao desktop; resultado nao verificado'}
     except (OSError,subprocess.SubprocessError) as exc:
         return {'status':'error','detail':f'falha ao abrir alvo: {exc}'}

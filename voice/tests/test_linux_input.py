@@ -119,3 +119,132 @@ def test_open_document_and_url_use_desktop_opener(tmp_path,monkeypatch):
     for target in (str(document),'https://example.org/path?q=literal'):
         assert open_target({'target':target})['status']=='unconfirmed'
         assert calls[-1]==['xdg-open',target]
+
+
+def _write_desktop_entry(root, relative_path, contents):
+    path=root/'applications'/relative_path
+    path.parent.mkdir(parents=True,exist_ok=True)
+    path.write_text(contents,encoding='utf-8')
+    return path
+
+
+def _stub_linux_launchers(monkeypatch):
+    import shutil
+    launched=[]
+    def which(name):
+        return {'gtk-launch':'/usr/bin/gtk-launch','xdg-open':'/usr/bin/xdg-open'}.get(name)
+    monkeypatch.setattr(shutil,'which',which)
+    monkeypatch.setattr(subprocess,'Popen',lambda argv,**kwargs:launched.append((argv,kwargs)))
+    monkeypatch.setattr(subprocess,'run',lambda argv,**kwargs:subprocess.CompletedProcess(argv,0,'',''))
+    return launched
+
+
+def test_open_desktop_app_by_localized_menu_name_and_id(tmp_path,monkeypatch):
+    from linux_input import open_target
+    data_home=tmp_path/'user-data'
+    _write_desktop_entry(data_home,'kde/systemsettings.desktop',
+        '[Desktop Entry]\nType=Application\nName=System Settings\nName[pt_BR]=Configurações do Sistema\nExec=systemsettings\n')
+    monkeypatch.setenv('XDG_DATA_HOME',str(data_home))
+    monkeypatch.setenv('XDG_DATA_DIRS',str(tmp_path/'system-data'))
+    monkeypatch.setenv('LANGUAGE','pt_BR')
+    launched=_stub_linux_launchers(monkeypatch)
+
+    for target in ('Configurações do Sistema','kde-systemsettings'):
+        result=open_target({'target':target})
+        assert result['status']=='unconfirmed'
+        assert launched[-1][0]==['/usr/bin/gtk-launch','kde-systemsettings']
+        assert launched[-1][1].get('shell',False) is False
+
+
+def test_open_desktop_app_matches_case_and_accents(tmp_path,monkeypatch):
+    from linux_input import open_target
+    data_home=tmp_path/'user-data'
+    _write_desktop_entry(data_home,'org/example/Cafe.desktop',
+        '[Desktop Entry]\nType=Application\nName=Café Editor\nExec=cafe-editor\n')
+    monkeypatch.setenv('XDG_DATA_HOME',str(data_home))
+    monkeypatch.setenv('XDG_DATA_DIRS',str(tmp_path/'system-data'))
+    launched=_stub_linux_launchers(monkeypatch)
+
+    result=open_target({'target':'cafe editor'})
+
+    assert result['status']=='unconfirmed'
+    assert launched[0][0]==['/usr/bin/gtk-launch','org-example-Cafe']
+
+
+def test_open_desktop_app_uses_default_name_when_locale_name_missing(tmp_path,monkeypatch):
+    from linux_input import open_target
+    data_home=tmp_path/'user-data'
+    _write_desktop_entry(data_home,'org/example/editor.desktop',
+        '[Desktop Entry]\nType=Application\nName=Text Editor\nName[fr]=Éditeur de texte\nExec=editor\n')
+    monkeypatch.setenv('XDG_DATA_HOME',str(data_home))
+    monkeypatch.setenv('XDG_DATA_DIRS',str(tmp_path/'system-data'))
+    monkeypatch.setenv('LANGUAGE','pt_BR')
+    launched=_stub_linux_launchers(monkeypatch)
+
+    result=open_target({'target':'Text Editor'})
+
+    assert result['status']=='unconfirmed'
+    assert launched[0][0]==['/usr/bin/gtk-launch','org-example-editor']
+
+
+def test_open_desktop_app_uses_gio_with_desktop_file_path_as_fallback(tmp_path,monkeypatch):
+    from linux_input import open_target
+    import shutil
+    data_home=tmp_path/'user-data'
+    desktop_file=_write_desktop_entry(data_home,'org/example/editor.desktop',
+        '[Desktop Entry]\nType=Application\nName=Text Editor\nExec=editor\n')
+    monkeypatch.setenv('XDG_DATA_HOME',str(data_home))
+    monkeypatch.setenv('XDG_DATA_DIRS',str(tmp_path/'system-data'))
+    launched=[]
+    monkeypatch.setattr(shutil,'which',lambda name:{'gio':'/usr/bin/gio'}.get(name))
+    monkeypatch.setattr(subprocess,'Popen',lambda argv,**kwargs:launched.append((argv,kwargs)))
+
+    result=open_target({'target':'Text Editor'})
+
+    assert result['status']=='unconfirmed'
+    assert launched[0][0]==['/usr/bin/gio','launch',str(desktop_file)]
+
+
+def test_open_existing_path_command_keeps_literal_argv(monkeypatch):
+    from linux_input import open_target
+    import shutil
+    launched=[]
+    monkeypatch.setattr(shutil,'which',lambda name:'/opt/bin/systemsettings' if name=='systemsettings' else None)
+    monkeypatch.setattr(subprocess,'Popen',lambda argv,**kwargs:launched.append((argv,kwargs)))
+
+    result=open_target({'target':'systemsettings'})
+
+    assert result['status']=='unconfirmed'
+    assert launched[0][0]==['/opt/bin/systemsettings']
+    assert launched[0][1].get('shell',False) is False
+
+
+def test_open_desktop_app_reports_ambiguous_name(tmp_path,monkeypatch):
+    from linux_input import open_target
+    data_home=tmp_path/'user-data'
+    _write_desktop_entry(data_home,'one/editor.desktop',
+        '[Desktop Entry]\nType=Application\nName=Editor\nExec=editor-one\n')
+    _write_desktop_entry(data_home,'two/editor.desktop',
+        '[Desktop Entry]\nType=Application\nName=Editor\nExec=editor-two\n')
+    monkeypatch.setenv('XDG_DATA_HOME',str(data_home))
+    monkeypatch.setenv('XDG_DATA_DIRS',str(tmp_path/'system-data'))
+    launched=_stub_linux_launchers(monkeypatch)
+
+    result=open_target({'target':'Editor'})
+
+    assert result['status']=='error'
+    assert 'ambigu' in result['detail'].lower()
+    assert launched==[]
+
+
+def test_unknown_app_name_never_becomes_command_or_document_open(tmp_path,monkeypatch):
+    from linux_input import open_target
+    monkeypatch.setenv('XDG_DATA_HOME',str(tmp_path/'user-data'))
+    monkeypatch.setenv('XDG_DATA_DIRS',str(tmp_path/'system-data'))
+    launched=_stub_linux_launchers(monkeypatch)
+    monkeypatch.setattr(subprocess,'run',lambda *a,**kw:pytest.fail('unknown name reached xdg-open'))
+
+    result=open_target({'target':'app-nao-instalado; touch pwned'})
+
+    assert result['status']=='error'
+    assert launched==[]
