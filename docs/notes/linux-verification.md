@@ -81,6 +81,35 @@ ALSA real, reconhecimento de fala CPU, streaming Piper, ações Linux,
 portais, contexto AT-SPI, overlay, Flatpak, pacotes nativos e demais distros/
 arquiteturas. Instalação das dependências de voz em venv privado em andamento.
 
+### Auditoria de disponibilidade de libei para entrada Wayland — 2026-10-22
+
+As receitas atuais não declaram `libei`; a integração de produção ainda usa
+RemoteDesktop D-Bus e o mapeamento real do ponteiro segue sem validação. Antes
+de escolher uma dependência obrigatória, foi consultada a disponibilidade nos
+repositórios dos alvos já declarados:
+
+- Confirmado em Arch, Debian 13, Ubuntu 24.04, Fedora 44, RHEL 10, openSUSE
+  Tumbleweed, Alpine 3.24, Gentoo, Nixpkgs e GNU Guix. Nomes dos pacotes variam
+  (`libei`, `libei1`, `libei-devel`, `libei-dev`); Alpine e Debian também
+  separam headers/runtime em subpacotes.
+- Não confirmado nesta auditoria: Void glibc/musl, Slackware, Solus e o
+  runtime GNOME Platform do Flatpak. “Não confirmado” não significa que esteja
+  ausente.
+- Fontes consultadas: [Arch package](https://archlinux.org/packages/extra/x86_64/libei/),
+  [Debian 13](https://packages.debian.org/trixie/source/libei),
+  [Ubuntu](https://packages.ubuntu.com/noble/libei-dev),
+  [Fedora](https://packages.fedoraproject.org/pkgs/libei/libei/),
+  [RHEL 10](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/10/html/10.0_release_notes/new-features),
+  [openSUSE](https://build.opensuse.org/package/show/GNOME%3ASTABLE%3A45/libei),
+  [Alpine 3.24](https://pkgs.alpinelinux.org/package/v3.24/community/ppc64le/libei),
+  [Gentoo](https://packages.gentoo.org/packages/dev-libs/libei),
+  [Nixpkgs](https://search.nixos.org/packages?channel=unstable&show=libei),
+  [Guix](https://toys.whereis.social/?show=libei).
+
+Esta checagem é inventário de repositórios, não teste de build, carregamento
+dinâmico ou sessão Wayland. A decisão de tornar o backend EIS/libei primário
+continua pendente de aprovação do desenho.
+
 ## Síntese e portal — evidências adicionais
 
 - Piper 1.8.0 no venv privado sintetizou frase portuguesa em WAV de 22050 Hz,
@@ -1107,3 +1136,11 @@ não substitui áudio, permissões de portal ou desktop real na distribuição a
 - Um novo pedido de consentimento ficou pendente no KDE e foi encerrado sem emitir entrada. O teste precisa de nova autorização explícita no diálogo do portal para continuar.
 - Evidência local: `.superpowers/sdd/2026-10-14-jarvis-linux/wayland-remotedesktop-input-probe-2026-10-22.log`; SHA-256 `b4bd5074338ea466470a2b797792d1399922db67cc38c637ab1858812a269776`.
 - Referência do protocolo: [XDG Remote Desktop](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html) especifica consentimento no `Start()` e coordenadas absolutas no espaço lógico do stream. [XDG ScreenCast](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.ScreenCast.html) define `position`/`size` em coordenadas do compositor; a falha observada ainda precisa ser localizada no mapeamento do compositor KDE ou na seleção do stream.
+
+### Resolver de nomes do menu Linux — Arch KDE Wayland — 2026-10-22
+
+- `open_target("System Settings")` resolveu o nome visível pelo arquivo `.desktop` instalado; `open_target("systemsettings")` usou o executável do `PATH`.
+- Em cada chamada, o processo `systemsettings` recebeu um PID novo. Encerrei somente os dois processos descartáveis criados pelo teste.
+- Os dois retornos permaneceram `unconfirmed`: a validação prova despacho e início do processo, não o conteúdo/estado da janela. Ela cobre Arch KDE Wayland, não outras distros/ambientes.
+- Testes: `test_linux_input.py` 23 passed; `test_linux_packages.py` 80 passed; `test_linux_install.py` 5 passed. `compileall` e `git diff --check` passaram.
+- Evidência: `.superpowers/sdd/2026-10-22-linux-desktop-app-name-resolution/host-kde-app-name-resolution.log`, SHA-256 `7566ec59cd67648ce8417b63711a5800723807515f40ce51a8ee6acb1e05369e`.

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at_utc": "2026-10-22T19:20:50Z",
+  "verified_at_utc": "2026-10-22T19:39:49Z",
   "scope": "Evidence for individual checks; not a declaration of universal Linux support.",
   "limitations": [
     "Isolated Xvfb/Weston checks do not certify a real desktop session.",
@@ -6521,6 +6521,28 @@
       "capability": "native_package_alsa_microphone_level",
       "command": "PYTHONPATH=/usr/lib/jarvis/voice:/usr/lib/jarvis/python AUDIO_BACKEND=alsa MIC_DEVICE=default; installed runtime capture.measure_level(seconds=0.5); FFmpeg null muxer",
       "notes": "Installed package captured 0.5 s from the ALSA default input; volumedetect returned mean -25.8 dBFS and max -14.3 dBFS. No WAV was saved, no speech was transcribed. This is physical input-level evidence on Arch only; PTT/VAD/STT and speaker playback remain pending."
+    },
+    {
+      "target": "arch",
+      "distro": "arch",
+      "version": "rolling",
+      "arch": "x86_64",
+      "libc": "glibc",
+      "desktop": "KDE Plasma",
+      "session": "Wayland",
+      "package": "source checkout",
+      "status": "passed",
+      "source_commit": "e6dc736",
+      "evidence": [
+        {
+          "kind": "local_validation_log",
+          "path": ".superpowers/sdd/2026-10-22-linux-desktop-app-name-resolution/host-kde-app-name-resolution.log",
+          "sha256": "7566ec59cd67648ce8417b63711a5800723807515f40ce51a8ee6acb1e05369e"
+        }
+      ],
+      "capability": "desktop_app_name_resolution",
+      "command": "PYTHONPATH=voice; open_target(\"System Settings\") and open_target(\"systemsettings\"); verify new process with pgrep -x; terminate test process",
+      "notes": "On the live Arch KDE Wayland session, the localized menu name resolved through the system .desktop entry and gtk-launch; the executable name resolved directly through PATH. Each call returned unconfirmed and a new systemsettings PID was observed, then that disposable process was terminated. This confirms dispatch/process startup for these two spellings only; it does not verify application content or universal desktop support."
     }
   ],
   "pending_gates": [
