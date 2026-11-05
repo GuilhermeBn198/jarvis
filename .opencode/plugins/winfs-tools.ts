@@ -50,11 +50,21 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
         "Le um arquivo como texto ou lista um diretorio (JSON-lines com nome/tipo/tamanho). Aceita caminho do WSL (/home/...) ou do Windows (/mnt/<drive>/... ou C:\\...). Sem abrir editor/terminal.",
       args: { path: tool.schema.string() },
       async execute(args) {
+        const bruto = String(args.path ?? "").trim();
+        const p = normalizeWinPath(bruto);
         if (isNativeLinux()) return runLinux("win_read", args);
-        const p = normalizeWinPath(String(args.path ?? ""));
-        if (!p.startsWith("/mnt/")) return "apenas caminhos do Windows (/mnt/<drive>/...) sao aceitos";
-        const win = toWindowsPath(p);
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildReadScript(win))}`).text();
+        const rota = routeRead(bruto);
+        if (rota === "invalid") {
+          return "informe um caminho absoluto: WSL (/home/...) ou Windows (/mnt/c/... ou C:\\...)";
+        }
+        try {
+          if (rota === "wsl") return await readWslPath(bruto);
+          return await readWindowsPath(p, async (script) => {
+            return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(script)}`).text();
+          });
+        } catch (error) {
+          return formatToolError({ tool: "win_read", step: "ler arquivo", detail: p }, error);
+        }
       },
     }),
     win_write: tool({

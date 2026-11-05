@@ -1,11 +1,10 @@
+import os
+import pytest
 from config import load_config as _load_config, DEFAULT_TIMEOUT_S
 
 # This suite covers the historical Windows/WSL contract explicitly.
 def load_config(env, **kwargs):
     return _load_config({"JARVIS_PLATFORM": "wsl", **env}, **kwargs)
-import pytest
-from config import DEFAULT_TIMEOUT_S, load_config
-
 
 def test_defaults():
     cfg = load_config({})

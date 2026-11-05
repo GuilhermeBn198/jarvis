@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from tool_error import format_tool_error
 
 import context as ctx
 import sys

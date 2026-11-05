@@ -242,6 +242,167 @@ test("win_write para credencial -> deny", () => {
   assert.equal(decide({ ...a }).status, "deny");
 });
 
+test("clipboard_write benigno -> allow", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "ola mundo",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "allow");
+});
+test("clipboard_write com rm -rf / -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "rm -rf /",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("clipboard_write de credencial -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "cat ~/.ssh/id_rsa",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("clipboard_write com credencial no meio do texto -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "minha chave: ~/.ssh/id_ed25519",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+test("clipboard_write com PowerShell destrutivo -> deny", () => {
+  const a = actionFromToolCall("win_context_win_clipboard_write", {
+    text: "Remove-Item C:\\x -Recurse",
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+
+// --- #23: alvos de execucao do act_open exigem consentimento (na tool) ---
+
+test("isExecutionTarget: interpretadores por nome, com .exe e caminho completo", () => {
+  const alvos = [
+    "cmd",
+    "cmd.exe",
+    "CMD.EXE",
+    "C:\\Windows\\System32\\cmd.exe",
+    "powershell",
+    "powershell.exe",
+    "pwsh",
+    "wsl",
+    "wsl.exe",
+    "wt",
+    "wscript",
+    "cscript",
+    "mshta",
+    "rundll32",
+    "regsvr32",
+  ];
+  for (const t of alvos) assert.equal(isExecutionTarget(t), true, t);
+});
+
+test("isExecutionTarget: extensoes de script (case-insensitive, com caminho)", () => {
+  const alvos = [
+    "x.bat",
+    "C:\\x\\y.CMD",
+    "script.ps1",
+    "a.vbs",
+    "app.js",
+    "C:\\a b\\run.BAT",
+    "file:///C:/x.bat",
+  ];
+  for (const t of alvos) assert.equal(isExecutionTarget(t), true, t);
+});
+
+test("isExecutionTarget: alvos benignos (URL/app/arquivo) nao exigem consentimento", () => {
+  const alvos = [
+    "notepad",
+    "notepad.exe",
+    "C:\\app\\a.exe",
+    "readme.txt",
+    "https://x",
+    "https://cdn.example.com/app.js",
+    "ms-settings:",
+    "",
+  ];
+  for (const t of alvos) assert.equal(isExecutionTarget(t), false, t);
+});
+
+test("isExecutionTarget: alvo com args embutidos no proprio target", () => {
+  assert.equal(isExecutionTarget("cmd /c dir"), true);
+  assert.equal(isExecutionTarget("C:\\Windows\\System32\\cmd.exe /c dir"), true);
+  assert.equal(isExecutionTarget("C:\\Program Files\\app.exe --flag"), false);
+});
+
+test("isExecutionTarget: normaliza pontos/espacos a direita (resolucao do Windows)", () => {
+  const alvos = [
+    "cmd.",
+    "cmd.exe.",
+    "cmd. ",
+    "cmd.exe. ",
+    " CMD. ",
+    "C:\\Windows\\System32\\cmd.exe.",
+    "x.bat.",
+    "script.ps1 ",
+  ];
+  for (const t of alvos) assert.equal(isExecutionTarget(t), true, t);
+  assert.equal(isExecutionTarget(" cmd "), true);
+  assert.equal(isExecutionTarget("notepad.exe."), false);
+});
+
+test("act_open mapeia target + args no padrao (comando completo)", () => {
+  const a = actionFromToolCall("act_open", {
+    target: "app.exe",
+    args: ["--flag", "a b"],
+    confirm: true,
+  });
+  assert.equal(a.type, "act");
+  assert.equal(a.pattern, "app.exe --flag a b");
+});
+
+test("allow: act_open URL com args benignos -> allow", () => {
+  const a = actionFromToolCall("act_open", { target: "https://x", args: ["--profile"] });
+  assert.equal(decide({ ...a }).status, "allow");
+});
+
+test("deny: act_open com padrao destrutivo dentro de args", () => {
+  const a = actionFromToolCall("act_open", {
+    target: "cmd",
+    args: ["/c", "del /s C:\\temp"],
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+
+test("deny: act_open com tokens perigosos separados em args", () => {
+  // "del" e "/s" em elementos distintos: o join por espaco reconstroi a linha
+  // para as regras line-scoped.
+  const a = actionFromToolCall("act_open", {
+    target: "cmd",
+    args: ["/c", "del", "/s", "C:\\temp"],
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+
+test("deny: act_open com credencial dentro de args", () => {
+  const a = actionFromToolCall("act_open", {
+    target: "cmd",
+    args: ["/c", "type C:\\Users\\x\\.ssh\\id_rsa"],
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+
+test("deny: act_open com Remove-Item dentro de args", () => {
+  const a = actionFromToolCall("act_open", {
+    target: "powershell.exe",
+    args: ["-Command", "Remove-Item C:\\x -Recurse"],
+    confirm: true,
+  });
+  assert.equal(decide({ ...a }).status, "deny");
+});
+
 test('native file aliases preserve credential and write gates',()=>{
   assert.equal(decide(actionFromToolCall('file_read',{path:'/home/user/.ssh/id_rsa'})).status,'deny');
   assert.equal(decide(actionFromToolCall('file_write',{path:'/home/user/note.txt'})).status,'ask');

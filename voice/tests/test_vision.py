@@ -191,3 +191,47 @@ def test_see_via_run_passes_dynamic_ollama_catalog(monkeypatch):
     monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: (seen.update({"kw": kw}) or subprocess.CompletedProcess(cmd, 0, "ok", "")))
     vision._see_via_run(CFG, "q", "/tmp/x.png")
     assert seen["kw"]["env"]["OPENCODE_CONFIG_CONTENT"] == "catalog"
+
+
+def test_see_aggregates_serve_and_run_causes_on_double_failure(monkeypatch):
+    from agent_client import AgentError
+
+    monkeypatch.setattr(vision, "ensure_server", lambda cfg, **k: True)
+
+    class FakeServe:
+        def __init__(self, cfg):
+            pass
+
+        def see(self, *a, **k):
+            raise AgentError("falha ao falar com o servidor (HTTP Error 500)")
+
+    monkeypatch.setattr(vision, "ServeClient", FakeServe)
+
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(
+            cmd,
+            1,
+            "",
+            "\x1b[31mModel not found: opencode-go/deepseek-v4.1-flash\x1b[0m",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(vision.VoiceError) as excinfo:
+        vision.see("o que tem?", "/mnt/c/x/shot.png", config=CFG)
+    msg = str(excinfo.value)
+    assert "serve" in msg
+    assert "HTTP Error 500" in msg
+    assert "Model not found" in msg
+    assert "\x1b[" not in msg
+
+
+def test_see_via_run_strips_ansi_from_stderr(monkeypatch):
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 1, "", "\x1b[31mModel not found\x1b[0m\n")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    with pytest.raises(vision.VoiceError) as excinfo:
+        vision._see_via_run(CFG, "q", "/tmp/x.png")
+    msg = str(excinfo.value)
+    assert "Model not found" in msg
+    assert "\x1b[" not in msg

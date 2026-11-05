@@ -3,8 +3,11 @@ import { type Plugin, tool } from "@opencode-ai/plugin";
 import { isNativeLinux } from "../act/platform.ts";
 import { runLinux } from "../act/linux.ts";
 
-import { buildPsScript, encode } from "../act/ps.ts";
-import { buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
+import { parseKeys } from "../act/keys.ts";
+import { buildPsScript, encode, toArgList } from "../act/ps.ts";
+import { type ActResult, buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
+import { formatToolError } from "../lib/tool-error.ts";
+import { isExecutionTarget } from "../safety/rules.ts";
 
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
 // plugin. Este arquivo exporta APENAS `ActTools`; os helpers puros ficam em
@@ -57,6 +60,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
       },
       async execute(args) {
         if (isNativeLinux()) return runLinux("act_type", args);
+        debugRawTypeArgs(args);
         const bg = chooseActScript("act_type", args);
         // #26: falha do shell nunca vaza crua — vira "erro em act_type (etapa: ...)".
         try {
@@ -95,6 +99,11 @@ export const ActTools: Plugin = async ({ $ }) => ({
       },
       async execute(args) {
         if (isNativeLinux()) return runLinux("act_key", args);
+        try {
+          parseKeys(String(args.keys ?? ""));
+        } catch (err) {
+          return formatToolError({ tool: "act_key", step: "validar sintaxe" }, err);
+        }
         const bg = chooseActScript("act_key", args);
         // #26: falha do shell nunca vaza crua — vira "erro em act_key (etapa: ...)".
         try {
@@ -126,11 +135,27 @@ export const ActTools: Plugin = async ({ $ }) => ({
       },
     }),
     act_open: tool({
-      description: "Abre uma URL, arquivo ou aplicativo usando a plataforma do usuario.",
-      args: { target: tool.schema.string() },
+      description:
+        "Abre uma URL, arquivo ou aplicativo (Start-Process). args (opcional) sao repassados ao alvo com quoting Windows. " +
+        "Alvos de execucao — terminais/interpretadores/scripts — exigem confirm=true; pergunte ao usuario antes.",
+      args: {
+        target: tool.schema.string(),
+        args: tool.schema.array(tool.schema.string()).optional(),
+        confirm: tool.schema.boolean().optional(),
+      },
       async execute(args) {
+        const target = String(args.target ?? "");
+        if (isExecutionTarget(target) && args.confirm !== true) {
+          const argv = toArgList(args.args);
+          const extra = argv.length > 0 ? ` com os argumentos [${argv.join(", ")}]` : "";
+          return `recusado: "${target}" abre caminho de execucao${extra} e exige confirm=true — PERGUNTE ao usuario ("quer que eu abra ${target} para executar?") antes e repita com confirm=true somente apos o ok`;
+        }
         if (isNativeLinux()) return runLinux("act_open", args);
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
+        try {
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
+        } catch (err) {
+          return formatToolError({ tool: "act_open", step: "abrir alvo", detail: `Start-Process ${target}` }, err);
+        }
       },
     }),
     act_click: tool({
@@ -138,7 +163,11 @@ export const ActTools: Plugin = async ({ $ }) => ({
       args: { x: tool.schema.number(), y: tool.schema.number(), button: tool.schema.string().optional(), stream: tool.schema.number().optional() },
       async execute(args) {
         if (isNativeLinux()) return runLinux("act_click", args);
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
+        try {
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
+        } catch (err) {
+          return formatToolError({ tool: "act_click", step: "clicar", detail: "powershell (SetCursorPos/mouse_event)" }, err);
+        }
       },
     }),
     ...(isNativeLinux() ? {
@@ -173,7 +202,11 @@ export const ActTools: Plugin = async ({ $ }) => ({
       args: {},
       async execute() {
         if (isNativeLinux()) return runLinux("win_list", {});
-        return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
+        try {
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
+        } catch (err) {
+          return formatToolError({ tool: "win_list", step: "listar janelas", detail: "powershell (EnumWindows)" }, err);
+        }
       },
     }),
   },
