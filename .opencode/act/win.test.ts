@@ -1,6 +1,13 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildWinListScript, parseWinList, buildBackgroundTypeScript, buildBackgroundKeyScript, parseActResult, chooseActScript } from "./win.ts";
+import { test } from "node:test";
+import {
+  buildBackgroundKeyScript,
+  buildBackgroundTypeScript,
+  buildWinListScript,
+  chooseActScript,
+  parseActResult,
+  parseWinList,
+} from "./win.ts";
 
 test("win_list script usa EnumWindows e nao rouba foco", () => {
   const s = buildWinListScript();
@@ -60,7 +67,16 @@ test("background type roda a UIA num job com timeout e trata estouro como unconf
   assert.match(s, /Start-Job/);
   assert.match(s, /Wait-Job/);
   assert.match(s, /-Timeout/);
-  assert.match(s, /JARVIS_RESULT=unconfirmed\|UIA timeout/);
+  // #28: o estouro carrega o codigo de razao 'timeout' para a tool compor.
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|timeout\|UIA timeout/);
+});
+
+test("background type marca a causa de cada unconfirmed no JARVIS_RESULT (#28)", () => {
+  const s = buildBackgroundTypeScript({ text: "oi", hwnd: 42 });
+  // noset: sem controle de edicao (WM_CHAR foi postado no topo da janela).
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|noset\|sem controle de edicao/);
+  // set: havia controle de edicao, mas a UIA nao confirmou o texto.
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|set\|sem confirmacao/);
 });
 
 test("background type suporta append (I2) e WM_CHAR no controle (I3)", () => {
@@ -86,7 +102,7 @@ test("background type escapa aspas simples do texto", () => {
 });
 
 test("background key usa PostMessage WM_KEYDOWN/UP e nao rouba foco", () => {
-  const s = buildBackgroundKeyScript({ keys: "^s", window: "Notepad" });
+  const s = buildBackgroundKeyScript({ keys: "ctrl+s", window: "Notepad" });
   assert.match(s, /0x0100/);
   assert.match(s, /0x0101/);
   assert.match(s, /PostMessageW/);
@@ -94,31 +110,148 @@ test("background key usa PostMessage WM_KEYDOWN/UP e nao rouba foco", () => {
   assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|mouse_event/);
 });
 
-test("background key escapa aspas simples em keys", () => {
-  const s = buildBackgroundKeyScript({ keys: "it's" });
-  assert.ok(s.includes("it''s"));
+test("background key consome o parser natural (nao mais SendKeys cru)", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter" });
+  assert.doesNotMatch(s, /\$MOD =/); // parser antigo de SendKeys removido
+  assert.match(s, /"vk":13/); // VK de enter vindo do parser, no JSON
+  assert.throws(() => buildBackgroundKeyScript({ keys: "foo" }), /desconhecid/i);
 });
 
-test("background key normaliza letras para VK maiusculo", () => {
-  const s = buildBackgroundKeyScript({ keys: "^s" });
-  assert.match(s, /IsLetter/);
-  assert.match(s, /ToUpper/);
+test("background key monta lParam com scan code e flag extended", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter" });
+  // lParam correto: scan code em (sc << 16); extended em (1 << 24).
+  assert.match(s, /MapVirtualKey/);
+  assert.match(s, /0x0001/); // MAPVK_VK_TO_VSC
+  assert.match(s, /0x1000000/); // 1 << 24
+  assert.match(s, /0x8000/); // bit de transicao (keyup)
+  // Keydown com lParam (sc << 16); keyup com o bit de transicao.
+  assert.match(s, /PostMessageW\(\$h, 0x0100, \[IntPtr\]\$vk, \[IntPtr\]\$lpDown\)/);
+  assert.match(s, /PostMessageW\(\$h, 0x0101, \[IntPtr\]\$vk, \[IntPtr\]\$lpUp\)/);
+});
+
+test("background key mira o controle de edicao via UIA (I3), com fallback no topo", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter", hwnd: 42 });
+  // Mesmo padrao do act_type bg: Document antes de Edit, handle nativo.
+  assert.match(s, /Start-Job/);
+  assert.match(s, /Wait-Job/);
+  assert.match(s, /ControlType\]::Document/);
+  assert.match(s, /NativeWindowHandle/);
+  assert.match(s, /\$native/);
+  // Sem roubo de foco nem SetValue.
+  assert.doesNotMatch(s, /SetForegroundWindow|SetCursorPos|\.SetValue\(/);
+});
+
+test("background key: char manda so keydown; tecla especial down+up", () => {
+  const s = buildBackgroundKeyScript({ keys: "b enter", hwnd: 42 });
+  assert.match(
+    s,
+    /if \(\$c\.onlyDown\) \{ \[void\]\[W\.Win\]::PostMessageW\(\$h, 0x0100, \[IntPtr\]\$vk, \[IntPtr\]\$lpDown\) \}/,
+  );
+  assert.match(s, /"onlyDown":true/);
+  assert.match(s, /"onlyDown":false/);
+});
+
+test("background key avisa que win+r nao funciona em background", () => {
+  const s = buildBackgroundKeyScript({ keys: "win+r", hwnd: 42 });
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|' \+ \$reason \+ '\|' \+ \$alvo/);
+  assert.match(s, /win\+r nao funciona em background/);
+});
+
+test("background key marca a causa no JARVIS_RESULT (sent/noset/timeout) (#28)", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter", hwnd: 42 });
+  // sent: teclas postadas com controle de edicao; noset: sem controle.
+  assert.match(s, /if \(\$native -gt 0\) \{ 'sent' \} else \{ 'noset' \}/);
+  assert.match(s, /JARVIS_RESULT=unconfirmed\|timeout\|janela nao respondeu em 5s/);
+});
+
+test("background key: detalhe e so o alvo (a tool compoe a mensagem sem repetir)", () => {
+  const s = buildBackgroundKeyScript({ keys: "enter", hwnd: 42 });
+  assert.doesNotMatch(s, /teclas enviadas para/);
+});
+
+test("background key escapa aspas simples em keys", () => {
+  const s = buildBackgroundKeyScript({ keys: "plus" });
+  // O payload vai num here-string 'single-quoted': JSON sem risco de interpolacao.
+  assert.match(s, /@'\n\[/);
+  assert.match(s, /"vk":187/);
+  assert.throws(() => buildBackgroundKeyScript({ keys: "it's" }), /desconhecid/i);
 });
 
 test("parseActResult le marcadores", () => {
   assert.deepEqual(parseActResult("ruido\nJARVIS_RESULT=confirmed|digitado"), {
-    status: "confirmed", detail: "digitado",
+    status: "confirmed",
+    detail: "digitado",
   });
   assert.equal(parseActResult("JARVIS_RESULT=unconfirmed|sem confirmacao").status, "unconfirmed");
   assert.equal(parseActResult("JARVIS_RESULT=ambiguous|[]").status, "ambiguous");
   assert.equal(parseActResult("nada").status, "error");
 });
 
+test("parseActResult le o codigo de razao e mantem o formato antigo (#28)", () => {
+  // Formato novo: status|reason|detail.
+  assert.deepEqual(parseActResult("JARVIS_RESULT=unconfirmed|set|sem confirmacao"), {
+    status: "unconfirmed",
+    reason: "set",
+    detail: "sem confirmacao",
+  });
+  // Formato antigo (sem reason) continua parseavel: reason fica ausente.
+  assert.deepEqual(parseActResult("JARVIS_RESULT=unconfirmed|sem confirmacao"), {
+    status: "unconfirmed",
+    detail: "sem confirmacao",
+  });
+});
+
 test("mode foreground explicito forca foreground mesmo com window", () => {
-  assert.equal(chooseActScript("act_type", { text: "oi", mode: "foreground", window: "Notepad" }), "");
-  assert.equal(chooseActScript("act_key", { keys: "^s", mode: "foreground", window: "Notepad" }), "");
+  assert.equal(
+    chooseActScript("act_type", { text: "oi", mode: "foreground", window: "Notepad" }),
+    "",
+  );
+  assert.equal(
+    chooseActScript("act_key", { keys: "ctrl+s", mode: "foreground", window: "Notepad" }),
+    "",
+  );
 });
 
 test("hwnd sozinho entra em background", () => {
   assert.match(chooseActScript("act_type", { text: "oi", hwnd: 123 }), /0x0102/);
+});
+
+// --- #20 act_type: contrato de `\`, aspas e `%` no background ---------------
+// Caracterizacao: `$text` e uma string 'single-quoted' do PowerShell (barra e
+// `%` literais; apostrofo dobra) e o WM_CHAR itera o texto char a char —
+// 0x5C (backslash) incluso. Protegem contra regressao da perda local.
+
+test("act_type bg: caminho com barras vira $text literal", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\Users\\Public\\x.txt", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\Users\\Public\\x.txt'"));
+});
+
+test("act_type bg: nenhuma barra do texto some (single-quoted)", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\Users\\Public\\x.txt", hwnd: 42 });
+  const line = s.split("\n").find((l) => l.startsWith("$text = "));
+  assert.ok(line, "linha $text presente no script");
+  assert.equal((line.match(/\\/g) ?? []).length, 3);
+});
+
+test("act_type bg: `%` e literal (sem escape de SendKeys, sem interpolacao)", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\50%\\x", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\50%\\x'"));
+  assert.ok(!s.includes("{%}"));
+  assert.doesNotMatch(s, /SendKeys/);
+});
+
+test("act_type bg: apostrofo dobra e barras seguem intactas", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\it's\\x", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\it''s\\x'"));
+});
+
+test("act_type bg: WM_CHAR itera cada char (0x5C incluso)", () => {
+  const s = buildBackgroundTypeScript({ text: "C:\\a", hwnd: 42 });
+  assert.match(s, /foreach \(\$ch in \$text\.ToCharArray\(\)\)/);
+  assert.match(s, /0x0102, \[IntPtr\]\[int\]\[char\]\$ch/);
+});
+
+test("act_type bg via chooseActScript preserva o caminho do texto", () => {
+  const s = chooseActScript("act_type", { text: "C:\\Users\\Public\\x.txt", hwnd: 42 });
+  assert.ok(s.includes("$text = 'C:\\Users\\Public\\x.txt'"));
 });

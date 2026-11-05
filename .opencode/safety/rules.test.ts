@@ -1,7 +1,7 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
-import { decide } from "./rules.ts";
+import { test } from "node:test";
 import { actionFromToolCall } from "./hook.ts";
+import { decide, isExecutionTarget } from "./rules.ts";
 
 const d = (type: string, pattern?: string | string[]) => decide({ type, pattern });
 
@@ -190,7 +190,11 @@ test("act_type background benigno -> allow", () => {
   assert.equal(decide({ ...a }).status, "allow");
 });
 test("act_type background destrutivo -> deny (conteudo ainda avaliado)", () => {
-  const a = actionFromToolCall("act_type", { text: "format C:", mode: "background", window: "cmd" });
+  const a = actionFromToolCall("act_type", {
+    text: "format C:",
+    mode: "background",
+    window: "cmd",
+  });
   assert.equal(decide({ ...a }).status, "deny");
 });
 

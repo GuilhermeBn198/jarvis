@@ -1,9 +1,8 @@
 import io
 
-import pytest
-
 import loop
 import loop as loop_mod
+import pytest
 from config import Config
 from sanitize import speechify
 from tts import VoiceError
@@ -43,7 +42,6 @@ def test_voice_trigger_detection():
     assert loop.is_vision_request("olha, me ajuda", "olha") is True
     assert loop.is_vision_request("olhar a lua", "olha") is False
     assert loop.is_vision_request("qual a capital da franca", "olha") is False
-
 
 
 def test_strip_trigger_removes_prefix():
@@ -90,7 +88,8 @@ def test_main_see_text_prints_without_tts(monkeypatch):
 
 def test_main_see_text_error_returns_1(monkeypatch):
     monkeypatch.setattr(
-        loop_mod, "capture",
+        loop_mod,
+        "capture",
         lambda **k: (_ for _ in ()).throw(VoiceError("sem tela")),
     )
     err = io.StringIO()

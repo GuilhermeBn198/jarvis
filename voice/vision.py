@@ -3,6 +3,7 @@ import subprocess
 from agent_client import AgentError, ServeClient, strip_opencode_noise
 from config import Config, load_config
 from paths import _windows_to_wsl, _wsl_to_windows
+from sanitize import strip_ansi
 from serve import ensure_server
 from model_selection import opencode_catalog_environment
 from tts import VoiceError
@@ -15,19 +16,24 @@ def capture(out_path: str | None = None, config: Config | None = None) -> str:
         return screenshot(out_path or cfg.vision_png, cfg)
     win_path = _wsl_to_windows(out_path) if out_path else cfg.vision_png
     cmd = [
-        cfg.ffmpeg_exe, "-y", "-f", "gdigrab", "-i", "desktop",
-        "-frames:v", "1", "-update", "1", win_path,
+        cfg.ffmpeg_exe,
+        "-y",
+        "-f",
+        "gdigrab",
+        "-i",
+        "desktop",
+        "-frames:v",
+        "1",
+        "-update",
+        "1",
+        win_path,
     ]
     try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace", timeout=60
-        )
+        proc = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=60)
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha ao capturar a tela (FFMPEG_EXE): {exc}") from exc
     if proc.returncode != 0:
-        raise VoiceError(
-            f"ffmpeg gdigrab falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}"
-        )
+        raise VoiceError(f"ffmpeg gdigrab falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
     return _windows_to_wsl(win_path)
 
 
@@ -49,9 +55,8 @@ def _see_via_run(cfg: Config, prompt: str, png_path: str) -> str:
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha na consulta de visao: {exc}") from exc
     if proc.returncode != 0:
-        raise VoiceError(
-            f"visao falhou ({proc.returncode}): {proc.stderr.strip()[:200]}"
-        )
+        stderr = strip_ansi(proc.stderr or "").strip()
+        raise VoiceError(f"visao falhou ({proc.returncode}): {stderr[:200]}")
     cleaned = strip_opencode_noise(proc.stdout).strip()
     if not cleaned:
         raise VoiceError("visao nao retornou resposta")
@@ -67,13 +72,23 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
     # nao-conflavel e nao pode rodar tools/plugins (SafetyGate, act_*).
     # wait_s curto: um spawn que nunca fica saudavel nao pode atrasar o
     # fallback `run` em ~20s.
+    serve_error: Exception | None = None
     if ensure_server(cfg, wait_s=3):
         try:
             return ServeClient(cfg).see(prompt, png_path, model_id=cfg.agent_model or cfg.vision_model)
         except (AgentError, VoiceError):
             # Servidor saudavel no check, mas a chamada falhou (sessao
-            # morreu, timeout, etc.): cai para `run` uma vez, reutilizando
-            # o PNG ja capturado (sem re-capturar a tela).
-            pass
+            # morreu, timeout, modelo inexistente, etc.): cai para `run` uma
+            # vez, reutilizando o PNG ja capturado (sem re-capturar a tela).
+            # A causa do `serve` fica guardada: se o `run` tambem falhar, ela
+            # entra na mensagem final (antes o erro do serve sumia).
+            serve_error = exc
     # Fallback: servidor indisponivel ou falha pos-check -> `opencode run`.
-    return _see_via_run(cfg, prompt, png_path)
+    try:
+        return _see_via_run(cfg, prompt, png_path)
+    except VoiceError as run_error:
+        if serve_error is None:
+            raise
+        raise VoiceError(
+            f"visao falhou em todas as etapas: serve ({serve_error}); run ({run_error})"
+        ) from run_error

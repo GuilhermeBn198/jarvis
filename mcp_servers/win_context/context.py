@@ -15,7 +15,24 @@ from dataclasses import dataclass
 
 
 class WinContextError(Exception):
-    """Falha ao obter contexto do Windows."""
+    """Falha ao obter contexto do Windows.
+
+    Carrega a causa crua do subprocesso (exit_code/stderr/stdout) para o
+    server formatar com `tool_error.format_tool_error` (#26).
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        exit_code: int | None = None,
+        stderr: str = "",
+        stdout: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.exit_code = exit_code
+        self.stderr = stderr
+        self.stdout = stdout
 
 
 # P/Invoke minimo (equal ao WIN32_SNIPPET do win.ts) para enumerar janelas.
@@ -84,18 +101,44 @@ def _default_run(script: str) -> str:
     try:
         proc = subprocess.run(
             ["powershell.exe", "-NoProfile", "-EncodedCommand", _encode(script)],
-            capture_output=True, text=True, errors="replace", timeout=20,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=20,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise WinContextError(f"falha ao rodar powershell.exe: {exc}") from exc
     if proc.returncode != 0:
-        raise WinContextError(f"powershell falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
+        # #26: preserva exit code + stderr crus; o server formata (redigido).
+        raise WinContextError(
+            "powershell falhou",
+            exit_code=proc.returncode,
+            stderr=proc.stderr or "",
+            stdout=proc.stdout or "",
+        )
     return proc.stdout
 
 
 def _encode(script: str) -> str:
     import base64
+
     return base64.b64encode(script.encode("utf-16le")).decode("ascii")
+
+
+def clipboard_write_script(text: str) -> str:
+    """Script que escreve `text` no clipboard via Set-Clipboard.
+
+    O texto viaja em base64 UTF-8 DENTRO do script (nunca interpolado cru):
+    elimina injecao de comando, problemas de quoting e corrupcao de Unicode.
+    """
+    import base64
+
+    b64 = base64.b64encode(text.encode("utf-8")).decode("ascii")
+    return (
+        f"$b='{b64}'\n"
+        "$t=[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b))\n"
+        "Set-Clipboard -Value $t\n"
+    )
 
 
 def list_windows(run=_default_run) -> list[Window]:
@@ -123,11 +166,12 @@ foreach ($e in $all) {
 
 
 def format_tree(stdout: str) -> str:
-    lines = [l.strip() for l in stdout.splitlines() if l.strip()]
+    lines = [line.strip() for line in stdout.splitlines() if line.strip()]
     return "\n".join(lines) if lines else "(sem arvore de acessibilidade)"
 
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1 and sys.argv[1] == "windows":
         print(format_windows(list_windows()))

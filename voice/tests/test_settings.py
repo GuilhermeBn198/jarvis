@@ -75,8 +75,7 @@ def test_save_settings_drops_invalid_choice(tmp_path):
 
 def test_load_settings_drops_invalid_choice(tmp_path):
     p = tmp_path / "s.json"
-    p.write_text(json.dumps({"input_mode": "nope", "tts_backend": "sapi"}),
-                 encoding="utf-8")
+    p.write_text(json.dumps({"input_mode": "nope", "tts_backend": "sapi"}), encoding="utf-8")
     assert load_settings(str(p)) == {"tts_backend": "sapi"}
 
 

@@ -1,9 +1,8 @@
 import json
 
 import jsonschema
-from mcp.server.mcpserver import MCPServer
-
 from config import load_config
+from mcp.server.mcpserver import MCPServer
 from ollama_client import OllamaClient, OllamaError
 
 mcp = MCPServer("delegate_local")

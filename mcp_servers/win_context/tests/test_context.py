@@ -1,12 +1,18 @@
+import base64
+import re
+
 import context as ctx
+import pytest
 
 
 def test_parse_windows_extrai_jsonlines_e_ignora_ruido():
-    out = "\n".join([
-        "PS> lixo",
-        '{"hwnd":111,"title":"Notepad","process":"notepad"}',
-        '{"hwnd":222,"title":"Chrome","process":"chrome"}',
-    ])
+    out = "\n".join(
+        [
+            "PS> lixo",
+            '{"hwnd":111,"title":"Notepad","process":"notepad"}',
+            '{"hwnd":222,"title":"Chrome","process":"chrome"}',
+        ]
+    )
     wins = ctx.parse_windows(out)
     assert [(w.hwnd, w.title, w.process) for w in wins] == [
         (111, "Notepad", "notepad"),
@@ -43,3 +49,49 @@ def test_tree_script_usa_namespace_uia_correto():
     s = ctx._tree_script(123, 10)
     assert "[System.Windows.Automation.AutomationElement]::FromHandle" in s
     assert "System.Management.Automation.AutomationElement" not in s
+
+
+def test_clipboard_write_script_roundtrip_unicode_base64():
+    text = "Ola, mundo! Acao 🚀 acai \u00e7\u00e3o"
+    script = ctx.clipboard_write_script(text)
+    m = re.search(r"\$b\s*=\s*'([A-Za-z0-9+/=]+)'", script)
+    assert m, script
+    assert base64.b64decode(m.group(1)).decode("utf-8") == text
+    assert "Set-Clipboard" in script
+
+
+def test_clipboard_write_script_nao_vaza_texto_cru():
+    script = ctx.clipboard_write_script("rm -rf / e senha hunter2")
+    assert "rm -rf" not in script
+    assert "hunter2" not in script
+
+
+# --- #26: _default_run preserva a causa real (exit code + stderr) ------------
+
+
+class _Proc:
+    def __init__(self, returncode, stdout="", stderr=""):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def test_default_run_falha_preserva_exit_code_e_stderr(monkeypatch):
+    monkeypatch.setattr(
+        ctx.subprocess, "run", lambda *a, **k: _Proc(1, stderr="Erro: janela nao encontrada\n")
+    )
+    with pytest.raises(ctx.WinContextError) as ei:
+        ctx._default_run("script")
+    assert ei.value.exit_code == 1
+    assert "janela nao encontrada" in ei.value.stderr
+
+
+def test_default_run_sem_powershell_vira_erro_com_mensagem(monkeypatch):
+    def boom(*a, **k):
+        raise OSError("powershell.exe nao encontrado")
+
+    monkeypatch.setattr(ctx.subprocess, "run", boom)
+    with pytest.raises(ctx.WinContextError) as ei:
+        ctx._default_run("script")
+    assert ei.value.exit_code is None
+    assert "falha ao rodar powershell.exe" in str(ei.value)

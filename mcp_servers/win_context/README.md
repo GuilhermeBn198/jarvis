@@ -7,6 +7,8 @@ Tools:
 - `win_list_text` — janelas visíveis (hwnd, processo, título).
 - `win_tree_text(hwnd, max_nodes=200)` — árvore de acessibilidade (UIA) da janela.
 - `win_clipboard_text` — conteúdo atual do clipboard.
+- `win_clipboard_write(text, confirm=false)` — grava `text` no clipboard; exige
+  `confirm=true` e o texto viaja em base64 UTF-8 (sem interpolação no PowerShell).
 - `win_processes_text(name_filter="")` — processos (nome, id, título).
 
 Reusa a descoberta de janelas do `win_list` (mesmo P/Invoke de `.opencode/act/win.ts`).

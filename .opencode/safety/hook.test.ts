@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { actionFromToolCall, beforeToolCall } from "./hook.ts";
 
 test("mapping: bash usa o comando como pattern", () => {
@@ -27,19 +27,33 @@ test("mapping: tool sem padrão relevante fica só com o tipo", () => {
   assert.deepEqual(actionFromToolCall("grep", { include: "*.ts" }), { type: "grep" });
 });
 
+test("mapping: win_context clipboard_write usa o texto como pattern", () => {
+  assert.deepEqual(
+    actionFromToolCall("win_context_win_clipboard_write", { text: "ola mundo", confirm: true }),
+    { type: "clipwrite", pattern: "ola mundo" },
+  );
+});
+
+test("mapping: win_context clipboard_write sem texto fica sem pattern", () => {
+  assert.deepEqual(actionFromToolCall("win_context_win_clipboard_write", {}), {
+    type: "clipwrite",
+    pattern: undefined,
+  });
+});
+
 test("beforeToolCall: bash destrutivo -> throw (deny)", () => {
   assert.throws(() => beforeToolCall("bash", { command: "rm -rf /" }), /SafetyGate bloqueou/);
 });
 
 test("beforeToolCall: acesso a credencial -> throw (deny)", () => {
-  assert.throws(() => beforeToolCall("bash", { command: "cat ~/.ssh/id_rsa" }), /SafetyGate bloqueou/);
+  assert.throws(
+    () => beforeToolCall("bash", { command: "cat ~/.ssh/id_rsa" }),
+    /SafetyGate bloqueou/,
+  );
 });
 
 test("beforeToolCall: read de credencial -> throw (deny)", () => {
-  assert.throws(
-    () => beforeToolCall("read", { filePath: "~/.ssh/id_rsa" }),
-    /SafetyGate bloqueou/,
-  );
+  assert.throws(() => beforeToolCall("read", { filePath: "~/.ssh/id_rsa" }), /SafetyGate bloqueou/);
 });
 
 test("beforeToolCall: comando de leitura -> não throw (allow)", () => {
@@ -62,8 +76,58 @@ test("beforeToolCall: act_type benigno -> não throw (allow)", () => {
 });
 
 test("beforeToolCall: act_open com deny -> throw", () => {
+  assert.throws(() => beforeToolCall("act_open", { target: "diskpart" }), /SafetyGate bloqueou/);
+});
+
+test("mapping: act_open com args reconstroi o comando completo", () => {
+  assert.deepEqual(
+    actionFromToolCall("act_open", { target: "cmd", args: ["/c", "dir"], confirm: true }),
+    {
+      type: "act",
+      pattern: "cmd /c dir",
+    },
+  );
+});
+
+test("mapping: act_open sem args mantem o target (regressao)", () => {
+  assert.deepEqual(actionFromToolCall("act_open", { target: "https://x" }), {
+    type: "act",
+    pattern: "https://x",
+  });
+});
+
+test("beforeToolCall: act_open de execucao sem confirm nao bloqueia no hook (consentimento fica na tool)", () => {
+  assert.doesNotThrow(() => beforeToolCall("act_open", { target: "cmd", args: ["/c", "dir"] }));
+});
+
+test("beforeToolCall: act_open com deny em args -> throw mesmo com confirm", () => {
   assert.throws(
-    () => beforeToolCall("act_open", { target: "diskpart" }),
+    () =>
+      beforeToolCall("act_open", { target: "cmd", args: ["/c", "del /s C:\\temp"], confirm: true }),
     /SafetyGate bloqueou/,
+  );
+});
+
+test("beforeToolCall: clipboard_write destrutivo -> throw (deny)", () => {
+  assert.throws(
+    () => beforeToolCall("win_context_win_clipboard_write", { text: "rm -rf /", confirm: true }),
+    /SafetyGate bloqueou/,
+  );
+});
+
+test("beforeToolCall: clipboard_write de credencial -> throw (deny)", () => {
+  assert.throws(
+    () =>
+      beforeToolCall("win_context_win_clipboard_write", {
+        text: "cat ~/.ssh/id_rsa",
+        confirm: true,
+      }),
+    /SafetyGate bloqueou/,
+  );
+});
+
+test("beforeToolCall: clipboard_write benigno -> não throw (allow)", () => {
+  assert.doesNotThrow(() =>
+    beforeToolCall("win_context_win_clipboard_write", { text: "ola mundo", confirm: true }),
   );
 });

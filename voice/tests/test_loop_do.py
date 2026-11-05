@@ -2,10 +2,9 @@ import io
 import subprocess
 from contextlib import nullcontext
 
-import pytest
-
-from config import Config
 import loop
+import pytest
+from config import Config
 
 CFG = Config(opencode_bin="/x/opencode", timeout_s=10, agent="chat")
 
@@ -51,9 +50,11 @@ def test_do_restores_idle_when_opencode_missing(monkeypatch):
 
 def test_do_once_runs_opencode_in_project_root(monkeypatch):
     seen = {}
+
     def fake_run(cmd, **kw):
         seen["kw"] = kw
         return subprocess.CompletedProcess(cmd, 0, stdout="ok", stderr="")
+
     monkeypatch.setattr(subprocess, "run", fake_run)
     cfg = Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo")
     loop.do_once("oi", out=io.StringIO(), err=io.StringIO(), config=cfg)

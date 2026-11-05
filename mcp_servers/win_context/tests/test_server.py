@@ -1,6 +1,6 @@
+import base64
 import importlib
-
-import pytest
+import re
 
 import context as ctx
 from mcp.server.mcpserver.exceptions import ToolError
@@ -13,6 +13,7 @@ def windows_contract(monkeypatch):
 
 def _server():
     import server
+
     return importlib.reload(server)
 
 
@@ -23,15 +24,37 @@ def test_win_list_text_usa_contexto(monkeypatch):
     assert "7\tp\tT" in out
 
 
-def test_win_list_text_erro_vira_runtime(monkeypatch):
+# --- #26: erro real com causa no formato unico dos plugins -------------------
+
+
+def _erro_powershell(stderr="erro real", code=1):
+    def boom(*_a, **_k):
+        raise ctx.WinContextError("powershell falhou", exit_code=code, stderr=stderr)
+
+    return boom
+
+
+def test_win_list_text_erro_vira_runtime_com_formato(monkeypatch):
+    s = _server()
+    monkeypatch.setattr(ctx, "list_windows", _erro_powershell("EnumWindows falhou"))
+    with pytest.raises(RuntimeError) as ei:
+        s.win_list_text()
+    assert (
+        str(ei.value)
+        == "erro em win_list_text (etapa: powershell): exit code 1: EnumWindows falhou"
+    )
+
+
+def test_win_list_text_erro_sem_exit_code_ainda_formata(monkeypatch):
     s = _server()
 
     def boom():
         raise ctx.WinContextError("sem powershell")
 
     monkeypatch.setattr(ctx, "list_windows", boom)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError) as ei:
         s.win_list_text()
+    assert str(ei.value) == "erro em win_list_text (etapa: powershell): sem powershell"
 
 
 def test_win_tree_text_valida_hwnd():

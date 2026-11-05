@@ -54,16 +54,12 @@ def drop_leading_tui(text: str) -> str:
         return text
     lines = text.splitlines()
     i = 0
-    while i < len(lines) and (
-        not lines[i].strip() or _is_tui_chrome(lines[i])
-    ):
+    while i < len(lines) and (not lines[i].strip() or _is_tui_chrome(lines[i])):
         i += 1
     return "\n".join(lines[i:])
 
 
-def _replace_fences(
-    text: str, speak_code: bool, retained: dict[str, str]
-) -> str:
+def _replace_fences(text: str, speak_code: bool, retained: dict[str, str]) -> str:
     counter = [0]
 
     def repl(match: "re.Match") -> str:

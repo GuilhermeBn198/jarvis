@@ -60,11 +60,13 @@ def _edit_distance(a: str, b: str) -> int:
     for i, ca in enumerate(a, 1):
         cur = [i]
         for j, cb in enumerate(b, 1):
-            cur.append(min(
-                prev[j] + 1,        # remocao
-                cur[j - 1] + 1,     # insercao
-                prev[j - 1] + (ca != cb),  # substituicao
-            ))
+            cur.append(
+                min(
+                    prev[j] + 1,  # remocao
+                    cur[j - 1] + 1,  # insercao
+                    prev[j - 1] + (ca != cb),  # substituicao
+                )
+            )
         prev = cur
     return prev[-1]
 
@@ -79,12 +81,13 @@ def _boundary_ok(t_spaced: str, consumed: int) -> bool:
     pos = [i for i, c in enumerate(t_spaced) if c != " "]
     if consumed == 0 or consumed >= len(pos):
         return True
-    between = t_spaced[pos[consumed - 1] + 1:pos[consumed]]
+    between = t_spaced[pos[consumed - 1] + 1 : pos[consumed]]
     return " " in between
 
 
-def _best_prefix_len(t_spaced: str, compact_text: str, compact_phrase: str,
-                     budget: int) -> int | None:
+def _best_prefix_len(
+    t_spaced: str, compact_text: str, compact_phrase: str, budget: int
+) -> int | None:
     """Comprimento do prefixo do texto (forma compacta) que melhor casa a frase.
 
     Considera apenas comprimentos que terminam em **fronteira de palavra** e
@@ -135,8 +138,10 @@ def match(text: str, registry: Registry) -> Match | None:
     for order, tr in enumerate(registry.triggers):
         if not tr.enabled:
             continue
-        fuzzy = tr.fuzzy if tr.fuzzy is not None else (
-            registry.fuzzy if registry.fuzzy is not None else 1
+        fuzzy = (
+            tr.fuzzy
+            if tr.fuzzy is not None
+            else (registry.fuzzy if registry.fuzzy is not None else 1)
         )
         for phrase in (*tr.phrases, *tr.aliases):
             pc = normalize(phrase).replace(" ", "")
@@ -196,7 +201,7 @@ def _trigger_from_dict(d: dict) -> Trigger:
 
 def _registry_from_dict(data: dict, err=None) -> Registry:
     triggers: list[Trigger] = []
-    for item in (data.get("triggers") or []):
+    for item in data.get("triggers") or []:
         if not isinstance(item, dict):
             _warn(err, f"gatilho descartado (nao e objeto): {item!r}")
             continue
@@ -237,7 +242,7 @@ def _read_registry(path: str | None, err=None) -> Registry | None:
     if not path:
         return None
     try:
-        with open(path, "r", encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
     except (OSError, ValueError) as exc:
         _warn(err, f"nao foi possivel ler {path}: {exc}")

@@ -42,8 +42,7 @@ def record(seconds: float, out_path: str | None = None, config: Config | None = 
         return (out if cfg.platform == "linux" else _windows_to_wsl(out))
 
 
-def record_ptt(out_path: str | None = None, config: Config | None = None,
-               prompt_fn=input) -> str:
+def record_ptt(out_path: str | None = None, config: Config | None = None, prompt_fn=input) -> str:
     cfg = config or load_config()
     with recording_output(cfg, out_path, DEFAULT_OUT_WAV) as out:
         cmd = [cfg.ffmpeg_exe, "-y", *input_args(cfg), (out if cfg.platform == "linux" else _wsl_to_windows(out))]
@@ -94,11 +93,18 @@ def _parse_silence_end(line: str) -> float | None:
         return None
 
 
-def record_auto(out_path: str | None = None, config: Config | None = None,
-                max_s: float | None = None, wait_s: float | None = None,
-                silence_s: float | None = None, noise_db: int | None = None,
-                min_speech_s: float | None = None, should_stop=None,
-                on_level=None, eps: float = EPS) -> str:
+def record_auto(
+    out_path: str | None = None,
+    config: Config | None = None,
+    max_s: float | None = None,
+    wait_s: float | None = None,
+    silence_s: float | None = None,
+    noise_db: int | None = None,
+    min_speech_s: float | None = None,
+    should_stop=None,
+    on_level=None,
+    eps: float = EPS,
+) -> str:
     cfg = config or load_config()
     with recording_output(cfg, out_path, DEFAULT_AUTO_OUT_WAV) as out:
         # Sem parametro explicito, usa os tunables do config (env VOICE_*).
@@ -256,7 +262,10 @@ def measure_level(seconds: float = 5, config: Config | None = None) -> dict:
     ]
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace",
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
             timeout=int(seconds) + 30,
         )
     except (OSError, subprocess.SubprocessError) as exc:
@@ -264,9 +273,7 @@ def measure_level(seconds: float = 5, config: Config | None = None) -> dict:
             f"falha ao medir o microfone (FFMPEG_EXE={cfg.ffmpeg_exe}): {exc}"
         ) from exc
     if proc.returncode != 0:
-        raise VoiceError(
-            f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}"
-        )
+        raise VoiceError(f"ffmpeg falhou ({proc.returncode}): {proc.stderr.strip()[-200:]}")
     return parse_volume(proc.stderr)
 
 
@@ -300,12 +307,22 @@ def list_audio_devices(config: Config | None = None) -> list[str]:
     if cfg.platform == "linux":
         return list_devices(cfg)
     cmd = [
-        cfg.ffmpeg_exe, "-hide_banner", "-list_devices", "true",
-        "-f", "dshow", "-i", "dummy",
+        cfg.ffmpeg_exe,
+        "-hide_banner",
+        "-list_devices",
+        "true",
+        "-f",
+        "dshow",
+        "-i",
+        "dummy",
     ]
     try:
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, errors="replace", timeout=30,
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=30,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(

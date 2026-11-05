@@ -9,10 +9,44 @@ import { buildWinListScript, chooseActScript, parseActResult } from "../act/win.
 // ATENCAO: o loader do opencode invoca toda funcao exportada como factory de
 // plugin. Este arquivo exporta APENAS `ActTools`; os helpers puros ficam em
 // `../act/ps.ts` e `../act/win.ts`.
+
+// #28: mensagem do act_type em background POR CAUSA (reason do JARVIS_RESULT).
+// 'noset' e o unico caso em que a entrada em background nao funciona (sem
+// controle de edicao exposto: terminais/Electron); por isso a tool pede que o
+// modelo PERGUNTE antes de repetir em foreground. Os demais casos NAO sao
+// recusa — a mensagem nunca pode afirmar "a janela nao aceita entrada".
+function unconfirmedTypeMessage(r: ActResult): string {
+  if (r.reason === "noset") {
+    return "sem controle de edicao exposto (tipico de terminais/Electron) — a entrada em background nao funciona aqui; PERGUNTE ao usuario antes de repetir em foreground (focalize a janela-alvo e repita sem window).";
+  }
+  if (r.reason === "set") {
+    return "texto enviado em segundo plano, mas a UIA nao confirmou (a janela pode estar ocupada) — nao trate como recusa; verifique o resultado antes de repetir.";
+  }
+  if (r.reason === "timeout") {
+    return "a janela nao respondeu a UIA em 5s (pode estar inicializando ou ocupada) — tente de novo.";
+  }
+  return `entrada em segundo plano nao confirmada (${r.detail}) — verifique o estado da janela antes de repetir.`;
+}
+
+// Diagnostico opt-in da #20 (perda de barras invertidas): com
+// JARVIS_ACT_DEBUG=1, loga em stderr os argumentos BRUTOS que chegaram ao
+// execute, ANTES de montar o script — e o suficiente para decidir se o `\`
+// chegou ate aqui ou se a perda e a montante. PODE CONTER O TEXTO DIGITADO:
+// ligue so durante a coleta do repro e desligue depois (default: nada e logado).
+function debugRawTypeArgs(args: unknown): void {
+  if (process.env.JARVIS_ACT_DEBUG !== "1") return;
+  const record = (args ?? {}) as Record<string, unknown>;
+  const barras = (String(record.text ?? "").match(/\\/g) ?? []).length;
+  process.stderr.write(
+    `[act_type] JARVIS_ACT_DEBUG args brutos (barras invertidas no texto: ${barras}): ${JSON.stringify(args)}\n`,
+  );
+}
+
 export const ActTools: Plugin = async ({ $ }) => ({
   tool: {
     act_type: tool({
-      description: "Digita um texto. Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: injeta na janela-alvo sem roubar foco. append=true concatena ao conteudo atual (default substitui).",
+      description:
+        "Digita um texto. Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: injeta na janela-alvo sem roubar foco. append=true concatena ao conteudo atual (default substitui).",
       args: {
         text: tool.schema.string(),
         mode: tool.schema.string().optional(),
@@ -24,20 +58,35 @@ export const ActTools: Plugin = async ({ $ }) => ({
       async execute(args) {
         if (isNativeLinux()) return runLinux("act_type", args);
         const bg = chooseActScript("act_type", args);
-        if (!bg) {
-          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`).text();
+        // #26: falha do shell nunca vaza crua — vira "erro em act_type (etapa: ...)".
+        try {
+          if (!bg) {
+            return (
+              await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_type", args))}`
+            ).text();
+          }
+          const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
+          const r = parseActResult(out);
+          if (r.status === "unconfirmed") return unconfirmedTypeMessage(r);
+          if (r.status === "ambiguous")
+            return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
+          return `${r.status}: ${r.detail}`;
+        } catch (err) {
+          const etapa = bg ? "background" : "foreground";
+          const comando = bg ? "powershell (UIA/PostMessage)" : "powershell (SendKeys)";
+          return formatToolError({ tool: "act_type", step: etapa, detail: comando }, err);
         }
-        const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
-        const r = parseActResult(out);
-        if (r.status === "unconfirmed") {
-          return `${r.detail} — a janela nao aceita entrada em segundo plano. Focalize a janela-alvo e repita com mode="foreground" (sem window).`;
-        }
-        if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
-        return `${r.status}: ${r.detail}`;
       },
     }),
     act_key: tool({
-      description: "Envia teclas/atalho. Padrao: janela em foco. Com window/hwnd ou mode=background: envia a janela-alvo sem roubar foco.",
+      description:
+        "Envia teclas/atalho em sintaxe natural (case-insensitive). " +
+        "Teclas: enter esc tab backspace delete space up down left right home end pgup pgdn f1..f24, letras/digitos, plus. " +
+        "Combos: ctrl+/alt+/shift+/win+ (ex.: ctrl+c, ctrl+shift+esc, alt+f4). " +
+        'Acordes separados por espaco ou virgula (ex.: "ctrl+s , enter"). ' +
+        "Padrao: janela em foco (foreground). Com window/hwnd ou mode=background: envia a janela-alvo sem roubar foco. " +
+        "Limites do background: win+r nao funciona (hotkey do sistema, nunca chega via PostMessage); " +
+        "combos com ctrl/alt sao best-effort (apps que consultam GetKeyState podem ignora-los).",
       args: {
         keys: tool.schema.string(),
         mode: tool.schema.string().optional(),
@@ -47,14 +96,33 @@ export const ActTools: Plugin = async ({ $ }) => ({
       async execute(args) {
         if (isNativeLinux()) return runLinux("act_key", args);
         const bg = chooseActScript("act_key", args);
-        if (!bg) {
-          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`).text();
+        // #26: falha do shell nunca vaza crua — vira "erro em act_key (etapa: ...)".
+        try {
+          if (!bg) {
+            return (
+              await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_key", args))}`
+            ).text();
+          }
+          const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
+          const r = parseActResult(out);
+          if (r.status === "ambiguous")
+            return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
+          if (r.status === "error") return `erro: ${r.detail}`;
+          // #28: mensagem POR CAUSA via reason; nunca afirmar recusa/sucesso
+          // sem saber. Timeout nao e sucesso: as teclas podem nunca ter sido
+          // postadas.
+          if (r.reason === "timeout") {
+            return `timeout: a janela nao respondeu em 5s — as teclas podem nao ter sido enviadas (confirme o estado da janela antes de repetir)`;
+          }
+          if (r.reason === "noset") {
+            return "teclas enviadas em segundo plano sem controle de edicao exposto (tipico de terminais/Electron) — podem nao ter efeito; PERGUNTE ao usuario antes de repetir em foreground.";
+          }
+          return `teclas enviadas em segundo plano (confirmacao indisponivel) — ${r.detail}`;
+        } catch (err) {
+          const etapa = bg ? "background" : "foreground";
+          const comando = bg ? "powershell (PostMessage)" : "powershell (keybd_event)";
+          return formatToolError({ tool: "act_key", step: etapa, detail: comando }, err);
         }
-        const out = (await $`powershell.exe -NoProfile -EncodedCommand ${encode(bg)}`).text();
-        const r = parseActResult(out);
-        if (r.status === "ambiguous") return `multiplas janelas: ${r.detail}. Escolha um hwnd em win_list.`;
-        if (r.status === "error") return `erro: ${r.detail}`;
-        return "teclas enviadas em segundo plano (confirmacao indisponivel)";
       },
     }),
     act_open: tool({

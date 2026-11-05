@@ -1,5 +1,9 @@
 {
   "type": "module",
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
   "dependencies": {
     "@opencode-ai/plugin": "1.18.23"
   },

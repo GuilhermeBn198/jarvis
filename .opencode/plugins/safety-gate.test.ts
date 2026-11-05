@@ -1,5 +1,5 @@
-import { test } from "node:test";
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import { askHook } from "../safety/hook.ts";
 import { SafetyGate } from "./safety-gate.ts";
 

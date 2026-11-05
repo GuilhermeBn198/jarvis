@@ -1,0 +1,2 @@
+# Ferramentas de desenvolvimento do repo (nao vao para runtime).
+ruff==0.17.0

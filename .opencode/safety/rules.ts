@@ -27,7 +27,50 @@ const DENY: Array<[RegExp, string]> = [
 // o `pattern` de uma leitura traz o caminho. O limite aceita `/`, `\` (Windows,
 // p.ex. `C:\Users\x\.ssh\id_rsa`) ou espaco.
 const CREDENTIAL =
-  /(^|[\/\\\s])(\.ssh|\.aws|\.gnupg|\.git-credentials|\.netrc|\.env(\.[\w-]+)?\b|id_rsa|id_ed25519|authorized_keys|known_hosts|credentials|\.npmrc|\.pypirc|shadow|sudoers)\b/i;
+  /(^|[/\\\s])(\.ssh|\.aws|\.gnupg|\.git-credentials|\.netrc|\.env(\.[\w-]+)?\b|id_rsa|id_ed25519|authorized_keys|known_hosts|credentials|\.npmrc|\.pypirc|shadow|sudoers)\b/i;
+
+// #23: alvos do act_open que abrem caminho de EXECUCAO (terminal/interpretador/
+// script). NAO sao deny duro — exigem consentimento explicito (confirm=true,
+// aplicado na propria tool, como win_write). Lista fixada no addendum de
+// politica da #23 (o dono descartou o deny de interpretadores).
+const EXEC_TARGETS = new Set([
+  "cmd",
+  "powershell",
+  "pwsh",
+  "wsl",
+  "wt",
+  "wscript",
+  "cscript",
+  "mshta",
+  "rundll32",
+  "regsvr32",
+]);
+const EXEC_EXTENSIONS = [".bat", ".cmd", ".ps1", ".vbs", ".js"];
+
+function baseName(p: string): string {
+  const i = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
+  return i >= 0 ? p.slice(i + 1) : p;
+}
+
+function isExecName(token: string): boolean {
+  const base = baseName(token.trim().toLowerCase()).replace(/[.\s]+$/, "");
+  if (EXEC_TARGETS.has(base.replace(/\.exe$/, ""))) return true;
+  return EXEC_EXTENSIONS.some((ext) => base.endsWith(ext));
+}
+
+// URL http(s) abre no handler do sistema (nao executa o conteudo local); so
+// file:// conta como caminho. O target pode trazer args embutidos ("cmd /c x"):
+// por isso tambem olhamos o primeiro token, alem do caminho inteiro.
+export function isExecutionTarget(target: string): boolean {
+  const raw = String(target ?? "").trim();
+  if (!raw) return false;
+  const scheme = raw.match(/^([a-z][a-z0-9+.-]*):\/\//i);
+  if (scheme && scheme[1].toLowerCase() !== "file") return false;
+  const body = scheme ? raw.slice(scheme[0].length) : raw;
+  if (isExecName(body)) return true;
+  const first = body.split(/\s+/)[0] ?? "";
+  return first !== body && isExecName(first);
+}
 
 const ASK: Array<[RegExp, string]> = [
   [/\bsudo\b/, "privilegio elevado"],
@@ -43,13 +86,25 @@ const ASK: Array<[RegExp, string]> = [
 // `winlist` cobre a tool win_list (apenas lista janelas; so le).
 // `winread` cobre win_read (le arquivo do Windows; so le).
 // `see` cobre a tool see_screen (so le a tela; o conteudo NAO roda tools).
+// `clipwrite` cobre win_context_win_clipboard_write (allow com confirm=true
+// obrigatorio na tool; o conteudo passa por DENY/CREDENTIAL antes do allow).
 // `winwrite` NAO entra aqui: escrita nunca e allow automatico (cai em ask).
-const ALLOW_TYPES = new Set(["read", "glob", "grep", "list", "act", "see", "winlist", "winread"]);
+const ALLOW_TYPES = new Set([
+  "read",
+  "glob",
+  "grep",
+  "list",
+  "act",
+  "see",
+  "winlist",
+  "winread",
+  "clipwrite",
+]);
 const ALLOW_CMD = [
   /^\s*git\s+(status|diff|log|show)(\s|$)/,
   /^\s*(ls|pwd|cat|head|tail|wc|echo|which|whoami)(\s|$)/,
 ];
-const UNSAFE_FOR_ALLOW = /[;&|><`$(){}\[\]*?\n\r]/;
+const UNSAFE_FOR_ALLOW = /[;&|><`$(){}[\]*?\n\r]/;
 
 function isDangerousRm(text: string): boolean {
   for (const line of text.split("\n")) {
@@ -66,7 +121,11 @@ function isDangerousRm(text: string): boolean {
 
 export function decide(input: ActionInput): Decision {
   const patterns =
-    input.pattern === undefined ? [] : Array.isArray(input.pattern) ? input.pattern : [input.pattern];
+    input.pattern === undefined
+      ? []
+      : Array.isArray(input.pattern)
+        ? input.pattern
+        : [input.pattern];
   const text = patterns.join("\n");
 
   if (isDangerousRm(text)) return { status: "deny", reason: "rm recursivo+forcado de raiz/home" };

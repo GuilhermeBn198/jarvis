@@ -40,7 +40,7 @@ def win_list_text() -> str:
     try:
         return ctx.format_windows(ctx.list_windows())
     except ctx.WinContextError as exc:
-        raise RuntimeError(str(exc)) from exc
+        raise RuntimeError(format_tool_error("win_list_text", "powershell", exc)) from exc
 
 
 @mcp.tool()
@@ -60,7 +60,9 @@ def win_tree_text(hwnd: int, max_nodes: int = 200) -> str:
     try:
         raw = ctx._default_run(ctx._tree_script(hwnd, max_nodes))
     except ctx.WinContextError as exc:
-        raise RuntimeError(str(exc)) from exc
+        raise RuntimeError(
+            format_tool_error("win_tree_text", "powershell", exc, detail=f"hwnd {hwnd}")
+        ) from exc
     return ctx.format_tree(raw)
 
 
@@ -76,7 +78,27 @@ def win_clipboard_text() -> str:
     try:
         return ctx._default_run(script).strip() or "(clipboard vazio)"
     except ctx.WinContextError as exc:
-        raise RuntimeError(str(exc)) from exc
+        raise RuntimeError(format_tool_error("win_clipboard_text", "powershell", exc)) from exc
+
+
+@mcp.tool()
+def win_clipboard_write(text: str, confirm: bool = False) -> str:
+    """Escreve `text` no clipboard do Windows.
+
+    Args:
+        text: conteudo a copiar (Unicode OK).
+        confirm: precisa ser true — escrita explicita e auditavel.
+    """
+    if not confirm:
+        return "recusado: escrita no clipboard exige confirm=true (escopo explicito e auditavel)"
+    if not text:
+        return "recusado: texto vazio"
+    try:
+        ctx._default_run(ctx.clipboard_write_script(text))
+    except ctx.WinContextError as exc:
+        # O texto do clipboard NAO entra no detalhe (nunca ecoar conteudo).
+        raise RuntimeError(format_tool_error("win_clipboard_write", "powershell", exc)) from exc
+    return f"escrito no clipboard ({len(text)} caracteres)"
 
 
 @mcp.tool()
@@ -92,13 +114,13 @@ def win_processes_text(name_filter: str = "") -> str:
     script = (
         "Get-Process | Where-Object { $_.MainWindowTitle -or '$FILT' -eq '' } | "
         "Where-Object { $_.ProcessName -like '*$FILT*' } | "
-        "ForEach-Object { \"$($_.ProcessName)`t$($_.Id)`t$($_.MainWindowTitle)\" }"
+        'ForEach-Object { "$($_.ProcessName)`t$($_.Id)`t$($_.MainWindowTitle)" }'
     ).replace("$FILT", filt)
     try:
         out = ctx._default_run(script).strip()
         return out or "(nenhum processo)"
     except ctx.WinContextError as exc:
-        raise RuntimeError(str(exc)) from exc
+        raise RuntimeError(format_tool_error("win_processes_text", "powershell", exc)) from exc
 
 
 

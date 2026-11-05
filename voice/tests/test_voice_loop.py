@@ -1,9 +1,8 @@
 import io
 import time
 
-import pytest
-
 import loop as loop_mod
+import pytest
 from config import Config, load_config
 from loop import _parse_once, main, voice_loop
 from tts import VoiceError
@@ -30,9 +29,7 @@ def test_voice_loop_logs_turn_and_speaks_sanitized(monkeypatch):
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
     monkeypatch.setattr("loop.speak", lambda text, **k: spoken_texts.append(text))
-    monkeypatch.setattr(
-        "loop.log_turn", lambda rec, config=None: records.append(rec)
-    )
+    monkeypatch.setattr("loop.log_turn", lambda rec, config=None: records.append(rec))
 
     class Client:
         def ask(self, task, timeout_s=None):
@@ -57,9 +54,7 @@ def test_voice_loop_logs_agent_error(monkeypatch):
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
     monkeypatch.setattr("loop.speak", lambda text, **k: None)
-    monkeypatch.setattr(
-        "loop.log_turn", lambda rec, config=None: records.append(rec)
-    )
+    monkeypatch.setattr("loop.log_turn", lambda rec, config=None: records.append(rec))
 
     from agent_client import AgentError
 
@@ -83,12 +78,16 @@ def test_voice_loop_orchestrates(monkeypatch):
         def ask(self, task, timeout_s=None):
             calls.append("ask")
             return "resposta"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert calls == ["record", "stt", "ask", "tts"]
 
+
 def test_voice_loop_uses_ptt_when_enabled(monkeypatch):
     calls = []
-    ptt_cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="ptt", ptt=True)
+    ptt_cfg = Config(
+        opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="ptt", ptt=True
+    )
     monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
     monkeypatch.setattr("loop.record_ptt", lambda **k: calls.append("record_ptt") or "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
@@ -96,6 +95,7 @@ def test_voice_loop_uses_ptt_when_enabled(monkeypatch):
     class Client:
         def ask(self, *a, **k):
             return "x"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=ptt_cfg)
     assert calls == ["record_ptt"]
 
@@ -109,15 +109,14 @@ def test_voice_loop_uses_fixed_window_when_ptt_disabled(monkeypatch):
     class Client:
         def ask(self, *a, **k):
             return "x"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert calls == ["record"]
 
 
 def test_voice_loop_auto_no_speech_skips_agent(monkeypatch):
     calls = []
-    monkeypatch.setattr(
-        "loop.record_auto", lambda **k: calls.append("record_auto") or ""
-    )
+    monkeypatch.setattr("loop.record_auto", lambda **k: calls.append("record_auto") or "")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "oi")
     monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
     err = io.StringIO()
@@ -126,6 +125,7 @@ def test_voice_loop_auto_no_speech_skips_agent(monkeypatch):
         def ask(self, *a, **k):
             calls.append("ask")
             return "x"
+
     voice_loop(client=Client(), iterations=1, config=AUTO_CFG, err=err)
     assert calls == ["record_auto"]
     assert "nada detectado" in err.getvalue()
@@ -137,15 +137,14 @@ def test_voice_loop_auto_with_speech_transcribes_asks_speaks(monkeypatch):
         "loop.record_auto",
         lambda **k: calls.append("record_auto") or "/tmp/a.wav",
     )
-    monkeypatch.setattr(
-        "loop.transcribe", lambda wav, **k: calls.append("stt") or "faca algo"
-    )
+    monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "faca algo")
     monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
 
     class Client:
         def ask(self, task, timeout_s=None):
             calls.append("ask")
             return "resposta"
+
     voice_loop(client=Client(), iterations=1, config=AUTO_CFG)
     assert calls == ["record_auto", "stt", "ask", "tts"]
 
@@ -156,9 +155,12 @@ def test_voice_loop_empty_transcript_skips_agent(monkeypatch):
     monkeypatch.setattr("loop.record_ptt", lambda **k: calls.append("record_ptt") or "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "")
     monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
+
     class Client:
         def ask(self, *a, **k):
-            calls.append("ask"); return "x"
+            calls.append("ask")
+            return "x"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert calls == ["record", "stt"]
     assert "ask" not in calls
@@ -173,6 +175,7 @@ def test_voice_loop_forwards_config(monkeypatch):
     class Client:
         def ask(self, task, timeout_s=None):
             return "x"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert seen["rec"]["config"] is CFG
     assert seen["stt"]["config"] is CFG
@@ -180,9 +183,11 @@ def test_voice_loop_forwards_config(monkeypatch):
 
 def test_voice_loop_contains_voiceerror(monkeypatch):
     calls = []
+
     def boom(**k):
         calls.append("record")
         raise VoiceError("sem mic")
+
     monkeypatch.setattr("loop.record", boom)
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "x")
     monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
@@ -192,6 +197,7 @@ def test_voice_loop_contains_voiceerror(monkeypatch):
         def ask(self, task, timeout_s=None):
             calls.append("ask")
             return "x"
+
     voice_loop(client=Client(), iterations=2, record_seconds=1, config=CFG, err=err)
     assert calls == ["record", "record"]
     assert "sem mic" in err.getvalue()
@@ -203,12 +209,14 @@ def test_voice_loop_falls_back_to_text_when_speak_fails(monkeypatch):
 
     def boom(text, **k):
         raise VoiceError("SAPI indisponivel")
+
     monkeypatch.setattr("loop.speak", boom)
     err = io.StringIO()
 
     class Client:
         def ask(self, task, timeout_s=None):
             return "resposta falada"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, err=err)
     assert "[fallback texto] resposta falada" in err.getvalue()
 
@@ -219,6 +227,7 @@ def test_voice_loop_aborts_after_consecutive_errors(monkeypatch):
     def boom(**k):
         calls.append("record")
         raise VoiceError("sem mic")
+
     monkeypatch.setattr("loop.record", boom)
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "x")
     monkeypatch.setattr("loop.speak", lambda text, **k: None)
@@ -227,8 +236,15 @@ def test_voice_loop_aborts_after_consecutive_errors(monkeypatch):
     class Client:
         def ask(self, task, timeout_s=None):
             return "x"
-    voice_loop(client=Client(), iterations=0, record_seconds=1, config=CFG,
-               err=err, max_consecutive_errors=3)
+
+    voice_loop(
+        client=Client(),
+        iterations=0,
+        record_seconds=1,
+        config=CFG,
+        err=err,
+        max_consecutive_errors=3,
+    )
     assert len(calls) == 3
     assert "abortando" in err.getvalue()
 
@@ -241,6 +257,7 @@ def test_voice_loop_resets_consecutive_errors_on_success(monkeypatch):
         if state["i"] % 2 == 1:
             raise VoiceError("falha intermitente")
         return "/tmp/a.wav"
+
     monkeypatch.setattr("loop.record", rec)
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
     monkeypatch.setattr("loop.speak", lambda text, **k: None)
@@ -248,8 +265,10 @@ def test_voice_loop_resets_consecutive_errors_on_success(monkeypatch):
     class Client:
         def ask(self, task, timeout_s=None):
             return "r"
-    voice_loop(client=Client(), iterations=4, record_seconds=1, config=CFG,
-               max_consecutive_errors=2)
+
+    voice_loop(
+        client=Client(), iterations=4, record_seconds=1, config=CFG, max_consecutive_errors=2
+    )
     assert state["i"] == 4
 
 
@@ -262,6 +281,7 @@ def test_voice_loop_empty_transcript_writes_stderr(monkeypatch):
     class Client:
         def ask(self, *a, **k):
             return "x"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, err=err)
     assert "nada transcrito" in err.getvalue()
 
@@ -279,6 +299,7 @@ def test_voice_loop_builds_client_when_none(monkeypatch):
     def fake_resolve(cfg, err=None):
         made["cfg"] = cfg
         return Client()
+
     monkeypatch.setattr("loop.resolve_client", fake_resolve)
     voice_loop(client=None, iterations=1, record_seconds=1, config=CFG)
     assert made["cfg"] is CFG
@@ -298,7 +319,8 @@ def test_main_voice_parses_iterations_and_stops(monkeypatch):
     monkeypatch.setattr(loop_mod, "StateHub", lambda *a, **k: None)
     monkeypatch.setattr(loop_mod.sys, "stderr", io.StringIO())
     monkeypatch.setattr(
-        loop_mod, "voice_loop",
+        loop_mod,
+        "voice_loop",
         lambda c, **k: seen.update(n=k.get("iterations"), hub=k.get("hub")),
     )
     assert main(["--voice", "--once", "1"]) == 0
@@ -325,6 +347,7 @@ def test_main_voice_handles_keyboard_interrupt(monkeypatch):
 
     def boom(c, **k):
         raise KeyboardInterrupt
+
     monkeypatch.setattr(loop_mod, "voice_loop", boom)
     assert main(["--voice"]) == 0
 
@@ -353,6 +376,7 @@ def test_resolve_client_serve_down_falls_back_to_run(monkeypatch):
 def test_resolve_client_run_backend_skips_ensure(monkeypatch):
     def boom(cfg):
         raise AssertionError("ensure_server nao deve ser chamado no backend run")
+
     monkeypatch.setattr(loop_mod, "ensure_server", boom)
     sentinel = object()
     monkeypatch.setattr(loop_mod, "make_client", lambda cfg: sentinel)
@@ -363,11 +387,13 @@ def test_resolve_client_run_backend_skips_ensure(monkeypatch):
 def test_main_text_mode_falls_back_to_run_when_serve_down(monkeypatch):
     monkeypatch.setattr(loop_mod, "ensure_server", lambda cfg: False)
     monkeypatch.setattr(
-        loop_mod, "load_config",
+        loop_mod,
+        "load_config",
         lambda: Config(opencode_bin="/x/o", timeout_s=10, agent_backend="serve"),
     )
     monkeypatch.setattr(
-        loop_mod, "RunClient",
+        loop_mod,
+        "RunClient",
         lambda cfg: type("C", (), {"ask": lambda self, t, timeout_s=None: "pong"})(),
     )
     inp, out, err = io.StringIO("Responda apenas: pong\n"), io.StringIO(), io.StringIO()
@@ -405,7 +431,12 @@ def test_voice_loop_emits_happy_path_states(monkeypatch):
 
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=hub)
     assert hub.states == [
-        "idle", "listening", "transcribing", "thinking", "speaking", "idle",
+        "idle",
+        "listening",
+        "transcribing",
+        "thinking",
+        "speaking",
+        "idle",
     ]
 
 
@@ -423,7 +454,13 @@ def test_voice_loop_emits_error_on_agent_failure(monkeypatch):
 
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=hub)
     assert hub.states == [
-        "idle", "listening", "transcribing", "thinking", "error", "speaking", "idle",
+        "idle",
+        "listening",
+        "transcribing",
+        "thinking",
+        "error",
+        "speaking",
+        "idle",
     ]
 
 
@@ -434,6 +471,7 @@ def test_voice_loop_vision_failure_emits_error_then_idle(monkeypatch):
 
     def boom(**k):
         raise VoiceError("sem camera")
+
     monkeypatch.setattr("loop.capture", boom)
 
     class Client:
@@ -452,6 +490,7 @@ def test_voice_loop_tts_failure_emits_idle(monkeypatch):
 
     def boom(text, **k):
         raise VoiceError("SAPI indisponivel")
+
     monkeypatch.setattr("loop.speak", boom)
 
     class Client:
@@ -486,6 +525,7 @@ def test_voice_loop_tts_abort_ends_error(monkeypatch):
     def boom(text, **k):
         calls.append("speak")
         raise VoiceError("SAPI indisponivel")
+
     monkeypatch.setattr("loop.speak", boom)
 
     class Client:
@@ -493,8 +533,15 @@ def test_voice_loop_tts_abort_ends_error(monkeypatch):
             calls.append("ask")
             return "resposta"
 
-    voice_loop(client=Client(), iterations=0, record_seconds=1, config=CFG,
-               hub=hub, max_consecutive_errors=1, err=io.StringIO())
+    voice_loop(
+        client=Client(),
+        iterations=0,
+        record_seconds=1,
+        config=CFG,
+        hub=hub,
+        max_consecutive_errors=1,
+        err=io.StringIO(),
+    )
     assert hub.states[-1] == "error"
     assert calls == ["record", "ask", "speak"]
 
@@ -507,6 +554,7 @@ def test_voice_loop_vision_abort_ends_error(monkeypatch):
 
     def boom(**k):
         raise VoiceError("sem camera")
+
     monkeypatch.setattr("loop.capture", boom)
 
     class Client:
@@ -514,8 +562,15 @@ def test_voice_loop_vision_abort_ends_error(monkeypatch):
             calls.append("ask")
             return "resposta"
 
-    voice_loop(client=Client(), iterations=0, record_seconds=1, config=CFG,
-               hub=hub, max_consecutive_errors=1, err=io.StringIO())
+    voice_loop(
+        client=Client(),
+        iterations=0,
+        record_seconds=1,
+        config=CFG,
+        hub=hub,
+        max_consecutive_errors=1,
+        err=io.StringIO(),
+    )
     assert hub.states[-1] == "error"
     assert calls == ["record", "stt"]
 
@@ -550,10 +605,10 @@ def test_main_starts_and_stops_hub(monkeypatch):
     def make_hub(*a, **k):
         made["hub"] = FakeHubServer()
         return made["hub"]
+
     monkeypatch.setattr(loop_mod, "StateHub", make_hub)
     seen_hub = {}
-    monkeypatch.setattr(loop_mod, "voice_loop",
-                        lambda c, **k: seen_hub.update(hub=k.get("hub")))
+    monkeypatch.setattr(loop_mod, "voice_loop", lambda c, **k: seen_hub.update(hub=k.get("hub")))
     assert main(["--voice", "--once", "1"]) == 0
     assert made["hub"].started is True
     assert made["hub"].stopped is True
@@ -562,8 +617,10 @@ def test_main_starts_and_stops_hub(monkeypatch):
 
 def test_main_degrades_without_indicator_when_hub_fails(monkeypatch):
     err = io.StringIO()
+
     def boom(*a, **k):
         raise OSError("porta ocupada")
+
     monkeypatch.setattr(loop_mod, "StateHub", boom)
     conn = loop_mod._start_hub(load_config({}), err)
     assert conn is None
@@ -608,8 +665,14 @@ def test_pause_command_skips_capture(monkeypatch):
     calls = []
     _patch_voice(monkeypatch, calls)
     hub = CmdHub(cmds=["pause"])
-    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
-                 input_mode="fixed", ptt=False, state_require_gui=True)
+    cfg = Config(
+        opencode_bin="/x/o",
+        timeout_s=10,
+        record_seconds=1,
+        input_mode="fixed",
+        ptt=False,
+        state_require_gui=True,
+    )
     voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg, hub=hub)
     assert "record" not in calls
 
@@ -620,8 +683,14 @@ def test_pause_does_not_busy_loop(monkeypatch):
     sleeps = []
     monkeypatch.setattr("loop.time.sleep", lambda s: sleeps.append(s))
     hub = CmdHub(cmds=["pause"], subs=1)
-    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
-                 input_mode="fixed", ptt=False, state_require_gui=False)
+    cfg = Config(
+        opencode_bin="/x/o",
+        timeout_s=10,
+        record_seconds=1,
+        input_mode="fixed",
+        ptt=False,
+        state_require_gui=False,
+    )
     voice_loop(client=ClientOK(), iterations=6, record_seconds=1, config=cfg, hub=hub)
     # idle so na entrada + na transicao para pausa; nao a cada iteracao.
     assert hub.states.count("idle") == 2
@@ -643,8 +712,7 @@ def test_hub_failure_does_not_break_loop(monkeypatch):
         def subscribers(self):
             raise RuntimeError("hub quebrado")
 
-    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=CFG,
-               hub=BadHub())
+    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=CFG, hub=BadHub())
     assert calls == ["record", "stt", "tts"]
 
 
@@ -672,13 +740,26 @@ def test_orphan_exits_when_gui_gone(monkeypatch):
     _patch_voice(monkeypatch, calls)
     hub = CmdHub(subs=0)
     err = io.StringIO()
-    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
-                 input_mode="fixed", ptt=False, state_require_gui=True)
+    cfg = Config(
+        opencode_bin="/x/o",
+        timeout_s=10,
+        record_seconds=1,
+        input_mode="fixed",
+        ptt=False,
+        state_require_gui=True,
+    )
     # 1º tick = last_gui_ts (folga); 2º tick já estoura o timeout, antes de capturar.
     ticks = iter([0.0, 100.0, 100.0, 100.0])
     monkeypatch.setattr("loop.time.monotonic", lambda: next(ticks, 100.0))
-    voice_loop(client=ClientOK(), iterations=0, record_seconds=1, config=cfg,
-               hub=hub, err=err, orphan_timeout_s=15.0)
+    voice_loop(
+        client=ClientOK(),
+        iterations=0,
+        record_seconds=1,
+        config=cfg,
+        hub=hub,
+        err=err,
+        orphan_timeout_s=15.0,
+    )
     assert "record" not in calls
     assert "overlay ausente" in err.getvalue()
 
@@ -687,20 +768,38 @@ def test_orphan_does_not_exit_with_subscriber(monkeypatch):
     calls = []
     _patch_voice(monkeypatch, calls)
     hub = CmdHub(subs=1)
-    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
-                 input_mode="fixed", ptt=False, state_require_gui=True)
-    voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg,
-               hub=hub, orphan_timeout_s=15.0)
+    cfg = Config(
+        opencode_bin="/x/o",
+        timeout_s=10,
+        record_seconds=1,
+        input_mode="fixed",
+        ptt=False,
+        state_require_gui=True,
+    )
+    voice_loop(
+        client=ClientOK(),
+        iterations=1,
+        record_seconds=1,
+        config=cfg,
+        hub=hub,
+        orphan_timeout_s=15.0,
+    )
     assert "record" in calls
 
 
-from agent_client import AgentError
+from agent_client import AgentError  # noqa: E402
 
 
 def _stream_cfg(**over):
-    base = dict(opencode_bin="/x/o", timeout_s=10, agent_backend="serve",
-                input_mode="fixed", ptt=False, stream_tts=True,
-                stream_min_chars=5)
+    base = dict(
+        opencode_bin="/x/o",
+        timeout_s=10,
+        agent_backend="serve",
+        input_mode="fixed",
+        ptt=False,
+        stream_tts=True,
+        stream_min_chars=5,
+    )
     base.update(over)
     return Config(**base)
 
@@ -716,8 +815,9 @@ def test_stream_turn_speaks_chunks_in_order(monkeypatch):
             return "Olá, tudo bem? Como posso ajudar você hoje?"
 
     hub = FakeHub()
-    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), hub, False,
-                                time.monotonic(), io.StringIO())
+    res = loop_mod._stream_turn(
+        StreamClient(), "oi", _stream_cfg(), hub, False, time.monotonic(), io.StringIO()
+    )
     assert res.streamed is True
     assert res.gen_done_s is not None
     assert res.spoken == ["Olá, tudo bem?", "Como posso ajudar você hoje?"]
@@ -728,17 +828,16 @@ def test_stream_turn_speaks_chunks_in_order(monkeypatch):
 def test_stream_turn_emits_speaking_before_first_audio(monkeypatch):
     hub = FakeHub()
     snapshots = []
-    monkeypatch.setattr(
-        "stream.speak", lambda text, **k: snapshots.append(list(hub.states))
-    )
+    monkeypatch.setattr("stream.speak", lambda text, **k: snapshots.append(list(hub.states)))
 
     class StreamClient:
         def stream(self, task, on_delta, on_idle=None, timeout_s=None):
             on_delta("Uma frase completa. ")
             return "Uma frase completa."
 
-    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), hub, False,
-                                time.monotonic(), io.StringIO())
+    res = loop_mod._stream_turn(
+        StreamClient(), "oi", _stream_cfg(), hub, False, time.monotonic(), io.StringIO()
+    )
     assert res.spoken == ["Uma frase completa."]
     assert snapshots
     assert "speaking" in snapshots[0]
@@ -749,8 +848,9 @@ def test_stream_turn_failure_before_speech(monkeypatch):
         def stream(self, *a, **k):
             raise AgentError("sem sse")
 
-    res = loop_mod._stream_turn(BoomClient(), "oi", _stream_cfg(), FakeHub(), False,
-                                time.monotonic(), io.StringIO())
+    res = loop_mod._stream_turn(
+        BoomClient(), "oi", _stream_cfg(), FakeHub(), False, time.monotonic(), io.StringIO()
+    )
     assert res.streamed is False
     assert res.spoken == []
     assert res.failed == "sem sse"
@@ -764,8 +864,9 @@ def test_stream_turn_failure_after_speech_keeps_spoken(monkeypatch):
             on_delta("Uma frase completa. ")
             raise AgentError("caiu no meio")
 
-    res = loop_mod._stream_turn(HalfClient(), "oi", _stream_cfg(), FakeHub(), False,
-                                time.monotonic(), io.StringIO())
+    res = loop_mod._stream_turn(
+        HalfClient(), "oi", _stream_cfg(), FakeHub(), False, time.monotonic(), io.StringIO()
+    )
     assert res.streamed is False
     assert res.spoken == ["Uma frase completa."]
     assert res.failed == "caiu no meio"
@@ -777,8 +878,9 @@ def test_stream_turn_contains_unexpected_exception(monkeypatch):
         def stream(self, *a, **k):
             raise ValueError("bug inesperado")
 
-    res = loop_mod._stream_turn(BoomClient(), "oi", _stream_cfg(), FakeHub(), False,
-                                time.monotonic(), io.StringIO())
+    res = loop_mod._stream_turn(
+        BoomClient(), "oi", _stream_cfg(), FakeHub(), False, time.monotonic(), io.StringIO()
+    )
     assert res.streamed is False
     assert res.spoken == []
     assert res.answer is None
@@ -799,8 +901,9 @@ def test_voice_loop_falls_back_to_ask_when_stream_raises_unexpected(monkeypatch)
         def ask(self, task, timeout_s=None):
             return "resposta bloqueante"
 
-    voice_loop(client=BoomClient(), iterations=1, record_seconds=1,
-               config=_stream_cfg(), hub=FakeHub())
+    voice_loop(
+        client=BoomClient(), iterations=1, record_seconds=1, config=_stream_cfg(), hub=FakeHub()
+    )
     assert calls == ["resposta bloqueante"]
 
 
@@ -813,6 +916,7 @@ def test_voice_loop_aborts_on_streaming_voice_error(monkeypatch):
     def boom(text, **k):
         calls.append("speak")
         raise VoiceError("SAPI indisponivel")
+
     monkeypatch.setattr("stream.speak", boom)
 
     class StreamClient:
@@ -824,9 +928,15 @@ def test_voice_loop_aborts_on_streaming_voice_error(monkeypatch):
             calls.append("ask")
             return "x"
 
-    voice_loop(client=StreamClient(), iterations=0, record_seconds=1,
-               config=_stream_cfg(), hub=hub, max_consecutive_errors=1,
-               err=io.StringIO())
+    voice_loop(
+        client=StreamClient(),
+        iterations=0,
+        record_seconds=1,
+        config=_stream_cfg(),
+        hub=hub,
+        max_consecutive_errors=1,
+        err=io.StringIO(),
+    )
     assert calls == ["record", "speak"]
     assert hub.states[-1] == "error"
 
@@ -841,8 +951,9 @@ def test_stream_turn_muted_does_not_speak(monkeypatch):
             return "Uma resposta qualquer."
 
     hub = FakeHub()
-    res = loop_mod._stream_turn(StreamClient(), "oi", _stream_cfg(), hub, True,
-                                time.monotonic(), io.StringIO())
+    res = loop_mod._stream_turn(
+        StreamClient(), "oi", _stream_cfg(), hub, True, time.monotonic(), io.StringIO()
+    )
     assert res.answer == "Uma resposta qualquer."
     assert spoken == []
     assert "speaking" not in hub.states
@@ -861,8 +972,9 @@ def test_voice_loop_falls_back_to_ask_when_stream_fails(monkeypatch):
         def ask(self, task, timeout_s=None):
             return "resposta bloqueante"
 
-    voice_loop(client=BoomClient(), iterations=1, record_seconds=1,
-               config=_stream_cfg(), hub=FakeHub())
+    voice_loop(
+        client=BoomClient(), iterations=1, record_seconds=1, config=_stream_cfg(), hub=FakeHub()
+    )
     assert calls == ["resposta bloqueante"]
 
 
@@ -871,9 +983,7 @@ def test_agent_s_excludes_tts_on_blocking_path(monkeypatch):
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "faca algo")
     monkeypatch.setattr("loop.speak", lambda text, **k: time.sleep(0.3))
-    monkeypatch.setattr(
-        "loop.log_turn", lambda rec, config=None: records.append(rec)
-    )
+    monkeypatch.setattr("loop.log_turn", lambda rec, config=None: records.append(rec))
 
     class Client:
         def ask(self, task, timeout_s=None):
@@ -903,8 +1013,7 @@ def test_voice_loop_streams_without_calling_ask(monkeypatch):
             return "x"
 
     hub = FakeHub()
-    voice_loop(client=StreamClient(), iterations=1, record_seconds=1,
-               config=_stream_cfg(), hub=hub)
+    voice_loop(client=StreamClient(), iterations=1, record_seconds=1, config=_stream_cfg(), hub=hub)
     assert asked == []
     assert spoken == ["Resposta em streaming."]
     assert "speaking" in hub.states
@@ -915,17 +1024,16 @@ def test_voice_loop_stream_gen_done_s_drives_agent_s(monkeypatch):
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
     monkeypatch.setattr("stream.speak", lambda text, **k: time.sleep(0.3))
-    monkeypatch.setattr(
-        "loop.log_turn", lambda rec, config=None: records.append(rec)
-    )
+    monkeypatch.setattr("loop.log_turn", lambda rec, config=None: records.append(rec))
 
     class StreamClient:
         def stream(self, task, on_delta, on_idle=None, timeout_s=None):
             on_delta("Uma frase completa. ")
             return "Uma frase completa."
 
-    voice_loop(client=StreamClient(), iterations=1, record_seconds=1,
-               config=_stream_cfg(), hub=FakeHub())
+    voice_loop(
+        client=StreamClient(), iterations=1, record_seconds=1, config=_stream_cfg(), hub=FakeHub()
+    )
     assert len(records) == 1
     rec = records[0]
     assert rec["stream"] is True
@@ -935,9 +1043,7 @@ def test_voice_loop_stream_gen_done_s_drives_agent_s(monkeypatch):
 
 def test_voice_loop_require_gui_without_hub_exits(monkeypatch):
     calls = []
-    monkeypatch.setattr(
-        "loop.record", lambda **k: calls.append("record") or "/tmp/a.wav"
-    )
+    monkeypatch.setattr("loop.record", lambda **k: calls.append("record") or "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "oi")
     monkeypatch.setattr("loop.speak", lambda text, **k: None)
 
@@ -946,11 +1052,11 @@ def test_voice_loop_require_gui_without_hub_exits(monkeypatch):
             calls.append("ask")
             return "x"
 
-    cfg = Config(opencode_bin="/x/o", timeout_s=10, input_mode="fixed",
-                 ptt=False, state_require_gui=True)
+    cfg = Config(
+        opencode_bin="/x/o", timeout_s=10, input_mode="fixed", ptt=False, state_require_gui=True
+    )
     err = io.StringIO()
-    voice_loop(client=Client(), iterations=1, record_seconds=1, config=cfg,
-               hub=None, err=err)
+    voice_loop(client=Client(), iterations=1, record_seconds=1, config=cfg, hub=None, err=err)
     assert calls == []
     assert "headless" in err.getvalue()
 
@@ -978,11 +1084,10 @@ def test_main_voice_refuses_when_locked(monkeypatch):
     assert "loop de voz rodando" in err.getvalue()
 
 
-
-
 def test_main_mic_level_suggests_threshold(monkeypatch):
     monkeypatch.setattr(
-        loop_mod, "measure_level",
+        loop_mod,
+        "measure_level",
         lambda config=None: {"mean_db": -42.0, "max_db": -18.0},
     )
     out = io.StringIO()
@@ -995,7 +1100,8 @@ def test_main_mic_level_suggests_threshold(monkeypatch):
 
 def test_main_mic_level_error_returns_1(monkeypatch):
     monkeypatch.setattr(
-        loop_mod, "measure_level",
+        loop_mod,
+        "measure_level",
         lambda config=None: (_ for _ in ()).throw(VoiceError("sem mic")),
     )
     err = io.StringIO()
@@ -1006,6 +1112,7 @@ def test_main_mic_level_error_returns_1(monkeypatch):
 
 class LateQuitHub:
     """Devolve `quit` apenas na 2a chamada (durante a gravacao), nao no topo."""
+
     def __init__(self):
         self.states = []
         self.calls = 0
@@ -1031,13 +1138,16 @@ def test_voice_loop_passes_should_stop_to_record_auto(monkeypatch):
 
 def test_quit_during_recording_returns_immediately(monkeypatch):
     from capture import QuitRequested
+
     calls = []
+
     def fake_record_auto(**k):
         calls.append("record_auto")
         stop = k.get("should_stop")
         if stop is not None and stop():
             raise QuitRequested()
         return "/tmp/a.wav"
+
     monkeypatch.setattr("loop.record_auto", fake_record_auto)
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: calls.append("stt") or "oi")
     monkeypatch.setattr("loop.speak", lambda text, **k: calls.append("tts"))
@@ -1072,6 +1182,7 @@ def test_measure_command_measures_and_stores(monkeypatch):
 def test_measure_command_error_is_stored(monkeypatch):
     def boom(config=None):
         raise VoiceError("sem mic")
+
     monkeypatch.setattr("loop.measure_level", boom)
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: "")
@@ -1084,7 +1195,8 @@ def test_measure_command_error_is_stored(monkeypatch):
 def test_main_list_mics_prints_and_marks_current(monkeypatch):
     monkeypatch.setattr(loop_mod, "list_audio_devices", lambda config=None: ["Mic A", "Mic B"])
     monkeypatch.setattr(
-        loop_mod, "load_config",
+        loop_mod,
+        "load_config",
         lambda *a, **k: Config(opencode_bin="/x/o", timeout_s=10, mic_device="Mic B"),
     )
     out = io.StringIO()
@@ -1097,7 +1209,8 @@ def test_main_list_mics_prints_and_marks_current(monkeypatch):
 
 def test_main_list_mics_error_returns_1(monkeypatch):
     monkeypatch.setattr(
-        loop_mod, "list_audio_devices",
+        loop_mod,
+        "list_audio_devices",
         lambda config=None: (_ for _ in ()).throw(VoiceError("sem ffmpeg")),
     )
     err = io.StringIO()
@@ -1143,8 +1256,14 @@ def test_pause_publishes_flags(monkeypatch):
     calls = []
     _patch_voice(monkeypatch, calls)
     hub = FlagsHub(cmds=["pause"])
-    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
-                 input_mode="fixed", ptt=False, state_require_gui=False)
+    cfg = Config(
+        opencode_bin="/x/o",
+        timeout_s=10,
+        record_seconds=1,
+        input_mode="fixed",
+        ptt=False,
+        state_require_gui=False,
+    )
     voice_loop(client=ClientOK(), iterations=1, record_seconds=1, config=cfg, hub=hub)
     assert hub.flags[-1] == (False, True)
 
@@ -1157,7 +1276,7 @@ def test_mute_publishes_flags(monkeypatch):
     assert hub.flags[-1] == (True, False)
 
 
-from triggers import Target, Trigger, Registry
+from triggers import Registry, Target, Trigger  # noqa: E402
 
 VISION_REG = Registry(
     triggers=(
@@ -1170,14 +1289,15 @@ VISION_REG = Registry(
     fuzzy=1,
 )
 
-WAKE_CFG = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
-                  input_mode="fixed", activation="wake")
+WAKE_CFG = Config(
+    opencode_bin="/x/o", timeout_s=10, record_seconds=1, input_mode="fixed", activation="wake"
+)
 
 
 def _patch_loop(monkeypatch, transcript, registry=None):
     monkeypatch.setattr("loop.record", lambda **k: "/tmp/a.wav")
     monkeypatch.setattr("loop.transcribe", lambda wav, **k: transcript)
-    monkeypatch.setattr("loop.load_registry", lambda *a, **k: (registry or VISION_REG))
+    monkeypatch.setattr("loop.load_registry", lambda *a, **k: registry or VISION_REG)
     monkeypatch.setattr("loop.log_turn", lambda *a, **k: None)
 
 
@@ -1189,6 +1309,7 @@ def test_wake_ignora_sem_gatilho(monkeypatch):
         def ask(self, *a, **k):
             calls.append("ask")
             return "x"
+
     monkeypatch.setattr("loop.speak", lambda *a, **k: calls.append("tts"))
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=WAKE_CFG)
     assert calls == []
@@ -1203,6 +1324,7 @@ def test_free_cai_no_default(monkeypatch):
         def ask(self, task, timeout_s=None):
             seen.append(task)
             return "ok"
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert seen == ["uma conversa qualquer"]
 
@@ -1216,6 +1338,7 @@ def test_frase_de_visao_roteia_para_see_once(monkeypatch):
     class Client:
         def ask(self, *a, **k):
             raise AssertionError("nao deve chamar o agente")
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG)
     assert seen == ["isso agora"]
 
@@ -1230,12 +1353,18 @@ def test_vision_trigger_env_honrado(monkeypatch):
     _patch_loop(monkeypatch, "olhar a tela", registry=reg)
     monkeypatch.setattr("loop.see_once", lambda prompt, **k: seen.append(prompt))
     monkeypatch.setattr("loop.speak", lambda *a, **k: None)
-    cfg = Config(opencode_bin="/x/o", timeout_s=10, record_seconds=1,
-                 input_mode="fixed", vision_trigger="olhar")
+    cfg = Config(
+        opencode_bin="/x/o",
+        timeout_s=10,
+        record_seconds=1,
+        input_mode="fixed",
+        vision_trigger="olhar",
+    )
 
     class Client:
         def ask(self, *a, **k):
             raise AssertionError("nao deve chamar o agente")
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=cfg)
     assert seen == ["a tela"]
 
@@ -1253,6 +1382,7 @@ def test_agente_roteado_usa_client_do_alvo(monkeypatch):
     class ChatClient:
         def ask(self, *a, **k):
             raise AssertionError("nao deve usar o client default")
+
     monkeypatch.setattr("loop.make_client", lambda cfg: ActClient())
     voice_loop(client=ChatClient(), iterations=1, record_seconds=1, config=CFG)
     assert seen == [("act", "algo")]
@@ -1264,12 +1394,16 @@ def test_acao_mute_alterna_estado(monkeypatch):
     class Hub:
         def set_flags(self, **k):
             flags.append(k)
+
         def take_command(self):
             return None
+
         def subscribers(self):
             return 0
+
         def set(self, *a, **k):
             pass
+
         def set_level(self, *a, **k):
             pass
 
@@ -1279,5 +1413,6 @@ def test_acao_mute_alterna_estado(monkeypatch):
     class Client:
         def ask(self, *a, **k):
             raise AssertionError("mute nao chama agente")
+
     voice_loop(client=Client(), iterations=1, record_seconds=1, config=CFG, hub=Hub())
     assert flags and flags[-1] == {"muted": True, "paused": False}

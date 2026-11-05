@@ -6,6 +6,7 @@ _CACHE: dict[str, object] = {}
 
 def _load_model(cfg: Config):
     from faster_whisper import WhisperModel
+
     return WhisperModel(cfg.whisper_model, device="cpu", compute_type="int8")
 
 
@@ -23,8 +24,11 @@ def transcribe(wav_path: str, config: Config | None = None) -> str:
     cfg = config or load_config()
     try:
         segments, _info = _model(cfg).transcribe(
-            wav_path, language=cfg.language, beam_size=1,
-            vad_filter=True, condition_on_previous_text=False,
+            wav_path,
+            language=cfg.language,
+            beam_size=1,
+            vad_filter=True,
+            condition_on_previous_text=False,
         )
     except Exception as exc:  # noqa: BLE001
         raise VoiceError(f"falha na transcricao: {exc}") from exc

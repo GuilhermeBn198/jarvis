@@ -17,7 +17,7 @@ Assistente pessoal por voz, **sempre ligado**, que roda no seu PC: o "cérebro" 
 - [Instalação](#instalação)
 - [Como usar](#como-usar)
 - [Configuração (variáveis de ambiente)](#configuração-variáveis-de-ambiente)
-- [Limitações conhecidas](#limitações-conhecidas)
+- [Limitações conhecidas](#limitações-conhecidas) · [Diagnóstico das tools](docs/DIAGNOSTICS.md)
 - [Aprimoramentos planejados](#aprimoramentos-planejados)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Testes](#testes)
@@ -44,7 +44,7 @@ Divisão de responsabilidades:
 - **Streaming de TTS por sentença** — começa a falar enquanto o texto ainda é gerado, com fallback para o caminho bloqueante (ver limitações sobre o ganho).
 - **Visão de tela** (`--see` ou a palavra-gatilho "olha"): captura a tela e pergunta a um modelo de visão. O conteúdo da tela é tratado como **não-confiável** (o agente de visão não tem ferramentas).
 - **Ações no PC** (`--do` ou o agente `act`): digitar, teclas, clicar e abrir coisas no Windows, via as tools `act_*`, protegidas por um **SafetyGate** (regras de segurança).
-- **Ações em segundo plano (opt-in):** `act_type`/`act_key` aceitam `window`/`hwnd` (ou `mode="background"`) para agir sem roubar foco/cursor via UI Automation + PostMessage; `mode="foreground"` explícito força o caminho em foco mesmo com `window`/`hwnd`. A injeção de texto posiciona o caret (`EM_SETSEL`) e digita via `WM_CHAR` (`PostMessage`); a UIA só **localiza e verifica** (nunca `SetValue`, que ativava a janela). `append=true` põe o caret no fim (concatena); default seleciona tudo (substitui). A UIA roda com timeout de ~5s (janela travada vira `unconfirmed`). `win_list` lista as janelas. Na injeção de **texto**, apps que ignoram entrada em background retornam `unconfirmed` e o Jarvis pede confirmação antes de trazer a janela para frente; já `act_key` apenas reporta `verificacao indisponivel` e **não** pede consentimento. Clicar em controles em background ainda não é suportado. **Foco/cursor intactos verificados E2E** numa sessão ociosa (issue #9).
+- **Ações em segundo plano (opt-in):** `act_type`/`act_key` aceitam `window`/`hwnd` (ou `mode="background"`) para agir sem roubar foco/cursor via UI Automation + PostMessage; `mode="foreground"` explícito força o caminho em foco mesmo com `window`/`hwnd`. A injeção de texto posiciona o caret (`EM_SETSEL`) e digita via `WM_CHAR` (`PostMessage`); a UIA só **localiza e verifica** (nunca `SetValue`, que ativava a janela). `append=true` põe o caret no fim (concatena); default seleciona tudo (substitui). A UIA roda com timeout de ~5s (janela travada vira `unconfirmed`). `win_list` lista as janelas. `act_key` usa **sintaxe natural** (case-insensitive): `enter esc tab backspace delete space up down left right home end pgup pgdn f1..f24`, letras/dígitos, `plus`; combos `ctrl+`/`alt+`/`shift+`/`win+` (ex.: `ctrl+c`, `ctrl+shift+esc`); acordes separados por espaço/vírgula. Em foreground envia via `keybd_event`; em background via `WM_KEYDOWN/UP` com scan code no lParam, mirando o controle de edição. Limites do background: `win+r` **não funciona** (hotkey do sistema); combos com Ctrl/Alt são best-effort (apps que consultam `GetKeyState` podem ignorá-los). Na injeção de **texto**, apps que ignoram entrada em background retornam `unconfirmed` e o Jarvis pede confirmação antes de trazer a janela para frente; já `act_key` apenas reporta `verificacao indisponivel` e **não** pede consentimento. Clicar em controles em background ainda não é suportado. **Foco/cursor intactos verificados E2E** numa sessão ociosa (issue #9).
 - **Wake word e gatilhos de frase:** o modo de ativação é configurável (`VOICE_ACTIVATION=free|wake`). Em `wake`, só responde se a fala começar com uma palavra-gatilho ("jarvis"). Frases → alvo são declaradas em `triggers.json` (base em `voice/triggers.json`; override do usuário em `~/.config/jarvis/triggers.json`, mesclado por `name`) e podem rotear para um agente (`chat`, `act`, ...) ou uma ação do loop (`vision`, `mute`, `pause`, `quit`, `measure`). O casamento é **fuzzy** (tolera erros do Whisper, ex.: "jarves"), sem exigir aliases manuais.
 - **Indicador visual de estado** (overlay Tauri): um **orbe** sempre-no-topo, com cor e animação por estado — `idle`, `listening`, `transcribing`, `thinking`, `speaking`, `acting`, `error`. Clicável (menu: Mudo / Pausar / Iniciar|Reiniciar cérebro / Sair) e arrastável.
 - **Comandos pelo overlay**: `mute` (silencia), `pause` (não capta novos turnos) e `quit` (encerra o loop), além de subir o cérebro no WSL.
@@ -199,7 +199,7 @@ Na voz, **linguagem natural**: o agente `chat` tem a tool **`see_screen`** — b
 ./jarvis --do "abra o navegador e pesquise por X"    # agente act, caminho bloqueante
 ```
 
-Na voz, **linguagem natural**: o agente `chat` agora tem as tools **`act_type`/`act_key`/`act_open`/`act_click`** — basta pedir ("abre o navegador") que o modelo decide. Tudo passa pelo **SafetyGate** (`ask`/`deny` viram bloqueio para `act_*`).
+Na voz, **linguagem natural**: o agente `chat` agora tem as tools **`act_type`/`act_key`/`act_open`/`act_click`** — basta pedir ("abre o navegador") que o modelo decide. Tudo passa pelo **SafetyGate** (`ask`/`deny` viram bloqueio para `act_*`). O `act_open` aceita `args` (lista de strings, com quoting Windows); alvos que abrem caminho de execução (terminais/interpretadores/scripts: `cmd`, `powershell`, `wsl`, `.bat`, `.ps1`, `.vbs`, `.js`, ...) só abrem com `confirm=true` — sem ele a tool recusa e o agente pergunta antes.
 
 ### Bridge de texto
 
@@ -258,7 +258,7 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 | `VOICE_MIN_SPEECH_S` | `0.4` | duração mínima (s) de um trecho não-silencioso para valer como fala (rejeita ruído curto) |
 | `JARVIS_VOICE_LOCK` | `/tmp/jarvis-voice.lock` | trava de instância única do `--voice` |
 | `JARVIS_HEARTBEAT` | `false` | loga `[hb]` por estágio + `[watchdog]` se o loop travar (vai pro `brain.log`) |
-| `VISION_MODEL` | `opencode-go/deepseek-v4-flash-vision-exp` | modelo de visão |
+| `VISION_MODEL` | `opencode-go/deepseek-v4.1-flash` | modelo de visão |
 | `VISION_TRIGGER` | `olha` | palavra que dispara a visão na voz |
 | `VOICE_STREAM_TTS` | `true` | streaming de TTS por sentença |
 | `VOICE_STREAM_IDLE_MS` | `400` | pausa que dispara o flush do pedaço |
@@ -269,19 +269,38 @@ Todas são opcionais (defaults em `voice/config.py`). As principais:
 
 Detalhes e a lista completa: [`voice/README.md`](voice/README.md).
 
+### Allowlist de escrita (`win_write`)
+
+`win_write` só grava dentro dos diretórios autorizados em `JARVIS_WIN_ALLOW_WRITE` (default **vazio**: nada autorizado) e **sempre** exige `confirm=true`. A cadeia do env até o plugin:
+
+`local.conf` (raiz do repo, gitignored) → launcher `./jarvis` carrega com `set -a` → loop Python → `opencode serve`/`run` (herdam o ambiente) → plugin lê `process.env` a cada chamada.
+
+O valor que vale é o do `local.conf` (carregado depois do ambiente do shell); o que ele não definir segue o ambiente. **Trocar a allowlist exige encerrar o `opencode serve` e reiniciar o cérebro** — o `serve` é spawnado destacado (`start_new_session`) e reaproveitado enquanto saudável, então reiniciar só o loop/overlay **não** recarrega a env. Rode `pkill -f '[o]pencode serve'` e então reinicie o cérebro (menu do overlay → *Iniciar|Reiniciar cérebro*).
+
+```bash
+# local.conf (raiz do repo; NAO versionado) — use UMA das linhas:
+JARVIS_WIN_ALLOW_WRITE="C:\Users\<voce>\Notas"               # uma pasta
+JARVIS_WIN_ALLOW_WRITE="C:\Users\<voce>\Notas;D:\rascunhos"  # varias (separador ';')
+```
+
+Aceita formato Windows (`C:\...`) ou WSL (`/mnt/c/...`); basta o caminho estar sob **qualquer** diretório da lista. `;` separa sempre; `:` também separa, exceto quando colado na barra (protege a letra de drive: `C:\` e `C:/` continuam inteiros).
+
+> **Aviso:** aponte apenas **pastas de trabalho** — nunca o drive inteiro (`C:\`, `/mnt/c`) nem o perfil do usuário. O diretório precisa **existir** (a escrita não cria pastas); destrutivo/credencial seguem bloqueados pelo SafetyGate.
+
 ---
 
 ## Limitações conhecidas
 
-- **Latência**: um turno conversacional via `serve`+`piper` fica na casa de poucos segundos. O **streaming de TTS** foi implementado, mas o ganho medido foi **modesto** (~7–20%) porque o tempo até o primeiro token domina e o modelo/API costuma entregar a resposta em poucos blocos grandes. `first_audio_s`/`stream` ficam no `convlog` para acompanhar.
-- **Caminhos do Windows hardcoded** nos defaults (`ffmpeg`, `piper`, `shot.png`, etc.) — precisam ser ajustados por env em outra máquina.
-- **Microfone "preso"** (issue [#4](https://github.com/GuilhermeBn198/jarvis/issues/4)): a captura `dshow` pode segurar o dispositivo, deixando o mic indisponível para outros apps (ex.: Discord). Mitigado por: não rodar headless sem overlay (`JARVIS_REQUIRE_GUI`), trava de instância única (`JARVIS_VOICE_LOCK`) e limpeza do `ffmpeg`. **Se o mic sumir em outros apps:** em *Configurações de Som → Microfone → Propriedades → Avançado*, **desmarque** "Permitir que os aplicativos tenham controle exclusivo" e, se preciso, reinicie o dispositivo/PC.
+- **Latência**: um turno conversacional via `serve`+`piper` fica na casa de poucos segundos; o **streaming de TTS** dá ganho modesto (~7–20%) porque o tempo até o primeiro token domina. `first_audio_s`/`stream` ficam no `convlog`.
+- **Microfone "preso"** (issue [#4](https://github.com/GuilhermeBn198/jarvis/issues/4), mitigado): a captura `dshow` pode segurar o dispositivo. Mitigado por `JARVIS_REQUIRE_GUI`, trava de instância (`JARVIS_VOICE_LOCK`) e limpeza do `ffmpeg`. **Se o mic sumir em outros apps:** em *Configurações de Som → Microfone → Propriedades → Avançado*, **desmarque** "Permitir que os aplicativos tenham controle exclusivo".
 - **Sem wake word no modo `free` (default)**: a entrada é VAD/PTT — ruído pode disparar. Use `VOICE_ACTIVATION=wake` para exigir a palavra-gatilho (`triggers.json`).
-- **Sem barge-in**: não dá para interromper a fala do Jarvis falando por cima.
+- **Sem barge-in** ([#40](https://github.com/GuilhermeBn198/jarvis/issues/40)): não dá para interromper a fala do Jarvis falando por cima.
 - **Streaming só na conversa**: visão (`--see`) e ações (`--do`) usam o caminho bloqueante.
 - **Dependência do `serve`**: `opencode serve`/modelo são externos; sem eles, cai para `run` (lento) ou falha.
-- **Visão e ações** são v1: tela inteira, sem região/janela ativa; ações dependem do SafetyGate e das regras de segurança.
+- **Visão e ações são v1**: tela inteira (sem região/janela ativa); ações dependem do SafetyGate.
 - **Overlay é Windows-only** (Tauri) e exige Rust/MSVC/WebView2.
+
+> **Diagnóstico das tools**: sintoma, repro, causa e workaround de `act_*`, `win_*`, visão e áudio/loop ficam em [`docs/DIAGNOSTICS.md`](docs/DIAGNOSTICS.md).
 
 ---
 
@@ -328,6 +347,7 @@ jarvis/
 │   └── win_context/       # MCP de contexto do Windows em texto (UIA/clipboard/processos)
 ├── docs/
 │   ├── backlog.md
+│   ├── DIAGNOSTICS.md     # diagnóstico e limitações conhecidas das tools
 │   └── superpowers/       # specs e planos de cada fase
 └── opencode.json          # agentes e MCP
 ```
@@ -345,11 +365,14 @@ cd ..
 node --test '.opencode/**/*.test.ts'   # SafetyGate + tools act_*
 ```
 
+**Qualidade de código (lint/formatação):** `./scripts/lint.sh` roda ruff (Python) + Biome (TS/JSON do `.opencode`) de uma vez; `--fix` aplica correções e formatação. Setup uma vez: `voice/.venv/bin/pip install -r requirements-dev.txt` e `(cd .opencode && npm ci)`.
+
 ---
 
 ## Documentação
 
 - **Backlog**: `docs/backlog.md`
+- **Diagnóstico e limitações das tools**: `docs/DIAGNOSTICS.md`
 - **Specs/design**: `docs/superpowers/specs/`
 - **Planos de implementação**: `docs/superpowers/plans/`
 - **Voz (detalhes de env, modos e dependências)**: `voice/README.md`
