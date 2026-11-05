@@ -1,0 +1,911 @@
+index: added `jarvis-assistant-0.1.0_1' (x86_64-musl).
+index: 1 packages registered.
+[*] Updating repository `https://repo-default.voidlinux.org/current/musl/bootstrap/x86_64-musl-repodata' ...
+[*] Updating repository `https://repo-default.voidlinux.org/current/musl/x86_64-musl-repodata' ...
+[*] Updating repository `https://repo-default.voidlinux.org/current/musl/nonfree/x86_64-musl-repodata' ...
+[*] Updating repository `https://repo-default.voidlinux.org/current/musl/debug/x86_64-musl-repodata' ...
+5 packages will be downloaded:
+
+  libfontenc-1.1.9_1 
+  libXfont2-2.0.7_2 
+  libtirpc-1.3.8_2 
+  xorg-server-xvfb-21.1.25_2 
+  dbus-1.16.2_2 
+5 packages will be installed:
+
+  libfontenc-1.1.9_1 
+  libXfont2-2.0.7_2 
+  libtirpc-1.3.8_2 
+  xorg-server-xvfb-21.1.25_2 
+  dbus-1.16.2_2 
+
+Size to download:             1223KB
+Size required on disk:        2749KB
+Space available on disk:        31GB
+
+
+[*] Downloading packages
+libfontenc-1.1.9_1.x86_64-musl.xbps.sig2: [512B 100%] 33MB/s ETA: 00m00s
+libfontenc-1.1.9_1.x86_64-musl.xbps.sig2: 512B [avg rate: 33MB/s]
+libfontenc-1.1.9_1.x86_64-musl.xbps: [14KB 29%] 186MB/s ETA: 00m00s
+libfontenc-1.1.9_1.x86_64-musl.xbps: 14KB [avg rate: 629MB/s]
+libfontenc-1.1.9_1: verifying RSA signature...
+libXfont2-2.0.7_2.x86_64-musl.xbps.sig2: [512B 100%] 35MB/s ETA: 00m00s
+libXfont2-2.0.7_2.x86_64-musl.xbps.sig2: 512B [avg rate: 35MB/s]
+libXfont2-2.0.7_2.x86_64-musl.xbps: [127KB 3%] 178MB/s ETA: 00m00s
+libXfont2-2.0.7_2.x86_64-musl.xbps: 127KB [avg rate: 5620MB/s]
+libXfont2-2.0.7_2: verifying RSA signature...
+libtirpc-1.3.8_2.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+libtirpc-1.3.8_2.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+libtirpc-1.3.8_2.x86_64-musl.xbps: [90KB 4%] 170MB/s ETA: 00m00s
+libtirpc-1.3.8_2.x86_64-musl.xbps: 90KB [avg rate: 3810MB/s]
+libtirpc-1.3.8_2: verifying RSA signature...
+xorg-server-xvfb-21.1.25_2.x86_64-musl.xbps.sig2: [512B 100%] 22MB/s ETA: 00m00s
+xorg-server-xvfb-21.1.25_2.x86_64-musl.xbps.sig2: 512B [avg rate: 22MB/s]
+xorg-server-xvfb-21.1.25_2.x86_64-musl.xbps: [839KB 0%] 206MB/s ETA: 00m00s
+xorg-server-xvfb-21.1.25_2.x86_64-musl.xbps: [839KB 11%] 440KB/s ETA: 00m07s
+xorg-server-xvfb-21.1.25_2.x86_64-musl.xbps: [839KB 59%] 453KB/s ETA: 00m01s
+xorg-server-xvfb-21.1.25_2.x86_64-musl.xbps: 839KB [avg rate: 767KB/s]
+xorg-server-xvfb-21.1.25_2: verifying RSA signature...
+dbus-1.16.2_2.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+dbus-1.16.2_2.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+dbus-1.16.2_2.x86_64-musl.xbps: [151KB 2%] 170MB/s ETA: 00m00s
+dbus-1.16.2_2.x86_64-musl.xbps: 151KB [avg rate: 6423MB/s]
+WARNING: cannot create dbus system account (missing useradd or usermod)
+The following system account must be created:
+   Account: dbus (uid: 22)
+   Description: 'dbus unprivileged user'
+   Homedir: '/var/empty'
+   Shell: '/sbin/nologin'
+dbus-1.16.2_2: verifying RSA signature...
+
+[*] Collecting package files
+libfontenc-1.1.9_1: collecting files...
+libXfont2-2.0.7_2: collecting files...
+libtirpc-1.3.8_2: collecting files...
+xorg-server-xvfb-21.1.25_2: collecting files...
+dbus-1.16.2_2: collecting files...
+
+[*] Unpacking packages
+libfontenc-1.1.9_1: unpacking ...
+libXfont2-2.0.7_2: unpacking ...
+libtirpc-1.3.8_2: unpacking ...
+xorg-server-xvfb-21.1.25_2: unpacking ...
+dbus-1.16.2_2: unpacking ...
+
+[*] Configuring unpacked packages
+libfontenc-1.1.9_1: configuring ...
+libfontenc-1.1.9_1: installed successfully.
+libXfont2-2.0.7_2: configuring ...
+libXfont2-2.0.7_2: installed successfully.
+libtirpc-1.3.8_2: configuring ...
+libtirpc-1.3.8_2: installed successfully.
+xorg-server-xvfb-21.1.25_2: configuring ...
+xorg-server-xvfb-21.1.25_2: installed successfully.
+dbus-1.16.2_2: configuring ...
+dbus-1.16.2_2: installed successfully.
+
+5 downloaded, 5 installed, 0 updated, 5 configured, 0 removed, 0 on hold.
+52 packages will be downloaded:
+
+  libquadmath-14.2.1+20250405_4 
+  libgfortran-14.2.1+20250405_4 
+  openblas-0.3.34_1 
+  python3-numpy-2.5.3_1 
+  libXScrnSaver-1.2.5_1 
+  libdecor-0.2.5_1 
+  SDL2-2.32.10_1 
+  ocl-icd-2.3.5_1 
+  libva-2.24.1_1 
+  libvdpau-1.5_1 
+  libvpl-2.17.0_1 
+  libavutil6-6.1.6_3 
+  libswresample6-6.1.6_3 
+  xvidcore-1.3.7_1 
+  libavcodec6-6.1.6_3 
+  libass-0.17.5_1 
+  libbluray-1.3.4_1 
+  libopenmpt-0.8.9_1 
+  mbedtls-3.6.6_1 
+  librist-0.2.20_1 
+  librtmp-2.6_1 
+  libsrt-1.5.7_1 
+  libavformat6-6.1.6_3 
+  libbs2b-3.1.0_3 
+  libpostproc6-6.1.6_3 
+  libswscale6-6.1.6_3 
+  libvidstab-1.1.0_2 
+  vmaf-3.0.0_1 
+  libavfilter6-6.1.6_3 
+  libcddb-1.3.2_9 
+  libcdio-2.3.0_1 
+  libcdio-paranoia-10.2+2.0.2_1 
+  libsndio-1.10.0_1 
+  libavdevice6-6.1.6_3 
+  ffplay6-6.1.6_3 
+  ffmpeg6-6.1.6_3 
+  ffmpeg-4.4.8_1 
+  pulseaudio-utils-16.1_2 
+  gir-freedesktop-1.86.0_2 
+  python3-cairo-1.27.0_3 
+  python3-gobject-3.56.2_1 
+  abseil-cpp-20250512.1_1 
+  libprotobuf-35.1_1 
+  alsa-utils-1.2.16_1 
+  xdotool-4.20260303.1_1 
+  wl-clipboard-2.3.0_1 
+  libXmu-1.3.1_1 
+  xclip-0.13_2 
+  xset-1.2.6_1 
+  xdg-utils-1.2.1_1 
+  libprotobuf-lite-35.1_1 
+  re2-2025.11.05_2 
+53 packages will be installed:
+
+  libquadmath-14.2.1+20250405_4 
+  libgfortran-14.2.1+20250405_4 
+  openblas-0.3.34_1 
+  python3-numpy-2.5.3_1 
+  libXScrnSaver-1.2.5_1 
+  libdecor-0.2.5_1 
+  SDL2-2.32.10_1 
+  ocl-icd-2.3.5_1 
+  libva-2.24.1_1 
+  libvdpau-1.5_1 
+  libvpl-2.17.0_1 
+  libavutil6-6.1.6_3 
+  libswresample6-6.1.6_3 
+  xvidcore-1.3.7_1 
+  libavcodec6-6.1.6_3 
+  libass-0.17.5_1 
+  libbluray-1.3.4_1 
+  libopenmpt-0.8.9_1 
+  mbedtls-3.6.6_1 
+  librist-0.2.20_1 
+  librtmp-2.6_1 
+  libsrt-1.5.7_1 
+  libavformat6-6.1.6_3 
+  libbs2b-3.1.0_3 
+  libpostproc6-6.1.6_3 
+  libswscale6-6.1.6_3 
+  libvidstab-1.1.0_2 
+  vmaf-3.0.0_1 
+  libavfilter6-6.1.6_3 
+  libcddb-1.3.2_9 
+  libcdio-2.3.0_1 
+  libcdio-paranoia-10.2+2.0.2_1 
+  libsndio-1.10.0_1 
+  libavdevice6-6.1.6_3 
+  ffplay6-6.1.6_3 
+  ffmpeg6-6.1.6_3 
+  ffmpeg-4.4.8_1 
+  pulseaudio-utils-16.1_2 
+  gir-freedesktop-1.86.0_2 
+  python3-cairo-1.27.0_3 
+  python3-gobject-3.56.2_1 
+  abseil-cpp-20250512.1_1 
+  libprotobuf-35.1_1 
+  alsa-utils-1.2.16_1 
+  xdotool-4.20260303.1_1 
+  wl-clipboard-2.3.0_1 
+  libXmu-1.3.1_1 
+  xclip-0.13_2 
+  xset-1.2.6_1 
+  xdg-utils-1.2.1_1 
+  libprotobuf-lite-35.1_1 
+  re2-2025.11.05_2 
+  jarvis-assistant-0.1.0_1 
+
+Size to download:               31MB
+Size required on disk:         698MB
+Space available on disk:        31GB
+
+
+[*] Downloading packages
+libquadmath-14.2.1+20250405_4.x86_64-musl.xbps.sig2: [512B 100%] 29MB/s ETA: 00m00s
+libquadmath-14.2.1+20250405_4.x86_64-musl.xbps.sig2: 512B [avg rate: 29MB/s]
+libquadmath-14.2.1+20250405_4.x86_64-musl.xbps: [160KB 2%] 178MB/s ETA: 00m00s
+libquadmath-14.2.1+20250405_4.x86_64-musl.xbps: 160KB [avg rate: 7109MB/s]
+libquadmath-14.2.1+20250405_4: verifying RSA signature...
+libgfortran-14.2.1+20250405_4.x86_64-musl.xbps.sig2: [512B 100%] 35MB/s ETA: 00m00s
+libgfortran-14.2.1+20250405_4.x86_64-musl.xbps.sig2: 512B [avg rate: 35MB/s]
+libgfortran-14.2.1+20250405_4.x86_64-musl.xbps: [1008KB 0%] 206MB/s ETA: 00m00s
+libgfortran-14.2.1+20250405_4.x86_64-musl.xbps: [1008KB 52%] 560KB/s ETA: 00m00s
+libgfortran-14.2.1+20250405_4.x86_64-musl.xbps: 1008KB [avg rate: 1069KB/s]
+libgfortran-14.2.1+20250405_4: verifying RSA signature...
+openblas-0.3.34_1.x86_64-musl.xbps.sig2: [512B 100%] 23MB/s ETA: 00m00s
+openblas-0.3.34_1.x86_64-musl.xbps.sig2: 512B [avg rate: 23MB/s]
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 0%] 186MB/s ETA: 00m00s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 8%] 563KB/s ETA: 00m11s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 17%] 552KB/s ETA: 00m09s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 27%] 554KB/s ETA: 00m07s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 38%] 575KB/s ETA: 00m06s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 44%] 525KB/s ETA: 00m06s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 49%] 488KB/s ETA: 00m06s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 54%] 454KB/s ETA: 00m05s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 58%] 427KB/s ETA: 00m05s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 63%] 411KB/s ETA: 00m05s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 68%] 398KB/s ETA: 00m04s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 74%] 389KB/s ETA: 00m03s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 80%] 389KB/s ETA: 00m02s
+openblas-0.3.34_1.x86_64-musl.xbps: [5699KB 89%] 398KB/s ETA: 00m01s
+openblas-0.3.34_1.x86_64-musl.xbps: 5699KB [avg rate: 444KB/s]
+openblas-0.3.34_1: verifying RSA signature...
+python3-numpy-2.5.3_1.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+python3-numpy-2.5.3_1.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 0%] 230MB/s ETA: 00m00s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 10%] 889KB/s ETA: 00m08s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 22%] 825KB/s ETA: 00m06s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 35%] 802KB/s ETA: 00m05s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 48%] 799KB/s ETA: 00m04s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 64%] 830KB/s ETA: 00m02s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 79%] 852KB/s ETA: 00m01s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: [6044KB 92%] 837KB/s ETA: 00m00s
+python3-numpy-2.5.3_1.x86_64-musl.xbps: 6044KB [avg rate: 904KB/s]
+python3-numpy-2.5.3_1: verifying RSA signature...
+libXScrnSaver-1.2.5_1.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+libXScrnSaver-1.2.5_1.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+libXScrnSaver-1.2.5_1.x86_64-musl.xbps: [5205B 78%] 186MB/s ETA: 00m00s
+libXScrnSaver-1.2.5_1.x86_64-musl.xbps: 5205B [avg rate: 236MB/s]
+libXScrnSaver-1.2.5_1: verifying RSA signature...
+libdecor-0.2.5_1.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+libdecor-0.2.5_1.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+libdecor-0.2.5_1.x86_64-musl.xbps: [47KB 8%] 145MB/s ETA: 00m00s
+libdecor-0.2.5_1.x86_64-musl.xbps: 47KB [avg rate: 1708MB/s]
+libdecor-0.2.5_1: verifying RSA signature...
+SDL2-2.32.10_1.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+SDL2-2.32.10_1.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+SDL2-2.32.10_1.x86_64-musl.xbps: [754KB 0%] 178MB/s ETA: 00m00s
+SDL2-2.32.10_1.x86_64-musl.xbps: 754KB [avg rate: 33GB/s]
+SDL2-2.32.10_1: verifying RSA signature...
+ocl-icd-2.3.5_1.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+ocl-icd-2.3.5_1.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+ocl-icd-2.3.5_1.x86_64-musl.xbps: [107KB 3%] 170MB/s ETA: 00m00s
+ocl-icd-2.3.5_1.x86_64-musl.xbps: 107KB [avg rate: 4526MB/s]
+ocl-icd-2.3.5_1: verifying RSA signature...
+libva-2.24.1_1.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+libva-2.24.1_1.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+libva-2.24.1_1.x86_64-musl.xbps: [95KB 4%] 145MB/s ETA: 00m00s
+libva-2.24.1_1.x86_64-musl.xbps: 95KB [avg rate: 3418MB/s]
+libva-2.24.1_1: verifying RSA signature...
+libvdpau-1.5_1.x86_64-musl.xbps.sig2: [512B 100%] 33MB/s ETA: 00m00s
+libvdpau-1.5_1.x86_64-musl.xbps.sig2: 512B [avg rate: 33MB/s]
+libvdpau-1.5_1.x86_64-musl.xbps: [27KB 14%] 206MB/s ETA: 00m00s
+libvdpau-1.5_1.x86_64-musl.xbps: 27KB [avg rate: 1405MB/s]
+libvdpau-1.5_1: verifying RSA signature...
+libvpl-2.17.0_1.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+libvpl-2.17.0_1.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+libvpl-2.17.0_1.x86_64-musl.xbps: [152KB 2%] 217MB/s ETA: 00m00s
+libvpl-2.17.0_1.x86_64-musl.xbps: 152KB [avg rate: 8246MB/s]
+libvpl-2.17.0_1: verifying RSA signature...
+libavutil6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+libavutil6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+libavutil6-6.1.6_3.x86_64-musl.xbps: [359KB 1%] 170MB/s ETA: 00m00s
+libavutil6-6.1.6_3.x86_64-musl.xbps: 359KB [avg rate: 15GB/s]
+libavutil6-6.1.6_3: verifying RSA signature...
+libswresample6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 23MB/s ETA: 00m00s
+libswresample6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 23MB/s]
+libswresample6-6.1.6_3.x86_64-musl.xbps: [49KB 8%] 170MB/s ETA: 00m00s
+libswresample6-6.1.6_3.x86_64-musl.xbps: 49KB [avg rate: 2091MB/s]
+libswresample6-6.1.6_3: verifying RSA signature...
+xvidcore-1.3.7_1.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+xvidcore-1.3.7_1.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+xvidcore-1.3.7_1.x86_64-musl.xbps: [192KB 2%] 230MB/s ETA: 00m00s
+xvidcore-1.3.7_1.x86_64-musl.xbps: [192KB 83%] 725KB/s ETA: 00m00s
+xvidcore-1.3.7_1.x86_64-musl.xbps: 192KB [avg rate: 872KB/s]
+xvidcore-1.3.7_1: verifying RSA signature...
+libavcodec6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+libavcodec6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 0%] 178MB/s ETA: 00m00s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 6%] 707KB/s ETA: 00m15s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 19%] 725KB/s ETA: 00m08s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 34%] 766KB/s ETA: 00m05s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 49%] 786KB/s ETA: 00m04s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 63%] 788KB/s ETA: 00m02s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 78%] 783KB/s ETA: 00m01s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: [5502KB 93%] 788KB/s ETA: 00m00s
+libavcodec6-6.1.6_3.x86_64-musl.xbps: 5502KB [avg rate: 844KB/s]
+libavcodec6-6.1.6_3: verifying RSA signature...
+libass-0.17.5_1.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+libass-0.17.5_1.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+libass-0.17.5_1.x86_64-musl.xbps: [118KB 3%] 163MB/s ETA: 00m00s
+libass-0.17.5_1.x86_64-musl.xbps: 118KB [avg rate: 4787MB/s]
+libass-0.17.5_1: verifying RSA signature...
+libbluray-1.3.4_1.x86_64-musl.xbps.sig2: [512B 100%] 23MB/s ETA: 00m00s
+libbluray-1.3.4_1.x86_64-musl.xbps.sig2: 512B [avg rate: 23MB/s]
+libbluray-1.3.4_1.x86_64-musl.xbps: [862KB 0%] 163MB/s ETA: 00m00s
+libbluray-1.3.4_1.x86_64-musl.xbps: [862KB 9%] 285KB/s ETA: 00m09s
+libbluray-1.3.4_1.x86_64-musl.xbps: 862KB [avg rate: 3067KB/s]
+libbluray-1.3.4_1: verifying RSA signature...
+libopenmpt-0.8.9_1.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+libopenmpt-0.8.9_1.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+libopenmpt-0.8.9_1.x86_64-musl.xbps: [1026KB 0%] 145MB/s ETA: 00m00s
+libopenmpt-0.8.9_1.x86_64-musl.xbps: [1026KB 37%] 610KB/s ETA: 00m01s
+libopenmpt-0.8.9_1.x86_64-musl.xbps: [1026KB 76%] 482KB/s ETA: 00m00s
+libopenmpt-0.8.9_1.x86_64-musl.xbps: 1026KB [avg rate: 631KB/s]
+libopenmpt-0.8.9_1: verifying RSA signature...
+mbedtls-3.6.6_1.x86_64-musl.xbps.sig2: [512B 100%] 19MB/s ETA: 00m00s
+mbedtls-3.6.6_1.x86_64-musl.xbps.sig2: 512B [avg rate: 19MB/s]
+mbedtls-3.6.6_1.x86_64-musl.xbps: [438KB 0%] 178MB/s ETA: 00m00s
+mbedtls-3.6.6_1.x86_64-musl.xbps: 438KB [avg rate: 19GB/s]
+mbedtls-3.6.6_1: verifying RSA signature...
+librist-0.2.20_1.x86_64-musl.xbps.sig2: [512B 100%] 16MB/s ETA: 00m00s
+librist-0.2.20_1.x86_64-musl.xbps.sig2: 512B [avg rate: 16MB/s]
+librist-0.2.20_1.x86_64-musl.xbps: [138KB 2%] 230MB/s ETA: 00m00s
+librist-0.2.20_1.x86_64-musl.xbps: 138KB [avg rate: 7913MB/s]
+librist-0.2.20_1: verifying RSA signature...
+librtmp-2.6_1.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+librtmp-2.6_1.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+librtmp-2.6_1.x86_64-musl.xbps: [59KB 6%] 217MB/s ETA: 00m00s
+librtmp-2.6_1.x86_64-musl.xbps: 59KB [avg rate: 3180MB/s]
+librtmp-2.6_1: verifying RSA signature...
+libsrt-1.5.7_1.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+libsrt-1.5.7_1.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+libsrt-1.5.7_1.x86_64-musl.xbps: [403KB 0%] 217MB/s ETA: 00m00s
+libsrt-1.5.7_1.x86_64-musl.xbps: 403KB [avg rate: 21GB/s]
+libsrt-1.5.7_1: verifying RSA signature...
+libavformat6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+libavformat6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+libavformat6-6.1.6_3.x86_64-musl.xbps: [1092KB 0%] 163MB/s ETA: 00m00s
+libavformat6-6.1.6_3.x86_64-musl.xbps: [1092KB 23%] 363KB/s ETA: 00m03s
+libavformat6-6.1.6_3.x86_64-musl.xbps: [1092KB 57%] 371KB/s ETA: 00m01s
+libavformat6-6.1.6_3.x86_64-musl.xbps: [1092KB 86%] 329KB/s ETA: 00m00s
+libavformat6-6.1.6_3.x86_64-musl.xbps: 1092KB [avg rate: 381KB/s]
+libavformat6-6.1.6_3: verifying RSA signature...
+libbs2b-3.1.0_3.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+libbs2b-3.1.0_3.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+libbs2b-3.1.0_3.x86_64-musl.xbps: [12KB 32%] 230MB/s ETA: 00m00s
+libbs2b-3.1.0_3.x86_64-musl.xbps: 12KB [avg rate: 706MB/s]
+libbs2b-3.1.0_3: verifying RSA signature...
+libpostproc6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+libpostproc6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+libpostproc6-6.1.6_3.x86_64-musl.xbps: [27KB 14%] 135MB/s ETA: 00m00s
+libpostproc6-6.1.6_3.x86_64-musl.xbps: 27KB [avg rate: 904MB/s]
+libpostproc6-6.1.6_3: verifying RSA signature...
+libswscale6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+libswscale6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+libswscale6-6.1.6_3.x86_64-musl.xbps: [181KB 2%] 170MB/s ETA: 00m00s
+libswscale6-6.1.6_3.x86_64-musl.xbps: [181KB 26%] 226KB/s ETA: 00m02s
+libswscale6-6.1.6_3.x86_64-musl.xbps: 181KB [avg rate: 853KB/s]
+libswscale6-6.1.6_3: verifying RSA signature...
+libvidstab-1.1.0_2.x86_64-musl.xbps.sig2: [512B 100%] 23MB/s ETA: 00m00s
+libvidstab-1.1.0_2.x86_64-musl.xbps.sig2: 512B [avg rate: 23MB/s]
+libvidstab-1.1.0_2.x86_64-musl.xbps: [36KB 11%] 186MB/s ETA: 00m00s
+libvidstab-1.1.0_2.x86_64-musl.xbps: 36KB [avg rate: 1669MB/s]
+libvidstab-1.1.0_2: verifying RSA signature...
+vmaf-3.0.0_1.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+vmaf-3.0.0_1.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+vmaf-3.0.0_1.x86_64-musl.xbps: [451KB 0%] 130MB/s ETA: 00m00s
+vmaf-3.0.0_1.x86_64-musl.xbps: [451KB 17%] 178KB/s ETA: 00m04s
+vmaf-3.0.0_1.x86_64-musl.xbps: [451KB 63%] 221KB/s ETA: 00m01s
+vmaf-3.0.0_1.x86_64-musl.xbps: 451KB [avg rate: 346KB/s]
+vmaf-3.0.0_1: verifying RSA signature...
+libavfilter6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+libavfilter6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+libavfilter6-6.1.6_3.x86_64-musl.xbps: [1621KB 0%] 178MB/s ETA: 00m00s
+libavfilter6-6.1.6_3.x86_64-musl.xbps: [1621KB 13%] 243KB/s ETA: 00m06s
+libavfilter6-6.1.6_3.x86_64-musl.xbps: [1621KB 30%] 255KB/s ETA: 00m04s
+libavfilter6-6.1.6_3.x86_64-musl.xbps: [1621KB 45%] 254KB/s ETA: 00m03s
+libavfilter6-6.1.6_3.x86_64-musl.xbps: [1621KB 65%] 266KB/s ETA: 00m02s
+libavfilter6-6.1.6_3.x86_64-musl.xbps: [1621KB 84%] 279KB/s ETA: 00m00s
+libavfilter6-6.1.6_3.x86_64-musl.xbps: 1621KB [avg rate: 329KB/s]
+libavfilter6-6.1.6_3: verifying RSA signature...
+libcddb-1.3.2_9.x86_64-musl.xbps.sig2: [512B 100%] 23MB/s ETA: 00m00s
+libcddb-1.3.2_9.x86_64-musl.xbps.sig2: 512B [avg rate: 23MB/s]
+libcddb-1.3.2_9.x86_64-musl.xbps: [31KB 12%] 170MB/s ETA: 00m00s
+libcddb-1.3.2_9.x86_64-musl.xbps: 31KB [avg rate: 1326MB/s]
+libcddb-1.3.2_9: verifying RSA signature...
+libcdio-2.3.0_1.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+libcdio-2.3.0_1.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+libcdio-2.3.0_1.x86_64-musl.xbps: [160KB 2%] 206MB/s ETA: 00m00s
+libcdio-2.3.0_1.x86_64-musl.xbps: 160KB [avg rate: 8199MB/s]
+libcdio-2.3.0_1: verifying RSA signature...
+libcdio-paranoia-10.2+2.0.2_1.x86_64-musl.xbps.sig2: [512B 100%] 33MB/s ETA: 00m00s
+libcdio-paranoia-10.2+2.0.2_1.x86_64-musl.xbps.sig2: 512B [avg rate: 33MB/s]
+libcdio-paranoia-10.2+2.0.2_1.x86_64-musl.xbps: [70KB 5%] 195MB/s ETA: 00m00s
+libcdio-paranoia-10.2+2.0.2_1.x86_64-musl.xbps: 70KB [avg rate: 3411MB/s]
+libcdio-paranoia-10.2+2.0.2_1: verifying RSA signature...
+libsndio-1.10.0_1.x86_64-musl.xbps.sig2: [512B 100%] 20MB/s ETA: 00m00s
+libsndio-1.10.0_1.x86_64-musl.xbps.sig2: 512B [avg rate: 20MB/s]
+libsndio-1.10.0_1.x86_64-musl.xbps: [29KB 13%] 178MB/s ETA: 00m00s
+libsndio-1.10.0_1.x86_64-musl.xbps: 29KB [avg rate: 1309MB/s]
+libsndio-1.10.0_1: verifying RSA signature...
+libavdevice6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+libavdevice6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+libavdevice6-6.1.6_3.x86_64-musl.xbps: [57KB 6%] 150MB/s ETA: 00m00s
+libavdevice6-6.1.6_3.x86_64-musl.xbps: 57KB [avg rate: 2149MB/s]
+libavdevice6-6.1.6_3: verifying RSA signature...
+ffplay6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+ffplay6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+ffplay6-6.1.6_3.x86_64-musl.xbps: [366KB 1%] 178MB/s ETA: 00m00s
+ffplay6-6.1.6_3.x86_64-musl.xbps: [366KB 30%] 551KB/s ETA: 00m02s
+ffplay6-6.1.6_3.x86_64-musl.xbps: 366KB [avg rate: 1799KB/s]
+ffplay6-6.1.6_3: verifying RSA signature...
+ffmpeg6-6.1.6_3.x86_64-musl.xbps.sig2: [512B 100%] 29MB/s ETA: 00m00s
+ffmpeg6-6.1.6_3.x86_64-musl.xbps.sig2: 512B [avg rate: 29MB/s]
+ffmpeg6-6.1.6_3.x86_64-musl.xbps: [597KB 0%] 178MB/s ETA: 00m00s
+ffmpeg6-6.1.6_3.x86_64-musl.xbps: [597KB 24%] 631KB/s ETA: 00m03s
+ffmpeg6-6.1.6_3.x86_64-musl.xbps: 597KB [avg rate: 2615KB/s]
+ffmpeg6-6.1.6_3: verifying RSA signature...
+ffmpeg-4.4.8_1.x86_64-musl.xbps.sig2: [512B 100%] 27MB/s ETA: 00m00s
+ffmpeg-4.4.8_1.x86_64-musl.xbps.sig2: 512B [avg rate: 27MB/s]
+ffmpeg-4.4.8_1.x86_64-musl.xbps: [711B 100%] 31MB/s ETA: 00m00s
+ffmpeg-4.4.8_1.x86_64-musl.xbps: 711B [avg rate: 31MB/s]
+ffmpeg-4.4.8_1: verifying RSA signature...
+pulseaudio-utils-16.1_2.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+pulseaudio-utils-16.1_2.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+pulseaudio-utils-16.1_2.x86_64-musl.xbps: [69KB 5%] 156MB/s ETA: 00m00s
+pulseaudio-utils-16.1_2.x86_64-musl.xbps: 69KB [avg rate: 2706MB/s]
+pulseaudio-utils-16.1_2: verifying RSA signature...
+gir-freedesktop-1.86.0_2.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+gir-freedesktop-1.86.0_2.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+gir-freedesktop-1.86.0_2.x86_64-musl.xbps: [45KB 8%] 170MB/s ETA: 00m00s
+gir-freedesktop-1.86.0_2.x86_64-musl.xbps: 45KB [avg rate: 1922MB/s]
+gir-freedesktop-1.86.0_2: verifying RSA signature...
+python3-cairo-1.27.0_3.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+python3-cairo-1.27.0_3.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+python3-cairo-1.27.0_3.x86_64-musl.xbps: [108KB 3%] 170MB/s ETA: 00m00s
+python3-cairo-1.27.0_3.x86_64-musl.xbps: 108KB [avg rate: 4598MB/s]
+python3-cairo-1.27.0_3: verifying RSA signature...
+python3-gobject-3.56.2_1.x86_64-musl.xbps.sig2: [512B 100%] 33MB/s ETA: 00m00s
+python3-gobject-3.56.2_1.x86_64-musl.xbps.sig2: 512B [avg rate: 33MB/s]
+python3-gobject-3.56.2_1.x86_64-musl.xbps: [196KB 2%] 206MB/s ETA: 00m00s
+python3-gobject-3.56.2_1.x86_64-musl.xbps: 196KB [avg rate: 9.8GB/s]
+python3-gobject-3.56.2_1: verifying RSA signature...
+abseil-cpp-20250512.1_1.x86_64-musl.xbps.sig2: [512B 100%] 21MB/s ETA: 00m00s
+abseil-cpp-20250512.1_1.x86_64-musl.xbps.sig2: 512B [avg rate: 21MB/s]
+abseil-cpp-20250512.1_1.x86_64-musl.xbps: [514KB 0%] 178MB/s ETA: 00m00s
+abseil-cpp-20250512.1_1.x86_64-musl.xbps: [514KB 15%] 287KB/s ETA: 00m05s
+abseil-cpp-20250512.1_1.x86_64-musl.xbps: 514KB [avg rate: 1847KB/s]
+abseil-cpp-20250512.1_1: verifying RSA signature...
+libprotobuf-35.1_1.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+libprotobuf-35.1_1.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+libprotobuf-35.1_1.x86_64-musl.xbps: [1074KB 0%] 217MB/s ETA: 00m00s
+libprotobuf-35.1_1.x86_64-musl.xbps: [1074KB 77%] 823KB/s ETA: 00m00s
+libprotobuf-35.1_1.x86_64-musl.xbps: 1074KB [avg rate: 1063KB/s]
+libprotobuf-35.1_1: verifying RSA signature...
+alsa-utils-1.2.16_1.x86_64-musl.xbps.sig2: [512B 100%] 3030KB/s ETA: 00m00s
+alsa-utils-1.2.16_1.x86_64-musl.xbps.sig2: 512B [avg rate: 3030KB/s]
+alsa-utils-1.2.16_1.x86_64-musl.xbps: [1301KB 0%] 103MB/s ETA: 00m00s
+alsa-utils-1.2.16_1.x86_64-musl.xbps: [1301KB 14%] 838KB/s ETA: 00m05s
+alsa-utils-1.2.16_1.x86_64-musl.xbps: [1301KB 75%] 872KB/s ETA: 00m00s
+alsa-utils-1.2.16_1.x86_64-musl.xbps: 1301KB [avg rate: 1162KB/s]
+alsa-utils-1.2.16_1: verifying RSA signature...
+xdotool-4.20260303.1_1.x86_64-musl.xbps.sig2: [512B 100%] 31MB/s ETA: 00m00s
+xdotool-4.20260303.1_1.x86_64-musl.xbps.sig2: 512B [avg rate: 31MB/s]
+xdotool-4.20260303.1_1.x86_64-musl.xbps: [67KB 5%] 170MB/s ETA: 00m00s
+xdotool-4.20260303.1_1.x86_64-musl.xbps: 67KB [avg rate: 2841MB/s]
+xdotool-4.20260303.1_1: verifying RSA signature...
+wl-clipboard-2.3.0_1.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+wl-clipboard-2.3.0_1.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+wl-clipboard-2.3.0_1.x86_64-musl.xbps: [36KB 11%] 150MB/s ETA: 00m00s
+wl-clipboard-2.3.0_1.x86_64-musl.xbps: 36KB [avg rate: 1342MB/s]
+wl-clipboard-2.3.0_1: verifying RSA signature...
+libXmu-1.3.1_1.x86_64-musl.xbps.sig2: [512B 100%] 26MB/s ETA: 00m00s
+libXmu-1.3.1_1.x86_64-musl.xbps.sig2: 512B [avg rate: 26MB/s]
+libXmu-1.3.1_1.x86_64-musl.xbps: [72KB 5%] 135MB/s ETA: 00m00s
+libXmu-1.3.1_1.x86_64-musl.xbps: 72KB [avg rate: 2428MB/s]
+libXmu-1.3.1_1: verifying RSA signature...
+xclip-0.13_2.x86_64-musl.xbps.sig2: [512B 100%] 35MB/s ETA: 00m00s
+xclip-0.13_2.x86_64-musl.xbps.sig2: 512B [avg rate: 35MB/s]
+xclip-0.13_2.x86_64-musl.xbps: [14KB 28%] 206MB/s ETA: 00m00s
+xclip-0.13_2.x86_64-musl.xbps: 14KB [avg rate: 733MB/s]
+xclip-0.13_2: verifying RSA signature...
+xset-1.2.6_1.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+xset-1.2.6_1.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+xset-1.2.6_1.x86_64-musl.xbps: [19KB 21%] 178MB/s ETA: 00m00s
+xset-1.2.6_1.x86_64-musl.xbps: 19KB [avg rate: 823MB/s]
+xset-1.2.6_1: verifying RSA signature...
+xdg-utils-1.2.1_1.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+xdg-utils-1.2.1_1.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+xdg-utils-1.2.1_1.x86_64-musl.xbps: [46KB 8%] 170MB/s ETA: 00m00s
+xdg-utils-1.2.1_1.x86_64-musl.xbps: 46KB [avg rate: 1958MB/s]
+xdg-utils-1.2.1_1: verifying RSA signature...
+libprotobuf-lite-35.1_1.x86_64-musl.xbps.sig2: [512B 100%] 23MB/s ETA: 00m00s
+libprotobuf-lite-35.1_1.x86_64-musl.xbps.sig2: 512B [avg rate: 23MB/s]
+libprotobuf-lite-35.1_1.x86_64-musl.xbps: [200KB 1%] 150MB/s ETA: 00m00s
+libprotobuf-lite-35.1_1.x86_64-musl.xbps: [200KB 71%] 666KB/s ETA: 00m00s
+libprotobuf-lite-35.1_1.x86_64-musl.xbps: 200KB [avg rate: 927KB/s]
+libprotobuf-lite-35.1_1: verifying RSA signature...
+re2-2025.11.05_2.x86_64-musl.xbps.sig2: [512B 100%] 24MB/s ETA: 00m00s
+re2-2025.11.05_2.x86_64-musl.xbps.sig2: 512B [avg rate: 24MB/s]
+re2-2025.11.05_2.x86_64-musl.xbps: [193KB 2%] 170MB/s ETA: 00m00s
+re2-2025.11.05_2.x86_64-musl.xbps: [193KB 91%] 396KB/s ETA: 00m00s
+re2-2025.11.05_2.x86_64-musl.xbps: 193KB [avg rate: 434KB/s]
+re2-2025.11.05_2: verifying RSA signature...
+
+[*] Verifying package integrity
+jarvis-assistant-0.1.0_1: verifying SHA256 hash...
+
+[*] Collecting package files
+libquadmath-14.2.1+20250405_4: collecting files...
+libgfortran-14.2.1+20250405_4: collecting files...
+openblas-0.3.34_1: collecting files...
+python3-numpy-2.5.3_1: collecting files...
+libXScrnSaver-1.2.5_1: collecting files...
+libdecor-0.2.5_1: collecting files...
+SDL2-2.32.10_1: collecting files...
+ocl-icd-2.3.5_1: collecting files...
+libva-2.24.1_1: collecting files...
+libvdpau-1.5_1: collecting files...
+libvpl-2.17.0_1: collecting files...
+libavutil6-6.1.6_3: collecting files...
+libswresample6-6.1.6_3: collecting files...
+xvidcore-1.3.7_1: collecting files...
+libavcodec6-6.1.6_3: collecting files...
+libass-0.17.5_1: collecting files...
+libbluray-1.3.4_1: collecting files...
+libopenmpt-0.8.9_1: collecting files...
+mbedtls-3.6.6_1: collecting files...
+librist-0.2.20_1: collecting files...
+librtmp-2.6_1: collecting files...
+libsrt-1.5.7_1: collecting files...
+libavformat6-6.1.6_3: collecting files...
+libbs2b-3.1.0_3: collecting files...
+libpostproc6-6.1.6_3: collecting files...
+libswscale6-6.1.6_3: collecting files...
+libvidstab-1.1.0_2: collecting files...
+vmaf-3.0.0_1: collecting files...
+libavfilter6-6.1.6_3: collecting files...
+libcddb-1.3.2_9: collecting files...
+libcdio-2.3.0_1: collecting files...
+libcdio-paranoia-10.2+2.0.2_1: collecting files...
+libsndio-1.10.0_1: collecting files...
+libavdevice6-6.1.6_3: collecting files...
+ffplay6-6.1.6_3: collecting files...
+ffmpeg6-6.1.6_3: collecting files...
+ffmpeg-4.4.8_1: collecting files...
+pulseaudio-utils-16.1_2: collecting files...
+gir-freedesktop-1.86.0_2: collecting files...
+python3-cairo-1.27.0_3: collecting files...
+python3-gobject-3.56.2_1: collecting files...
+abseil-cpp-20250512.1_1: collecting files...
+libprotobuf-35.1_1: collecting files...
+alsa-utils-1.2.16_1: collecting files...
+xdotool-4.20260303.1_1: collecting files...
+wl-clipboard-2.3.0_1: collecting files...
+libXmu-1.3.1_1: collecting files...
+xclip-0.13_2: collecting files...
+xset-1.2.6_1: collecting files...
+xdg-utils-1.2.1_1: collecting files...
+libprotobuf-lite-35.1_1: collecting files...
+re2-2025.11.05_2: collecting files...
+jarvis-assistant-0.1.0_1: collecting files...
+
+[*] Unpacking packages
+libquadmath-14.2.1+20250405_4: unpacking ...
+libgfortran-14.2.1+20250405_4: unpacking ...
+openblas-0.3.34_1: unpacking ...
+python3-numpy-2.5.3_1: unpacking ...
+python3-numpy-2.5.3_1: registered 'numpy' alternatives group
+Creating 'numpy' alternatives group symlink: f2py -> /usr/bin/f2py3
+libXScrnSaver-1.2.5_1: unpacking ...
+libdecor-0.2.5_1: unpacking ...
+SDL2-2.32.10_1: unpacking ...
+ocl-icd-2.3.5_1: unpacking ...
+libva-2.24.1_1: unpacking ...
+libvdpau-1.5_1: unpacking ...
+libvpl-2.17.0_1: unpacking ...
+libavutil6-6.1.6_3: unpacking ...
+libswresample6-6.1.6_3: unpacking ...
+xvidcore-1.3.7_1: unpacking ...
+libavcodec6-6.1.6_3: unpacking ...
+libass-0.17.5_1: unpacking ...
+libbluray-1.3.4_1: unpacking ...
+libopenmpt-0.8.9_1: unpacking ...
+mbedtls-3.6.6_1: unpacking ...
+librist-0.2.20_1: unpacking ...
+librtmp-2.6_1: unpacking ...
+libsrt-1.5.7_1: unpacking ...
+libavformat6-6.1.6_3: unpacking ...
+libbs2b-3.1.0_3: unpacking ...
+libpostproc6-6.1.6_3: unpacking ...
+libswscale6-6.1.6_3: unpacking ...
+libvidstab-1.1.0_2: unpacking ...
+vmaf-3.0.0_1: unpacking ...
+libavfilter6-6.1.6_3: unpacking ...
+libcddb-1.3.2_9: unpacking ...
+libcdio-2.3.0_1: unpacking ...
+libcdio-paranoia-10.2+2.0.2_1: unpacking ...
+libsndio-1.10.0_1: unpacking ...
+libavdevice6-6.1.6_3: unpacking ...
+ffplay6-6.1.6_3: unpacking ...
+ffmpeg6-6.1.6_3: unpacking ...
+ffmpeg-4.4.8_1: unpacking ...
+pulseaudio-utils-16.1_2: unpacking ...
+gir-freedesktop-1.86.0_2: unpacking ...
+python3-cairo-1.27.0_3: unpacking ...
+python3-gobject-3.56.2_1: unpacking ...
+abseil-cpp-20250512.1_1: unpacking ...
+libprotobuf-35.1_1: unpacking ...
+alsa-utils-1.2.16_1: unpacking ...
+xdotool-4.20260303.1_1: unpacking ...
+wl-clipboard-2.3.0_1: unpacking ...
+libXmu-1.3.1_1: unpacking ...
+xclip-0.13_2: unpacking ...
+xset-1.2.6_1: unpacking ...
+xdg-utils-1.2.1_1: unpacking ...
+libprotobuf-lite-35.1_1Byte-compiling python3.14 code for module numpy...
+Updating ldconfig(8) cache...
+: unpacking ...
+re2-2025.11.05_2: unpacking ...
+jarvis-assistant-0.1.0_1: unpacking ...
+
+[*] Configuring unpacked packages
+libquadmath-14.2.1+20250405_4: configuring ...
+libquadmath-14.2.1+20250405_4: installed successfully.
+libgfortran-14.2.1+20250405_4: configuring ...
+libgfortran-14.2.1+20250405_4: installed successfully.
+openblas-0.3.34_1: configuring ...
+openblas-0.3.34_1: installed successfully.
+python3-numpy-2.5.3_1: configuring ...
+python3-numpy-2.5.3_1: installed successfully.
+libXScrnSaver-1.2.5_1: configuring ...
+libXScrnSaver-1.2.5_1: installed successfully.
+libdecor-0.2.5_1: configuring ...
+libdecor-0.2.5_1: installed successfully.
+SDL2-2.32.10_1: configuring ...
+SDL2-2.32.10_1: installed successfully.
+ocl-icd-2.3.5_1: configuring ...
+ocl-icd-2.3.5_1: installed successfully.
+libva-2.24.1_1: configuring ...
+libva-2.24.1_1: installed successfully.
+libvdpau-1.5_1: configuring ...
+libvdpau-1.5_1: installed successfully.
+libvpl-2.17.0_1: configuring ...
+libvpl-2.17.0_1: installed successfully.
+libavutil6-6.1.6_3: configuring ...
+libavutil6-6.1.6_3: installed successfully.
+libswresample6-6.1.6_3: configuring ...
+libswresample6-6.1.6_3: installed successfully.
+xvidcore-1.3.7_1: configuring ...
+xvidcore-1.3.7_1: installed successfully.
+libavcodec6-6.1.6_3: configuring ...
+libavcodec6-6.1.6_3: installed successfully.
+libass-0.17.5_1: configuring ...
+libass-0.17.5_1: installed successfully.
+libbluray-1.3.4_1: configuring ...
+libbluray-1.3.4_1: installed successfully.
+libopenmpt-0.8.9_1: configuring ...
+libopenmpt-0.8.9_1: installed successfully.
+mbedtls-3.6.6_1: configuring ...
+mbedtls-3.6.6_1: installed successfully.
+librist-0.2.20_1: configuring ...
+librist-0.2.20_1: installed successfully.
+librtmp-2.6_1: configuring ...
+librtmp-2.6_1: installed successfully.
+libsrt-1.5.7_1: configuring ...
+libsrt-1.5.7_1: installed successfully.
+libavformat6-6.1.6_3: configuring ...
+libavformat6-6.1.6_3: installed successfully.
+libbs2b-3.1.0_3: configuring ...
+libbs2b-3.1.0_3: installed successfully.
+libpostproc6-6.1.6_3: configuring ...
+libpostproc6-6.1.6_3: installed successfully.
+libswscale6-6.1.6_3: configuring ...
+libswscale6-6.1.6_3: installed successfully.
+libvidstab-1.1.0_2: configuring ...
+libvidstab-1.1.0_2: installed successfully.
+vmaf-3.0.0_1: configuring ...
+vmaf-3.0.0_1: installed successfully.
+libavfilter6-6.1.6_3: configuring ...
+libavfilter6-6.1.6_3: installed successfully.
+libcddb-1.3.2_9: configuring ...
+libcddb-1.3.2_9: installed successfully.
+libcdio-2.3.0_1: configuring ...
+libcdio-2.3.0_1: installed successfully.
+libcdio-paranoia-10.2+2.0.2_1: configuring ...
+libcdio-paranoia-10.2+2.0.2_1: installed successfully.
+libsndio-1.10.0_1: configuring ...
+libsndio-1.10.0_1: installed successfully.
+libavdevice6-6.1.6_3: configuring ...
+libavdevice6-6.1.6_3: installed successfully.
+ffplay6-6.1.6_3: configuring ...
+ffplay6-6.1.6_3: installed successfully.
+ffmpeg6-6.1.6_3: configuring ...
+ffmpeg6-6.1.6_3: installed successfully.
+ffmpeg-4.4.8_1: configuring ...
+ffmpeg-4.4.8_1: installed successfully.
+pulseaudio-utils-16.1_2: configuring ...
+Byte-compiling python3.14 code for module cairo...
+Updating ldconfig(8) cache...
+Byte-compiling python3.14 code for module gi...
+Updating ldconfig(8) cache...
+pulseaudio-utils-16.1_2: installed successfully.
+gir-freedesktop-1.86.0_2: configuring ...
+gir-freedesktop-1.86.0_2: installed successfully.
+python3-cairo-1.27.0_3: configuring ...
+python3-cairo-1.27.0_3: installed successfully.
+python3-gobject-3.56.2_1: configuring ...
+python3-gobject-3.56.2_1: installed successfully.
+abseil-cpp-20250512.1_1: configuring ...
+abseil-cpp-20250512.1_1: installed successfully.
+libprotobuf-35.1_1: configuring ...
+libprotobuf-35.1_1: installed successfully.
+alsa-utils-1.2.16_1: configuring ...
+alsa-utils-1.2.16_1: installed successfully.
+xdotool-4.20260303.1_1: configuring ...
+xdotool-4.20260303.1_1: installed successfully.
+wl-clipboard-2.3.0_1: configuring ...
+wl-clipboard-2.3.0_1: installed successfully.
+libXmu-1.3.1_1: configuring ...
+libXmu-1.3.1_1: installed successfully.
+xclip-0.13_2: configuring ...
+xclip-0.13_2: installed successfully.
+xset-1.2.6_1: configuring ...
+xset-1.2.6_1: installed successfully.
+xdg-utils-1.2.1_1: configuring ...
+xdg-utils-1.2.1_1: installed successfully.
+Updating GTK+ icon cache for /usr/share/icons/hicolor...
+libprotobuf-lite-35.1_1: configuring ...
+libprotobuf-lite-35.1_1: installed successfully.
+re2-2025.11.05_2: configuring ...
+re2-2025.11.05_2: installed successfully.
+jarvis-assistant-0.1.0_1: configuring ...
+jarvis-assistant-0.1.0_1: installed successfully.
+
+52 downloaded, 53 installed, 0 updated, 53 configured, 0 removed, 0 on hold.
+index: added `jarvis-assistant-0.1.0_2' (x86_64-musl).
+index: 1 packages registered.
+1 package will be updated:
+
+  jarvis-assistant (0.1.0_1 -> 0.1.0_2) 
+
+Size required on disk:         579MB
+Space available on disk:        30GB
+
+Updating GTK+ icon cache for /usr/share/icons/hicolor...
+
+[*] Verifying package integrity
+jarvis-assistant-0.1.0_2: verifying SHA256 hash...
+
+[*] Collecting package files
+jarvis-assistant-0.1.0_2: collecting files...
+jarvis-assistant-0.1.0_1: collecting files...
+
+[*] Unpacking packages
+jarvis-assistant-0.1.0_1: updating to 0.1.0_2 ...
+jarvis-assistant-0.1.0_2: unpacking ...
+
+[*] Configuring unpacked packages
+jarvis-assistant-0.1.0_2: configuring ...
+jarvis-assistant-0.1.0_2: updated successfully.
+
+0 downloaded, 0 installed, 1 updated, 1 configured, 0 removed, 0 on hold.
+{
+  "project_root": "/usr/lib/jarvis",
+  "platform": "linux",
+  "session": "headless",
+  "dependencies": {
+    "ffmpeg": {
+      "available": true,
+      "path": "/usr/sbin/ffmpeg",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "ffplay": {
+      "available": true,
+      "path": "/usr/sbin/ffplay",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "piper": {
+      "available": true,
+      "path": "/usr/lib/jarvis/python/bin/piper",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "opencode": {
+      "available": true,
+      "path": "/usr/lib/jarvis/bin/opencode",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "piper_model": {
+      "available": false,
+      "path": "/tmp/tmp.NDSLhLZhcM/jarvis/voices/pt_BR-faber-medium.onnx",
+      "reason": "modelo .onnx ou configuracao .onnx.json ausente"
+    }
+  },
+  "capabilities": {
+    "capture": {
+      "available": false,
+      "backend": "pulse",
+      "reason": "ffmpeg nao conseguiu enumerar fontes pulse: Auto-detected sources for pulse:\nCannot list sources: Generic error in an external library"
+    },
+    "tts": {
+      "available": false,
+      "backend": "piper",
+      "reason": "presenca de dependencias; sintese nao verificada"
+    },
+    "desktop": {
+      "available": false,
+      "backend": "headless",
+      "validation": "not_run",
+      "reason": "sem sessao grafica"
+    }
+  }
+}
+Private runtime, resources and AT-SPI typelib passed
+/usr/sbin/ffmpeg
+/usr/sbin/ffplay
+/usr/sbin/pactl
+/usr/sbin/arecord
+/usr/sbin/xdotool
+/usr/sbin/wl-paste
+/usr/sbin/xclip
+/usr/sbin/xdg-open
+pactl 16.1
+Compiled with libpulse 16.1.0
+Linked with libpulse 16.1.0
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+X connection to :0 broken (explicit kill or server shutdown).
+PASS: xdotool pointer query and xclip clipboard roundtrip on Xvfb
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+dbus-daemon[228]: [session uid=0 pid=228 pidfd=5] Activating service name='org.a11y.Bus' requested by ':1.0' (uid=0 pid=229 comm="/usr/sbin/python3 /build/jarvis/scripts/test-overl")
+dbus-daemon[228]: [session uid=0 pid=228 pidfd=5] Successfully activated service 'org.a11y.Bus'
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+SpiRegistry daemon is running with well-known name - org.a11y.atspi.Registry
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+PASS: second launch exits and installed primary window survives
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+The XKEYBOARD keymap compiler (xkbcomp) reports:
+> Warning:          Multiple symbols for level 1/group 1 on key <FK23>
+>                   Using F23, ignoring XF86TouchpadOff
+> Warning:          Symbol map for key <FK23> redefined
+>                   Using last definition for conflicting fields
+> Warning:          Symbol map for key <FK24> redefined
+>                   Using last definition for conflicting fields
+Errors from xkbcomp are not fatal to the X server
+1 package will be removed:
+
+  jarvis-assistant-0.1.0_2 
+
+Size freed on disk:            579MB
+Space available on disk:        30GB
+
+Updating GTK+ icon cache for /usr/share/icons/hicolor...
+Removing `jarvis-assistant-0.1.0_2' ...
+Removed `jarvis-assistant-0.1.0_2' successfully.
+
+0 downloaded, 0 installed, 0 updated, 0 configured, 1 removed, 0 on hold.
+PASS: package lifecycle/imports/integrity/data preservation and isolated GUI relaunch (full desktop/audio pending)

@@ -26,13 +26,12 @@ class PortalClient:
         self.persistent = persistent
         self.bus = None
         self.owner = None
-        self.session_handlers = []
+        self.session_handlers = {}
 
     async def close(self):
         if self.bus is not None:
-            for handler in self.session_handlers:
-                self.bus.remove_message_handler(handler)
-            self.session_handlers.clear()
+            for session in list(self.session_handlers):
+                await self.unwatch_session(session)
             self.bus.disconnect()
             self.bus = None
 
@@ -52,20 +51,44 @@ class PortalClient:
 
     async def watch_session(self, session: str, callback):
         from dbus_next import Message, MessageType
+        if session in self.session_handlers:
+            await self.unwatch_session(session)
         owner = self.owner
         def handle(message):
             if (message.message_type == MessageType.SIGNAL and message.sender == owner
                     and message.path == session and message.interface == "org.freedesktop.portal.Session"
                     and message.member == "Closed"):
-                callback()
+                try:
+                    callback()
+                finally:
+                    asyncio.get_running_loop().create_task(self.unwatch_session(session))
         self.bus.add_message_handler(handle)
-        self.session_handlers.append(handle)
         rule = f"type='signal',sender='{owner}',path='{session}',interface='org.freedesktop.portal.Session',member='Closed'"
-        reply = await asyncio.wait_for(self.bus.call(Message(destination='org.freedesktop.DBus',
-            path='/org/freedesktop/DBus',interface='org.freedesktop.DBus',member='AddMatch',
-            signature='s',body=[rule])),10)
-        if reply.message_type == MessageType.ERROR:
-            raise PortalError('unavailable','nao foi possivel acompanhar sessao do portal')
+        self.session_handlers[session]=(owner,handle,rule)
+        try:
+            reply = await asyncio.wait_for(self.bus.call(Message(destination='org.freedesktop.DBus',
+                path='/org/freedesktop/DBus',interface='org.freedesktop.DBus',member='AddMatch',
+                signature='s',body=[rule])),10)
+            if reply.message_type == MessageType.ERROR:
+                raise PortalError('unavailable','nao foi possivel acompanhar sessao do portal')
+        except BaseException:
+            await self.unwatch_session(session)
+            raise
+
+    async def unwatch_session(self, session: str):
+        from dbus_next import Message
+        entry=self.session_handlers.pop(session,None)
+        if entry is None:return
+        _,handler,rule=entry
+        bus=self.bus
+        if bus is None:return
+        bus.remove_message_handler(handler)
+        try:
+            await asyncio.wait_for(bus.call(Message(destination='org.freedesktop.DBus',
+                path='/org/freedesktop/DBus',interface='org.freedesktop.DBus',member='RemoveMatch',
+                signature='s',body=[rule])),1)
+        except Exception:
+            pass
 
     def request(self, interface: str, method: str, args: tuple, timeout_s: float) -> dict:
         return asyncio.run(self.request_async(interface, method, args, timeout_s))

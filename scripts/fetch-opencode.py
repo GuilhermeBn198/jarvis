@@ -38,7 +38,7 @@ def fetch(target: str,destination: Path):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument('--target',choices=['x86_64-glibc','aarch64-glibc','x86_64-musl','aarch64-musl'],required=True)
+    parser.add_argument('--target',choices=['x86_64-glibc','x86_64-musl'],required=True)
     parser.add_argument('--output',type=Path,required=True)
     args=parser.parse_args()
     result=fetch(args.target,args.output)

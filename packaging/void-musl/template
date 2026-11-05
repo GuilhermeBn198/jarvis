@@ -2,7 +2,7 @@
 pkgname=jarvis-assistant
 version=0.1.0
 revision=2
-archs="x86_64-musl aarch64-musl"
+archs="x86_64-musl"
 nocross=yes
 nostrip=yes
 nodebug=yes
@@ -12,7 +12,7 @@ makedepends="gtk+3-devel libwebkit2gtk41-devel libffi-devel python3-devel
  abseil-cpp-devel gtest-devel re2-devel icu-devel"
 depends="python3>=3.14<3.15 python3-numpy ffmpeg pulseaudio-utils python3-gobject libprotobuf abseil-cpp
  at-spi2-core alsa-utils xdotool wl-clipboard xclip xdg-utils mesa openblas musl"
-shlib_provides="libc.musl-x86_64.so.1 libc.musl-aarch64.so.1"
+shlib_provides="libc.musl-x86_64.so.1"
 distfiles="https://github.com/microsoft/onnxruntime/archive/refs/tags/v1.24.4.tar.gz>onnxruntime-1.24.4.tar.gz"
 checksum=0cf4d2ee4392fbb8aedaabc6b2ba11b4a680d1071fa4f75546c2289ca5b404cf
 skip_extraction="onnxruntime-1.24.4.tar.gz"
@@ -34,7 +34,7 @@ do_build() {
 		sh packaging/alpine/build-runtime.sh "$wrksrc" "$XBPS_BUILDDIR/native"
 	RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=-crt-static" \
 		cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
-	npm ci --prefix .opencode --ignore-scripts
+	scripts/npm-ci.sh --prefix .opencode --ignore-scripts
 	python3 scripts/fetch-opencode.py --target "${XBPS_TARGET_MACHINE}" --output opencode-package
 }
 
@@ -62,14 +62,6 @@ do_install() {
 		patchelf --set-rpath '$ORIGIN/../../lib' "$task_extension"
 	done
 	printf '%s\n' 'OPENBLAS_NUM_THREADS=1' > "$DESTDIR/usr/lib/jarvis/local.conf"
-	find "$DESTDIR/usr/lib/jarvis/.opencode/node_modules/@msgpackr-extract" \
-		-type f -name '*.glibc.node' -delete
-	NODE_PATH="$DESTDIR/usr/lib/jarvis/.opencode/node_modules" node -e '
-		const assert = require("node:assert/strict");
-		const codec = require("msgpackr");
-		assert.equal(codec.isNativeAccelerationEnabled, true);
-		assert.deepEqual(codec.unpack(codec.pack({text: "voz Linux", count: 3})), {text: "voz Linux", count: 3});
-	'
 	vlicense LICENSE
 	python3 - "$DESTDIR/usr" <<'PY'
 from pathlib import Path

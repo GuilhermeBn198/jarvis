@@ -127,6 +127,7 @@ def test_source_archive_contains_build_inputs_without_user_state(tmp_path):
         names=set(tar.getnames())
     for required in ('gui/src-tauri/Cargo.lock','scripts/prepare-package.py',
                      'packaging/rpm/fedora/jarvis-assistant.spec','voice/linux_input.py',
+                     'voice/model_selection.py','voice/linux_eis.py',
                      'packaging/opencode/LICENSE',
                      '.opencode/package-lock.json','flake.nix','flake.lock'):
         assert 'jarvis-0.1.0/'+required in names
@@ -134,24 +135,27 @@ def test_source_archive_contains_build_inputs_without_user_state(tmp_path):
     assert all(name.startswith('jarvis-0.1.0/') for name in names)
 
 
-def test_arch_native_builder_accepts_arch_linux_arm_identity():
+def test_arch_native_builder_is_x86_64_only():
     driver=(ROOT/'scripts/build-package.sh').read_text()
     arch_branch=driver.split('    arch)\n',1)[1].split('    slackware)',1)[0]
-    assert 'arch|archarm' in arch_branch
-    assert '$(uname -m)' in driver
+    assert 'archarm' not in arch_branch
+    assert 'Arch Linux ARM' not in arch_branch
+    assert '[ "$task_arch" != x86_64 ]' in driver
 
 
-def test_arch_native_package_lifecycle_accepts_arch_linux_arm_identity():
+def test_arch_native_package_lifecycle_is_x86_64_only():
     lifecycle=(ROOT/'scripts/test-native-package.sh').read_text()
-    assert 'arch:arch|arch:archarm)' in lifecycle
+    assert 'arch:arch|arch:archarm)' not in lifecycle
+    assert "expected={'x86_64':62,'aarch64':183}" not in lifecycle
     upgrade=(ROOT/'scripts/test-native-arch-upgrade.sh').read_text()
-    assert 'arch|archarm)' in upgrade
+    assert 'arch|archarm)' not in upgrade
+    assert 'aarch64' not in upgrade
 
 
-def test_arch_arm64_has_native_package_build_and_upgrade_ci():
+def test_arch_arm64_is_not_in_active_package_ci():
     workflow=(ROOT/'.github/workflows/linux-packages.yml').read_text()
-    assert "family: arch, arch: aarch64, runner: ubuntu-24.04-arm" in workflow
-    assert "image: 'lfdevs/archlinuxarm:base-devel'" in workflow
+    assert "family: arch, arch: aarch64" not in workflow
+    assert 'ubuntu-24.04-arm' not in workflow
     assert 'test-native-arch-upgrade.sh' in workflow
 
 
@@ -162,9 +166,7 @@ def test_arch_docker_export_accepts_makepkg_compression_extensions():
 
 @pytest.mark.parametrize(('arch','repo','bootstrap'),[
     ('x86_64','https://repo-default.voidlinux.org/current','https://repo-default.voidlinux.org/current/bootstrap'),
-    ('aarch64','https://repo-default.voidlinux.org/current/aarch64','https://repo-default.voidlinux.org/current/aarch64/bootstrap'),
     ('x86_64-musl','https://repo-default.voidlinux.org/current/musl','https://repo-default.voidlinux.org/current/musl/bootstrap'),
-    ('aarch64-musl','https://repo-default.voidlinux.org/current/aarch64','https://repo-default.voidlinux.org/current/aarch64/bootstrap'),
 ])
 def test_void_repository_url_resolves_architecture_layout(arch,repo,bootstrap):
     import subprocess
@@ -237,7 +239,7 @@ def test_native_driver_rejects_slackware_target_on_arch(tmp_path):
     if 'ID=arch' not in Path('/etc/os-release').read_text():pytest.skip('requires Arch host')
     result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','slackware','--output',str(tmp_path)],capture_output=True,text=True)
     assert result.returncode==2
-    assert 'exige Slackware Linux' in result.stderr
+    assert 'fora do escopo de build' in result.stderr
 
 
 def test_target_catalog_records_recipe_and_validation_separately():
@@ -247,7 +249,7 @@ def test_target_catalog_records_recipe_and_validation_separately():
             'gentoo','nix','guix','slackware','solus'} <= set(catalog)
     for target,item in catalog.items():
         assert item['libc'] in ('glibc','musl')
-        assert item['architectures'] and set(item['architectures']) <= {'x86_64','aarch64'}
+        assert item['architectures']==['x86_64']
         assert item['validation'] in ('unverified','extracted-smoke','installed-smoke','bundle-smoke')
         if item['recipe'] is not None:
             assert (ROOT/item['recipe']).is_file(),target
@@ -257,8 +259,10 @@ def test_target_catalog_records_recipe_and_validation_separately():
     assert catalog['void-musl']['implementation']=='recipe'
     assert catalog['void-musl']['recipe']=='packaging/void-musl/template'
     assert catalog['void-musl']['validation']=='installed-smoke'
-    assert catalog['void-musl']['validated_architectures']==['x86_64','aarch64']
-    assert catalog['flatpak']['validated_architectures']==['x86_64','aarch64']
+    assert catalog['void-musl']['validated_architectures']==['x86_64']
+    for target in ('void-musl','nix','slackware','solus'):
+        assert catalog[target]['delivery_scope']=='excluded'
+    assert catalog['flatpak']['validated_architectures']==['x86_64']
     for item in catalog.values():
         assert set(item['validated_architectures']) <= set(item['architectures'])
         if item['validation']=='unverified':assert not item['validated_architectures']
@@ -276,7 +280,8 @@ def test_target_catalog_validation_matches_passed_package_lifecycle_evidence():
         lifecycle=[row for row in matrix['results']
                    if row.get('target')==target
                    and row.get('capability') in capabilities]
-        passed={row['arch'] for row in lifecycle if row['status']=='passed'}
+        passed={row['arch'] for row in lifecycle
+                if row['status']=='passed' and row['arch'] in item['architectures']}
         assert passed==set(item['validated_architectures']),target
 
 
@@ -308,6 +313,13 @@ def test_guix_removes_unused_windows_binaries_before_binary_scan():
                  'src/rt/wit_bindgen_cabi_wasip3.o',
                  'wasi-cli@0.2.0.wasm'):
         assert f'"guix-vendor/rust-wit-bindgen-0.57.1.tar.gz/{path}"' in phase
+
+
+def test_guix_profile_smoke_checks_optional_libei_fallback():
+    smoke=(ROOT/'scripts/test-guix-package.sh').read_text()
+    assert "'libei'" in smoke
+    assert 'EISPointer' in smoke
+    assert "'unsupported'" in smoke
 
 
 def test_guix_pins_rust_190_for_current_cargo_lockfile():
@@ -349,7 +361,7 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     assert item['implementation']=='recipe'
     assert item['recipe']=='packaging/guix/jarvis.scm'
     assert item['validation']=='installed-smoke'
-    assert item['architectures']==['x86_64','aarch64']
+    assert item['architectures']==['x86_64']
     assert item['validated_architectures']==['x86_64']
     assert "#:cargo-build-flags ''(\"--release\")" in (ROOT/item['recipe']).read_text()
     assert '"../../scripts/prepare-package.py"' in (ROOT/item['recipe']).read_text()
@@ -364,7 +376,7 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     recipe_text=recipe.read_text()
     build_driver=(ROOT/'scripts/build-package.sh').read_text()
     assert '"$task_root/packaging/guix/rust-toolchain.scm"' in build_driver
-    assert '(supported-systems \'("x86_64-linux" "aarch64-linux"))' in recipe_text
+    assert '(supported-systems \'("x86_64-linux"))' in recipe_text
     assert '(guix build-system python)' in recipe_text
     assert '(inherit python-piper-tts)' not in recipe_text
     assert "add-after 'unpack 'no-embedded-git-fetch" in recipe_text
@@ -391,7 +403,7 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     assert '(list pkg-config node rust-1.90-jarvis' in recipe_text
     assert '(list rust-1.90-jarvis "cargo")' in recipe_text
     assert 'patchelf))' in recipe_text
-    assert 'xclip zlib openssl glibc' in recipe_text and '(list gcc-14 "lib")))' in recipe_text
+    assert 'xclip zlib openssl glibc' in recipe_text and '(list gcc-14 "lib"))' in recipe_text
     assert "(delete 'validate-runpath)" in recipe_text
     assert 'dirname (search-input-file inputs "/lib/libstdc++.so.6")' in recipe_text
     dbus=recipe_text.split('(define-public python-dbus-next-jarvis',1)[1].split('(define-public python-mcp-jarvis',1)[0]
@@ -412,7 +424,7 @@ def test_guix_target_has_local_package_recipe_and_native_driver(tmp_path):
     assert (ROOT/'scripts/test-guix-package.sh').is_file()
 
 
-def test_guix_native_builder_selects_aarch64_agent_and_system(tmp_path):
+def test_guix_native_builder_rejects_aarch64_outside_active_scope(tmp_path):
     import os
     import subprocess
     bindir=tmp_path/'bin'; bindir.mkdir()
@@ -428,10 +440,10 @@ def test_guix_native_builder_selects_aarch64_agent_and_system(tmp_path):
     python_log=tmp_path/'python-args.log'
     env=os.environ|{'PATH':f'{bindir}:{os.environ["PATH"]}','GUIX_TEST_LOG':str(log),'PYTHON_TEST_LOG':str(python_log)}
     result=subprocess.run(['sh',str(ROOT/'scripts/build-package.sh'),'--target','guix','--arch','aarch64','--output',str(tmp_path/'out')],env=env,capture_output=True,text=True)
-    assert result.returncode==0,result.stderr
-    assert '--target aarch64-glibc' in python_log.read_text()
-    assert '--system=aarch64-linux' in log.read_text()
-    assert '--root=' in log.read_text()
+    assert result.returncode==2
+    assert 'suporta somente x86_64' in result.stderr
+    assert not python_log.exists()
+    assert not log.exists()
 
 
 def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
@@ -453,7 +465,7 @@ def test_guix_package_avoids_onednn_aarch64_benchdnn_compile_failure():
     assert '(if (target-aarch64?)\n                       python-faster-whisper-aarch64-jarvis\n                       python-faster-whisper)' in recipe
     assert '(if (target-aarch64?)\n                       python-ctranslate2-aarch64-jarvis\n                       python-ctranslate2)' in recipe
     assert 'onnxruntime-aarch64-jarvis' in recipe
-    assert recipe.count('(target-aarch64?)') == 4
+    assert recipe.count('(target-aarch64?)') == 5
     assert 'DNNL_EXPERIMENTAL_UKERNEL=OFF' not in recipe
 
 
@@ -470,7 +482,7 @@ def test_nix_target_is_a_profile_installable_package():
     assert item['implementation']=='recipe'
     assert item['recipe']=='packaging/nix/default.nix'
     assert item['validation']=='installed-smoke'
-    assert item['validated_architectures']==['x86_64','aarch64']
+    assert item['validated_architectures']==['x86_64']
     flake=(ROOT/'flake.nix').read_text()
     assert 'jarvis-assistant' in flake
     assert 'x86_64-linux' in flake
@@ -485,7 +497,7 @@ def test_nix_target_is_a_profile_installable_package():
     assert 'test -x "$task_xdg_store/bin/xdg-open"' in nix_lifecycle
     assert 'export HOME="$TMPDIR"' in recipe
     assert 'chmod -R u+w .' in recipe
-    assert 'npmDepsHash = "sha256-lnyoIScrNdPeu9J7XUpbteOUQVENF7tzJqrII0fwTbY=";' in recipe
+    assert 'npmDepsHash = "sha256-DqqV4xwHMWfevxHxgje2F4owhCTKVFux0AqMdrGBkmM=";' in recipe
     assert 'cargoBuildFlags = [ "--locked" ];' in recipe
     assert 'target/${stdenv.hostPlatform.rust.rustcTarget}/release/jarvis-overlay' in recipe
     assistant_derivation=recipe.split('pname = "jarvis-assistant";',1)[1]
@@ -499,10 +511,21 @@ def test_nix_target_is_a_profile_installable_package():
     assert lifecycle.is_file()
     lifecycle_text=lifecycle.read_text()
     for command in ('profile install', 'bin/jarvis" --doctor', 'profile remove',
-                    'faster_whisper', 'piper', 'mcp', 'httpx', 'dbus_next'):
+                    'faster_whisper', 'piper', 'mcp', 'httpx', 'dbus_next', 'libei'):
         assert command in lifecycle_text
     assert '--gui' in lifecycle_text
     assert 'test-overlay-instance.py' in lifecycle_text
+
+
+def test_nix_flake_can_package_filtered_dirty_worktree_source():
+    flake=(ROOT/'flake.nix').read_text()
+    assert 'JARVIS_SOURCE_TREE' in flake
+    assert 'builtins.path' in flake
+    assert 'builtins.hasPrefix' not in flake
+    assert 'builtins.hasSuffix' not in flake
+    assert 'builtins.substring 0' in flake
+    for excluded in ('.git', '.venv', 'node_modules', 'target', 'dist', '.worktrees'):
+        assert excluded in flake
 
 
 def test_nix_opencode_binary_is_not_stripped():
@@ -514,7 +537,7 @@ def test_nix_opencode_binary_is_not_stripped():
 
 
 def test_nix_lifecycle_script_uses_an_isolated_profile_and_preserves_user_data(tmp_path):
-    import os, platform, subprocess
+    import os, platform, shutil, subprocess
     store=tmp_path/'store'
     (store/'bin').mkdir(parents=True)
     xdg_store=tmp_path/'store/abc123-xdg-utils-1.0'
@@ -531,31 +554,52 @@ def test_nix_lifecycle_script_uses_an_isolated_profile_and_preserves_user_data(t
         'Copyright (c) 2025 opencode\nPermission is hereby granted\n')
     for path in store.rglob('*'):
         if path.is_file():path.chmod(0o755)
+    previous_store=tmp_path/'previous-store'
+    shutil.copytree(store, previous_store)
     fake_bin=tmp_path/'bin';fake_bin.mkdir()
     fake_nix=fake_bin/'nix'
     fake_nix.write_text('''#!/bin/sh
-set -eu
+    set -eu
 profile=
 action=
 need_profile=0
 upgrade_all=0
+remove_all=0
+impure=0
 installable=
 for arg in "$@"; do
     if [ "$need_profile" = 1 ]; then profile=$arg; need_profile=0; continue; fi
     [ "$arg" = --profile ] && { need_profile=1; continue; }
     [ "$arg" = --all ] && upgrade_all=1
+    [ "$action" = remove ] && [ "$arg" = --all ] && remove_all=1
+    [ "$arg" = --impure ] && impure=1
     case "$arg" in *#packages.*.jarvis-assistant) installable=$arg ;; esac
     case "$arg" in install|upgrade|remove) action=$arg ;; esac
 done
 printf '%s\n' "$action" >> "$JARVIS_NIX_ACTIONS"
 case "$action" in
     install)
-        [ "$installable" = "$JARVIS_EXPECTED_FLAKE" ]
+        [ "$JARVIS_SOURCE_TREE" = "$JARVIS_EXPECTED_SOURCE_TREE" ]
+        [ "$impure" = 1 ]
+        case "$installable" in path:*) ;; *) exit 10 ;; esac
+        task_flake_dir=${installable#path:}
+        task_flake_dir=${task_flake_dir%%#*}
+        grep -F "$JARVIS_PREVIOUS_STORE" "$task_flake_dir/flake.nix" >/dev/null
         mkdir -p "$profile/bin"
+        ln -s "$JARVIS_EXPECTED_PREVIOUS_BINARY" "$profile/bin/jarvis"
+        ;;
+    upgrade)
+        [ "$JARVIS_SOURCE_TREE" = "$JARVIS_EXPECTED_SOURCE_TREE" ]
+        [ "$impure" = 1 ]
+        [ "$upgrade_all" = 1 ] && [ -x "$profile/bin/jarvis" ]
+        task_flake_dir=${JARVIS_NIX_TEST_FLAKE_URL#path:}
+        task_flake_dir=${task_flake_dir%%#*}
+        task_expected_store=${JARVIS_EXPECTED_PROFILE_BINARY%/bin/jarvis}
+        grep -F "$task_expected_store" "$task_flake_dir/flake.nix" >/dev/null
+        rm "$profile/bin/jarvis"
         ln -s "$JARVIS_EXPECTED_PROFILE_BINARY" "$profile/bin/jarvis"
         ;;
-    upgrade) [ "$upgrade_all" = 1 ] && [ -x "$profile/bin/jarvis" ] ;;
-    remove) rm -f "$profile/bin/jarvis" ;;
+    remove) [ "$remove_all" = 1 ]; rm -f "$profile/bin/jarvis" ;;
     *) exit 9 ;;
 esac
 ''')
@@ -575,14 +619,19 @@ printf '%s\\n' called > "$JARVIS_GUI_MARKER"
     env={**os.environ,'PATH':f'{fake_bin}:/usr/bin:/bin',
          'JARVIS_EXPECTED_OVERLAY':str(store/'bin/jarvis-overlay'),
          'JARVIS_EXPECTED_PROFILE_BINARY':str(store/'bin/jarvis'),
+         'JARVIS_PREVIOUS_STORE':str(previous_store),
+         'JARVIS_EXPECTED_PREVIOUS_BINARY':str(previous_store/'bin/jarvis'),
          'JARVIS_EXPECTED_FLAKE':f'{ROOT}#packages.{platform.machine()}-linux.jarvis-assistant',
+         'JARVIS_SOURCE_TREE':str(ROOT),
+         'JARVIS_EXPECTED_SOURCE_TREE':str(ROOT),
+         'JARVIS_NIX_TEST_FLAKE_URL':f'path:{tmp_path}/upgrade-flake#packages.{platform.machine()}-linux.jarvis-assistant',
          'JARVIS_XDG_STORE':str(xdg_store),
          'JARVIS_NIX_ACTIONS':str(tmp_path/'nix-actions'),
          'JARVIS_GUI_MARKER':str(gui_marker)}
-    result=subprocess.run(['sh',str(ROOT/'scripts/test-nix-package.sh'),str(store),'--gui'],
+    result=subprocess.run(['sh',str(ROOT/'scripts/test-nix-package.sh'),str(store),'--gui',str(previous_store)],
                           env=env,capture_output=True,text=True,timeout=10)
-    assert result.returncode==0,result.stderr
-    assert 'Nix profile install/upgrade, runtime imports, removal and user data preservation' in result.stdout
+    assert result.returncode==0,result.stdout+'\n'+result.stderr
+    assert 'Nix profile old-to-current upgrade, runtime imports, removal and user data preservation' in result.stdout
     assert gui_marker.read_text().strip()=='called'
     assert (tmp_path/'nix-actions').read_text().splitlines()==['install','upgrade','remove']
 
@@ -594,6 +643,54 @@ def test_linux_target_claims_match_recipe_files_and_lifecycle_evidence():
     meta_targets={
         'linux source archive': {'source_archive_integrity'},
         'debian cross-distro smoke': {'arch_overlay_cross_distro_debian_wayland'},
+        'linux-packaging': {
+            'reproducible_npm_ci_across_old_distribution_npm',
+            'source_archive_includes_required_ignored_node_manifests',
+        },
+        'linux-port': {
+            'linux_current_worktree_python_gui_opencode_unit_tests',
+            'current_worktree_model_selection_python_node_regression',
+            'current_worktree_linux_package_tests',
+            'current_worktree_full_runtime_python_node_regression',
+            'current_worktree_full_voice_regression_2026_10_26',
+            'current_worktree_gui_regression_2026_10_26',
+            'current_worktree_opencode_regression_2026_10_26',
+            'linux_worktree_verifier_full_suite_2026_10_26',
+            'linux_worktree_verifier_full_suite_2026_10_27',
+            'linux_overlay_xvfb_atspi_current_worktree_2026_10_27',
+            'kde_wayland_background_atspi_focus_preservation_2026_10_26',
+            'kde_wayland_background_atspi_focus_precondition_2026_10_27',
+            'kde_wayland_background_atspi_focus_preservation_2026_10_27_retry',
+            'kde_wayland_background_atspi_focus_preservation_2026_10_27_rerun_1747',
+            'kde_wayland_background_atspi_focus_preservation_2026_10_27_rerun_1954',
+            'linux_worktree_verifier_full_suite_2026_10_27_eis',
+            'kde_wayland_eis_click_portal_start_timeout_2026_10_27',
+            'wayland_eis_revocation_cleanup_and_pause_guard_2026_10_27',
+            'current_worktree_full_voice_regression_2026_10_27_eis_pause_guard',
+            'current_worktree_full_voice_regression_2026_10_27_eis_initial_pause',
+            'nix_guix_libei_recipe_source_validation_2026_10_27',
+            'nix_current_worktree_eis_package_build_doctor_failure_2026_10_27',
+            'nix_dirty_worktree_source_override_validation_2026_10_27',
+            'nix_dirty_worktree_profile_install_runtime_remove_2026_10_27',
+            'nix_current_worktree_profile_lifecycle_2026_10_27',
+            'guix_aarch64_optional_libei_fallback_smoke_harness_2026_10_27',
+            'guix_libei_aarch64_native_output_2026_10_27',
+            'guix_aarch64_current_recipe_dry_run_libei_2026_10_27',
+            'current_worktree_full_voice_regression_2026_10_27_guix_libei_smoke',
+            'current_worktree_full_voice_regression_2026_10_27_eis_revocation',
+            'kde_wayland_background_atspi_focus_preservation_2026_10_27_rerun_2040',
+            'synthetic_virtual_audio_linux_ptt_vad_roundtrip_2026_10_27',
+            'linux_current_tts_pulse_virtual_output_roundtrip_2026_10_27',
+            'linux_worktree_verifier_full_suite_2026_10_27_virtual_audio',
+            'linux_state_api_origin_protection_current_worktree_2026_10_27',
+            'linux_current_worktree_full_regression_after_model_save_fix_2026_10_28',
+            'linux_file_write_atomic_hardlink_race_2026_10_28',
+            'portal_session_match_cleanup_current_worktree_2026_10_28',
+            'linux_current_worktree_security_cleanup_full_regression_2026_10_28',
+        },
+        'slackware-current': {
+            'slackware_current_worktree_build_install_remove_smoke',
+        },
     }
     lifecycle=[r for r in matrix['results'] if r['capability']=='native_package_lifecycle']
     passed={(r['target'],r['arch']) for r in lifecycle if r['status']=='passed'}
@@ -610,32 +707,68 @@ def test_linux_target_claims_match_recipe_files_and_lifecycle_evidence():
         if result['target'] not in catalog:
             assert result['capability'] in meta_targets.get(result['target'], set()),result
         if result['capability']=='native_package_lifecycle' and result['status']=='passed':
-            assert result['arch'] in catalog[result['target']]['architectures'],result
-            assert result['arch'] in catalog[result['target']]['validated_architectures'],result
+            if result['arch'] in catalog[result['target']]['architectures']:
+                assert result['arch'] in catalog[result['target']]['validated_architectures'],result
+            else:
+                assert result['arch']=='aarch64',result
 
 
-def test_nix_ci_builds_and_runs_profile_lifecycle_on_both_native_architectures():
+def test_prepared_linux_runtime_includes_and_checks_optional_libei_bindings():
+    requirements=(ROOT/'voice/requirements-linux.txt').read_text()
+    preparer=(ROOT/'scripts/prepare-package.py').read_text()
+    assert 'python-libei==0.6.1; sys_platform == "linux"' in requirements
+    assert 'dbus_next,libei' in preparer
+
+
+def test_nix_and_guix_package_optional_libei_runtime():
+    nix=(ROOT/'packaging/nix/default.nix').read_text()
+    guix=(ROOT/'packaging/guix/jarvis.scm').read_text()
+    assert 'pname = "python-libei"' in nix
+    assert 'pythonLibei' in nix and 'libei' in nix
+    assert 'lib.makeLibraryPath [ libei ]' in nix
+    assert 'python-libei-jarvis' in guix
+    assert '(list libei)' in guix
+    assert "(if (target-aarch64?) '() (list libei))" not in guix
+    assert '(assoc-ref inputs "libei")' in guix
+
+
+def test_nix_ci_builds_and_runs_profile_lifecycle_on_x86_64_only():
     workflow=ROOT/'.github/workflows/linux-nix.yml'
     assert workflow.is_file()
     text=workflow.read_text()
-    for required in ('ubuntu-24.04', 'ubuntu-24.04-arm', 'x86_64-linux',
-                     'aarch64-linux', 'scripts/test-nix-package.sh',
+    for required in ('ubuntu-24.04', 'x86_64-linux', 'scripts/test-nix-package.sh',
                          'releases.nixos.org/nix/nix-2.35.3/install',
                      'xvfb', 'dbus-x11', 'gir1.2-atspi-2.0', '--gui'):
         assert required in text
+    assert 'aarch64-linux' not in text and 'ubuntu-24.04-arm' not in text
+    assert 'aarch64-linux' not in (ROOT/'scripts/test-nix-package.sh').read_text()
 
 
-def test_void_glibc_ci_builds_and_tests_native_xbps_on_both_architectures():
+def test_flatpak_source_preparation_is_x86_64_only():
+    source=(ROOT/'scripts/prepare-flatpak.py').read_text()
+    assert "arch not in ('x86_64','aarch64')" not in source
+    assert "arch != 'x86_64'" in source
+
+
+def test_guix_package_selects_the_native_glibc_loader_for_both_architectures():
+    recipe=(ROOT/'packaging/guix/jarvis.scm').read_text()
+    assert '#$(if (target-aarch64?)' in recipe
+    assert '"/lib/ld-linux-aarch64.so.1"' in recipe
+    assert '"/lib/ld-linux-x86-64.so.2"' in recipe
+
+
+def test_void_glibc_ci_builds_and_tests_native_xbps_on_x86_64_only():
     workflow=ROOT/'.github/workflows/linux-void.yml'
     assert workflow.is_file()
     text=workflow.read_text()
-    for required in ('ubuntu-24.04', 'ubuntu-24.04-arm', 'x86_64', 'aarch64',
+    for required in ('ubuntu-24.04', 'x86_64',
                      'packaging/void/Dockerfile', 'test-native-package.sh',
                      'void-glibc', 'ghcr.io/void-linux/void-glibc-full:latest',
                      'timeout-minutes: 240', 'dist/upgrade',
                      'jarvis-assistant-0.1.0_1.*.xbps',
                      'jarvis-assistant-0.1.0_2.*.xbps'):
         assert required in text
+    assert 'ubuntu-24.04-arm' not in text and 'aarch64' not in text
     dockerfile=(ROOT/'packaging/void/Dockerfile').read_text()
     assert 'scripts/repack-xbps-previous.py' in dockerfile
 
@@ -742,7 +875,7 @@ def test_native_driver_builds_the_nix_flake(tmp_path):
 
 def test_void_musl_recipe_uses_libc_qualified_architecture():
     recipe=(ROOT/'packaging/void-musl/template').read_text()
-    assert 'archs="x86_64-musl aarch64-musl"' in recipe
+    assert 'archs="x86_64-musl"' in recipe
     assert 'tar -xzf "${FILESDIR}/jarvis-${version}.tar.gz"' in recipe
     assert 'bsdtar' not in recipe
     assert 'sh packaging/alpine/build-runtime.sh "$wrksrc" "$XBPS_BUILDDIR/native"' in recipe
@@ -755,7 +888,7 @@ def test_void_musl_recipe_uses_libc_qualified_architecture():
     assert 'python3 scripts/fetch-opencode.py --target "${XBPS_TARGET_MACHINE}"' in recipe
     assert 'openblas musl"' in recipe
     assert 'depends="python3>=3.14<3.15 python3-numpy' in recipe
-    assert 'libc.musl-x86_64.so.1' in recipe and 'libc.musl-aarch64.so.1' in recipe
+    assert 'libc.musl-x86_64.so.1' in recipe and 'libc.musl-aarch64.so.1' not in recipe
 
 
 def test_slackware_uses_native_slackbuild_and_package_lifecycle():
@@ -818,7 +951,7 @@ def test_solus_target_uses_eopkg_recipe_and_native_builder(tmp_path):
     if 'ID=arch' in Path('/etc/os-release').read_text():
         result=subprocess.run([str(ROOT/'scripts/build-package.sh'),'--target','solus','--output',str(tmp_path)],capture_output=True,text=True)
         assert result.returncode==2
-        assert 'Alvo solus exige ambiente Solus' in result.stderr
+        assert 'fora do escopo de build' in result.stderr
 
 
 def test_solus_recipe_injects_a_local_checksummed_source(tmp_path):

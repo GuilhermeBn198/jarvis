@@ -36,7 +36,7 @@ def prepare(output: Path):
         subprocess.run(['python3',str(ROOT/'scripts/source-archive.py'),'--output',str(base)],check=True,cwd=ROOT)
         with tarfile.open(base,'r:gz') as archive:archive.extractall(temporary)
         source=temporary/'jarvis-0.1.0'
-        subprocess.run(['npm','ci','--ignore-scripts','--prefix',str(source/'.opencode')],check=True,cwd=source)
+        subprocess.run([str(ROOT/'scripts/npm-ci.sh'),'--ignore-scripts','--prefix',str(source/'.opencode')],check=True,cwd=source)
         archive_tree(source,output.resolve())
     print(output.resolve())
 

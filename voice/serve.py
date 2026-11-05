@@ -22,6 +22,22 @@ def is_healthy(server_url: str, timeout: int = HEALTH_TIMEOUT_S) -> bool:
     return isinstance(data, dict) and data.get("healthy") is True
 
 
+def server_has_model(server_url: str, model_id: str | None, timeout: int = 2) -> bool:
+    """Check that a running OpenCode server can resolve the selected provider model."""
+    if not model_id:
+        return True
+    provider, sep, model = model_id.partition("/")
+    if not sep or not provider or not model:
+        return False
+    try:
+        with urllib.request.urlopen(server_url.rstrip("/") + "/config", timeout=timeout) as response:
+            config = json.loads(response.read().decode("utf-8"))
+        models = config.get("provider", {}).get(provider, {}).get("models", {})
+        return model in models
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def _spawn(cfg: Config) -> bool:
     port = serve_port(cfg.server_url)
     default_log = str(xdg_path("state", os.environ) / "serve.log") if cfg.platform == "linux" else DEFAULT_LOG_PATH
@@ -46,6 +62,7 @@ def _spawn(cfg: Config) -> bool:
             stdout=sink,
             stderr=sink,
             cwd=cfg.project_root,
+            env=_opencode_environment(),
             start_new_session=not supervised,
         )
         return True
@@ -63,7 +80,7 @@ def ensure_server(config: Config, wait_s: float | None = None) -> bool:
         wait_s = 60 if config.platform == "linux" else 20
     try:
         if is_healthy(config.server_url):
-            return True
+            return server_has_model(config.server_url, config.agent_model)
         if not _spawn(config):
             return False
         deadline = time.monotonic() + wait_s
@@ -74,3 +91,8 @@ def ensure_server(config: Config, wait_s: float | None = None) -> bool:
         return False
     except Exception:
         return False
+
+
+def _opencode_environment():
+    from model_selection import opencode_catalog_environment
+    return opencode_catalog_environment()

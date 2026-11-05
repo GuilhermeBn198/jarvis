@@ -107,8 +107,23 @@ def test_doctor_wayland_reports_authorization_requirement(monkeypatch):
     assert desktop['available'] is True
     assert desktop['validation']=='not_run'
     assert desktop['authorization_required'] is True
+    assert desktop['eis_input_available'] is False
+    assert 'fallback RemoteDesktop' in desktop['eis_input_reason']
     assert 'autorizacao' in desktop['reason']
     assert 'nao implementado' not in desktop['reason']
+
+
+def test_doctor_reports_eis_when_python_and_native_libraries_are_available(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    monkeypatch.setenv('WAYLAND_DISPLAY','wayland-test')
+    monkeypatch.setattr(importlib.util, 'find_spec', lambda name: object() if name in ('dbus_next','libei') else None)
+    monkeypatch.setitem(sys.modules,'libei',SimpleNamespace(
+        ei=SimpleNamespace(is_available=lambda:True),
+        portal=SimpleNamespace(is_available=lambda:True)))
+    desktop=diagnose(load_config({'JARVIS_PLATFORM':'linux'}))['capabilities']['desktop']
+    assert desktop['eis_input_available'] is True
+    assert 'autorizacao do portal' in desktop['eis_input_reason']
 
 
 def test_doctor_x11_reports_runtime_requirement(monkeypatch):

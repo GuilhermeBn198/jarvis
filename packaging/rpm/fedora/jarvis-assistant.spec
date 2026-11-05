@@ -14,7 +14,7 @@ Summary:        Assistente pessoal por voz com overlay Linux
 License:        Apache-2.0 AND MIT AND GPL-3.0-or-later
 URL:            https://github.com/GuilhermeBn198/jarvis
 Source0:        jarvis-%{version}.tar.gz
-ExclusiveArch:  x86_64 aarch64
+ExclusiveArch:  x86_64
 BuildRequires:  rust cargo gcc gcc-c++ make pkgconf-pkg-config
 BuildRequires:  gtk3-devel webkit2gtk4.1-devel
 BuildRequires:  python3 python3-pip python3-rpm-macros
@@ -35,7 +35,7 @@ pelo usuario. Nao executa pip ou downloads durante a instalacao do RPM.
 
 %build
 cargo build --release --locked --manifest-path gui/src-tauri/Cargo.toml
-npm ci --prefix .opencode --ignore-scripts
+scripts/npm-ci.sh --prefix .opencode --ignore-scripts
 python3 scripts/fetch-opencode.py --target %{_arch}-glibc --output opencode-package
 
 %install

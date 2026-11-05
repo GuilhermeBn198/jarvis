@@ -40,14 +40,25 @@ async def main(scenario):
 
     bus.add_message_handler(handle)
     try:
-        client = PortalClient(persistent=scenario=='persistent')
+        client = PortalClient(persistent=scenario in ('persistent','session-close'))
         result = await client.request_async('org.freedesktop.portal.Screenshot',
                                                    'Screenshot', ('', {}), 0.3)
-        assert scenario in ('success', 'forged', 'persistent'), (scenario, result)
+        assert scenario in ('success', 'forged', 'persistent', 'session-close'), (scenario, result)
         assert result == {'uri': 'file:///correct.png'}, result
         if scenario=='persistent':
             await client.request_async('org.freedesktop.portal.Screenshot','Screenshot',('',{}),0.3)
             assert len(senders)==2 and senders[0]==senders[1],senders
+            await client.close()
+        if scenario=='session-close':
+            session='/org/freedesktop/portal/desktop/session/test'
+            revoked=[]
+            await client.watch_session(session,lambda:revoked.append(session))
+            bus.send(Message.new_signal(session,'org.freedesktop.portal.Session','Closed',''))
+            for _ in range(50):
+                if not client.session_handlers:break
+                await asyncio.sleep(0.01)
+            assert revoked==[session],revoked
+            assert client.session_handlers=={}
             await client.close()
     except PortalError as exc:
         assert exc.code == {'missing': 'unavailable'}.get(scenario, scenario), (scenario, exc.code)

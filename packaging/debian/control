@@ -8,7 +8,7 @@ Rules-Requires-Root: no
 Homepage: https://github.com/GuilhermeBn198/jarvis
 
 Package: jarvis-assistant
-Architecture: any
+Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${jarvis:Python}, ffmpeg, python3-gi, gir1.2-atspi-2.0, at-spi2-core, libx11-6, libpulse0, pulseaudio-utils, libstdc++6, libgcc-s1, libgomp1, xdotool, wl-clipboard, xclip, xdg-utils, alsa-utils
 Description: Assistente pessoal por voz com overlay Linux
  Conversa por voz, captura de tela autorizada e controle do desktop.

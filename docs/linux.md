@@ -1,27 +1,36 @@
 # Linux nativo
 
-O porte continua em implementação. Voz, screenshot, ações, contexto AT-SPI,
-arquivos e overlay têm implementação nativa. No host Arch/KDE Wayland foram
-exercitados o overlay e o MCP instalado, síntese Piper, captura de áudio
-sintético via PipeWire/Pulse e ALSA, STT em português e VAD com áudio sintético.
-O catálogo declara 15 alvos de empacotamento. A matriz atual contém 114
-registros: 112 aprovados e dois sem validação (98,2%); ela inclui 29
-combinações de distribuição/arquitetura/contexto, entre elas um teste de fonte.
-Isso não significa cobertura universal: Gentoo AArch64 e Guix AArch64 seguem
-sem validação final e seus builds estão pausados a pedido. Os ciclos de pacote
-e testes funcionais são contabilizados separadamente. Os jobs nativos passaram
-na [CI 39808807318](https://github.com/V1nic1us/jarvis/actions/runs/39808807318),
-incluindo upgrades e preservação de dados onde configurados. Nix e Flatpak
-passaram em x86_64/AArch64. Void glibc e musl passaram build, instalação,
-upgrade e preservação de dados em ambas as arquiteturas na [CI 39705918455](https://github.com/V1nic1us/jarvis/actions/runs/39705918455).
-O upgrade Solus 4.9 x86_64 passou em container descartável com eopkg e dados
-XDG preservados. Gentoo ARM64 e Guix ARM64 estão pausados a pedido. As medições de nível Pulse e ALSA de 0,5 s passaram no host Arch; o pacote Arch
-extraído também passou `--mic-level` via Pulse e VAD com tom sintético. Ainda faltam PTT e VAD com fala real,
-reprodução/streaming e repetir a validação de microfone nos demais pacotes,
-fluxos reais de consentimento/recusa/revogação dos portais e cobertura funcional
-em outros desktops, sessões e distribuições.
-Veja `docs/linux-packages.md` e `docs/notes/linux-verification.md` para a matriz
-e as limitações de cada teste.
+O porte ativo suporta **somente x86_64**. Resultados AArch64/ARM64 anteriores
+são históricos. O catálogo contém 15 receitas: 9 alvos ativos e 6 excluídos
+(Gentoo, GNU Guix, Void musl, Nix, Slackware e Solus). Os ciclos dos 9 alvos
+ativos passaram, incluindo upgrade Flatpak em perfil isolado. Consulte a
+[matriz](notes/linux-matrix.json) para evidências e limitações por validação.
+
+Os resultados Nix abaixo são históricos; Nix está fora do escopo ativo desde
+2026-11-05.
+
+No Arch/KDE Wayland, o pacote instalado passou o diagnóstico e o fluxo sintético
+Piper→fonte Pulse virtual→PTT/VAD→faster-whisper. Uma tentativa física enviou
+fala Piper ao sink de fones a 15% e gravou 8 s do microfone Mic2; a transcrição
+não correspondeu à frase esperada, então o teste ponta a ponta falhou. O WAV foi
+apagado e o volume original (61%, sem mute) foi restaurado. Ainda faltam PTT/VAD
+com fala física reconhecida, confirmação de reprodução audível, autorização e
+revogação reais dos portais e validação em outras sessões/desktops. A reprodução
+sintética de TTS foi roteada por FFmpeg/Pulse
+para um sink virtual e capturada/transcrita pelo monitor; isso não valida o
+som em alto-falantes físicos. O backend agora tenta
+libei/EIS para clique Wayland com fallback RemoteDesktop; o pedido real de
+consentimento expirou sem resposta, então a entrega do clique continua sem
+confirmação. O teclado foi validado numa janela de teste. O timeout de Ollama
+via OpenCode também segue em investigação em host CPU-only.
+
+Veja [pacotes Linux](linux-packages.md) e [registro de verificação](notes/linux-verification.md)
+para status, artefatos e limites por teste.
+
+Para executar as regressões locais de voz, MCP, GUI, OpenCode e Rust, rode
+`scripts/verify-linux.sh`; `scripts/verify-linux.sh --list` mostra as etapas.
+Esse comando não substitui validação em desktop/portal real, áudio físico ou
+build dos pacotes em cada distribuição.
 
 ## Instalação por fonte
 
@@ -88,6 +97,24 @@ jarvis) ou `loop_cmd` (comando definido pelo usuário). `JARVIS_OVERLAY_CONFIG`
 seleciona outro arquivo; `JARVIS_STATE_PORT` funciona também no overlay em
 runtime. No Wayland, o modo padrão usa janela normal, respeitando o compositor;
 `JARVIS_WINDOW_MODE=orb` solicita o modo sem decoração.
+
+
+## Seleção do modelo
+
+O painel de configurações lista os modelos do Ollama e salva a seleção para as
+próximas solicitações. Modelos com sufixo `:cloud` são executados remotamente e
+podem receber transcrição, prompt e contexto de tela; confira o aviso do painel
+antes de selecionar um.
+
+A resposta de modelo local depende do hardware e do caminho de solicitação. No
+host Arch CPU-only testado, `qwen3:8b` respondeu por chamada direta ao Ollama,
+mas o fluxo completo do Jarvis pelo OpenCode excedeu 90 s; as tentativas
+posteriores apontaram geração perto de 5 tokens/s no CPU. Portanto, `qwen3:8b`
+nesse perfil de CPU não é uma configuração recomendada para conversa interativa;
+use aceleração compatível ou escolha um modelo menor e meça a latência no seu
+hardware. O catálogo e a seleção continuam disponíveis, mas não garantem que
+todo modelo listado tenha latência adequada. O uso via cloud MiniMax passou um
+smoke curto.
 
 ## Desktop e permissões
 

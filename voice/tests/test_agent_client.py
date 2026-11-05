@@ -440,8 +440,11 @@ def _sse(*objs):
     )
 
 
-def _stream_cfg():
-    return Config(opencode_bin="/x/o", timeout_s=10, agent="chat")
+def _stream_cfg(agent_model=None):
+    return Config(
+        opencode_bin="/x/o", timeout_s=10, agent="chat",
+        agent_model=agent_model,
+    )
 
 
 def _part(pid, text, sid="S"):
@@ -587,7 +590,7 @@ def test_consume_events_session_error_raises():
 
 
 def test_stream_posts_async_and_returns_text(monkeypatch):
-    client = ServeClient(_stream_cfg())
+    client = ServeClient(_stream_cfg("ollama/qwen3:8b"))
     monkeypatch.setattr(client, "_ensure_session", lambda timeout: "S")
     posted = {}
 
@@ -603,6 +606,9 @@ def test_stream_posts_async_and_returns_text(monkeypatch):
     text = client.stream("faca algo", deltas.append)
     assert posted["path"].endswith("/prompt_async")
     assert posted["payload"]["agent"] == "chat"
+    assert posted["payload"]["model"] == {
+        "providerID": "ollama", "modelID": "qwen3:8b"
+    }
     assert text == "resposta"
     assert deltas == ["resposta"]
 

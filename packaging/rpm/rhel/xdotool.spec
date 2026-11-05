@@ -9,7 +9,7 @@ Summary:        X11 input and window automation for the Jarvis Linux port
 License:        BSD-3-Clause
 URL:            https://github.com/jordansissel/xdotool
 Source0:        xdotool-%{version}.tar.gz
-ExclusiveArch:  x86_64 aarch64
+ExclusiveArch:  x86_64
 BuildRequires:  gcc make pkgconf-pkg-config
 BuildRequires:  libX11-devel libXtst-devel libXinerama-devel libxkbcommon-devel
 BuildRequires:  perl(Pod::Man)

@@ -81,6 +81,7 @@ class Config:
     language: str = DEFAULT_LANGUAGE
     agent_backend: str = DEFAULT_AGENT_BACKEND
     agent: str | None = DEFAULT_AGENT
+    agent_model: str | None = None
     server_url: str = DEFAULT_SERVER_URL
     tts_backend: str = DEFAULT_TTS_BACKEND
     voice_log_path: str = DEFAULT_VOICE_LOG
@@ -252,6 +253,7 @@ def load_config(env: dict | None = None, settings: dict | None = None) -> Config
         language=e.get("VOICE_LANGUAGE", DEFAULT_LANGUAGE),
         agent_backend=agent_backend,
         agent=e.get("VOICE_AGENT", DEFAULT_AGENT) or None,
+        agent_model=e.get("AGENT_MODEL", settings.get("agent_model")) or None,
         server_url=e.get("OPENCODE_SERVER_URL", DEFAULT_SERVER_URL),
         tts_backend=tts_backend,
         voice_log_path=e.get("VOICE_LOG", str(xdg_path("state", e) / "voice-log.jsonl") if linux else DEFAULT_VOICE_LOG),

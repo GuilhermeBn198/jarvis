@@ -7,6 +7,7 @@ task_package=${2:?artefato obrigatorio}
 task_previous_package=${3:-}
 task_checks=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
 . /etc/os-release
+[ "$(uname -m)" = x86_64 ] || { echo 'O ciclo de pacote Jarvis suporta somente x86_64.' >&2; exit 2; }
 PATH="/usr/lib/jarvis/bin:$PATH"
 export PATH
 task_user_data=$(mktemp -d)
@@ -18,7 +19,7 @@ case "$task_family:$ID" in
     debian:debian|ubuntu:ubuntu) apt-get update; apt-get install -y --no-install-recommends -o "Dpkg::Options::=--path-include=/usr/share/doc/*" "$task_package" xvfb dbus-daemon ;;
     fedora:fedora) dnf install -y --setopt=install_weak_deps=False "$task_package" xorg-x11-server-Xvfb dbus-daemon ;;
     suse:opensuse-tumbleweed) zypper --non-interactive install --no-recommends --allow-unsigned-rpm "$task_package" xorg-x11-server-Xvfb dbus-1-daemon ;;
-    arch:arch|arch:archarm) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
+    arch:arch) sed -i '/^NoExtract/d' /etc/pacman.conf; pacman -Syu --noconfirm xorg-server-xvfb dbus; pacman -U --noconfirm "$task_package" ;;
     alpine:alpine)
         if [ "${JARVIS_APK_REQUIRE_SIGNATURE:-0}" = 1 ]; then
             apk add --no-cache "$task_package" xvfb dbus
@@ -86,7 +87,8 @@ manifest=json.loads((root/'install-manifest.json').read_text())
 assert manifest['python_abi']==f'{sys.version_info.major}.{sys.version_info.minor}'
 assert (root/'runtime/bin/python3').resolve()==Path(sys.executable).resolve()
 assert (root/'runtime/bin/python3').resolve().name==f'python{manifest["python_abi"]}'
-expected={'x86_64':62,'aarch64':183}[platform.machine()]
+expected=62
+assert platform.machine()=='x86_64'
 for binary in (Path('/usr/bin/jarvis-overlay'),root/'bin/opencode'):
     with binary.open('rb') as stream:header=stream.read(20)
     assert header[:4]==b'\x7fELF' and int.from_bytes(header[18:20],'little')==expected,binary

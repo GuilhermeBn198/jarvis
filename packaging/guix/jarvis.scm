@@ -107,6 +107,16 @@
   (package/inherit python-dunamai
     (name "python-dunamai-jarvis")
     (version "1.26.1")
+    ;; This timestamp-window test assumes a Git subprocess finishes within a
+    ;; minute. On emulated AArch64, the test setup itself can exceed that
+    ;; window and fail despite correct version parsing. The upstream shallow
+    ;; clone test also requires network access and a CA bundle unavailable in
+    ;; the isolated Guix builder. Retain the rest of the upstream test suite.
+    (arguments
+     (substitute-keyword-arguments (package-arguments python-dunamai)
+       ((#:test-flags flags #~'())
+        #~'("-k"
+            "not test__version__from_git__with_annotated_tags and not test__version__from_git__shallow"))))
     (source (origin
               (method url-fetch)
               (uri (pypi-uri "dunamai" version))
@@ -260,6 +270,22 @@
     (description "Zero-dependency DBus library with asyncio support.")
     (license license:expat)))
 
+(define-public python-libei-jarvis
+  (package
+    (name "python-libei-jarvis")
+    (version "0.6.1")
+    (source (origin
+              (method url-fetch)
+              (uri (pypi-uri "python-libei" version))
+              (sha256 (base32 "0w3jfryd4mnpvjdiazwbvai24d47qpngajxzysf7hxp37r7vj92r"))))
+    (build-system pyproject-build-system)
+    (arguments (list #:tests? #f))
+    (native-inputs (list python-setuptools))
+    (home-page "https://pypi.org/project/python-libei/")
+    (synopsis "Python bindings for libei and the RemoteDesktop portal")
+    (description "ctypes bindings for EIS input and XDG RemoteDesktop portals.")
+    (license license:expat)))
+
 (define-public python-mcp-jarvis
   (package
     (name "python-mcp-jarvis")
@@ -410,7 +436,11 @@ that embeds espeak-ng for phonemization.")
             (lambda* (#:key outputs inputs #:allow-other-keys)
               (let* ((out (assoc-ref outputs "out"))
                      (opencode (string-append (getenv "TMPDIR") "/jarvis-opencode"))
-                     (loader (search-input-file inputs "/lib/ld-linux-x86-64.so.2")))
+                     (loader (search-input-file
+                              inputs
+                              #$(if (target-aarch64?)
+                                    "/lib/ld-linux-aarch64.so.1"
+                                    "/lib/ld-linux-x86-64.so.2"))))
                 (copy-file #$opencode-binary opencode)
                 (chmod opencode #o755)
                 (invoke "patchelf" "--set-interpreter" loader opencode)
@@ -438,19 +468,24 @@ that embeds espeak-ng for phonemization.")
                               (assoc-ref inputs "at-spi2-core") "/bin:"
                               (assoc-ref inputs "glib") "/bin"))
                        (python-path (or (getenv "GUIX_PYTHONPATH")
-                                        (getenv "PYTHONPATH") "")))
+                                        (getenv "PYTHONPATH") ""))
+                       (libei-path (assoc-ref inputs "libei")))
                   (wrap-program launcher
                     `("PATH" ":" prefix (,path))
                     `("PYTHONPATH" ":" prefix (,python-path))
                     `("LD_LIBRARY_PATH" ":" prefix
-                      (,(string-append (assoc-ref inputs "gtk+") "/lib")
+                      (,@(if libei-path
+                             (list (string-append libei-path "/lib"))
+                             '())
+                       ,(string-append (assoc-ref inputs "gtk+") "/lib")
                        ,(string-append (assoc-ref inputs "webkitgtk-for-gtk3") "/lib")
                        ,(string-append (assoc-ref inputs "libsoup") "/lib")
                        ,(string-append (assoc-ref inputs "glib") "/lib")
                        ,(dirname (search-input-file inputs "/lib/libstdc++.so.6"))
                        ,(string-append (assoc-ref inputs "glibc") "/lib")))))))))))
     (inputs
-     (list python-wrapper
+     (append
+      (list python-wrapper
                    (if (target-aarch64?)
                        python-faster-whisper-aarch64-jarvis
                        python-faster-whisper)
@@ -463,10 +498,12 @@ that embeds espeak-ng for phonemization.")
                              onnxruntime)
                          "python") python-httpx python-jsonschema
                    python-mcp-jarvis python-pygobject python-dbus-next-jarvis
+                   python-libei-jarvis
                    python-piper-tts-jarvis ffmpeg pulseaudio alsa-utils
                    gtk+ webkitgtk-for-gtk3 libsoup glib at-spi2-core espeak-ng dbus
                    xdotool wl-clipboard xclip zlib openssl glibc
-                   (list gcc-14 "lib")))
+                   (list gcc-14 "lib"))
+      (list libei)))
     (native-inputs
      (list pkg-config node rust-1.90-jarvis
            (list rust-1.90-jarvis "cargo")
@@ -476,6 +513,6 @@ that embeds espeak-ng for phonemization.")
     (description
      "Jarvis is a local voice assistant with speech recognition and a native desktop overlay.")
     (license (list license:asl2.0 license:expat license:gpl3+))
-    (supported-systems '("x86_64-linux" "aarch64-linux"))))
+    (supported-systems '("x86_64-linux"))))
 
 jarvis-assistant

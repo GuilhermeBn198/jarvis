@@ -1,3 +1,4 @@
 -r requirements.txt
 # Native Piper CLI; Windows installations continue using their existing binary.
 piper-tts==1.8.0
+python-libei==0.6.1; sys_platform == "linux"

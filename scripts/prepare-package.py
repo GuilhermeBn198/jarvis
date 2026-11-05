@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import platform
 import subprocess
 import shutil
 from pathlib import Path
@@ -63,6 +64,7 @@ def copy_python_environment(environment: Path, app: Path, python: str):
 
 
 def prepare(prefix: str,destdir: str,overlay: str,python: str,opencode: str,wheelhouse: str | None=None,python_environment: str | None=None,python_report: str | None=None,external_python_runtime: str | None=None,with_node_modules: bool=True,expected_opencode_version: str='1.18.23'):
+    if platform.machine()!='x86_64':raise RuntimeError('A entrega Linux atual suporta somente x86_64')
     if external_python_runtime and (wheelhouse or python_environment or python_report):
         raise ValueError('runtime Python externo nao aceita wheelhouse nem ambiente preparado')
     if python_environment and (wheelhouse or not python_report):
@@ -110,7 +112,7 @@ def prepare(prefix: str,destdir: str,overlay: str,python: str,opencode: str,whee
     if runtime.is_dir():env['PYTHONPATH']=str(runtime)
     else:env.pop('PYTHONPATH',None)
     subprocess.run([python,str(app/'voice/loop.py'),'--doctor'],env=env,check=True)
-    subprocess.run([python,'-c','import faster_whisper,piper,mcp,httpx,dbus_next;print("native runtime imports passed")'],env=env,check=True)
+    subprocess.run([python,'-c','import faster_whisper,piper,mcp,httpx,dbus_next,libei;print("native runtime imports passed")'],env=env,check=True)
 
 
 if __name__=='__main__':

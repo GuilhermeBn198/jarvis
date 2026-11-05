@@ -3,7 +3,7 @@ pkgname=jarvis-assistant
 pkgver=0.1.0
 pkgrel=1
 pkgdesc='Assistente pessoal por voz com overlay e controle nativo Linux'
-arch=('x86_64' 'aarch64')
+arch=('x86_64')
 url='https://github.com/GuilhermeBn198/jarvis'
 license=('Apache-2.0' 'MIT' 'GPL-3.0-or-later')
 depends=('python' 'gtk3' 'webkit2gtk-4.1' 'ffmpeg' 'libpulse' 'libx11' 'xdotool' 'wl-clipboard' 'xclip' 'xdg-utils' 'python-gobject' 'at-spi2-core' 'alsa-utils')
@@ -14,7 +14,7 @@ build() {
     : "${JARVIS_SOURCE_ROOT:?use scripts/build-package.sh or set JARVIS_SOURCE_ROOT}"
     cd "$JARVIS_SOURCE_ROOT"
     cargo build --release --locked --manifest-path gui/src-tauri/Cargo.toml
-    npm ci --prefix .opencode --ignore-scripts
+    scripts/npm-ci.sh --prefix .opencode --ignore-scripts
     python scripts/fetch-opencode.py --target "$CARCH-glibc" --output "$srcdir/opencode"
 }
 

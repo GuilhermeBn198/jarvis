@@ -37,7 +37,7 @@ if [ "$task_deps" -eq 1 ]; then
     "$task_app/voice/.venv/bin/python" -m pip install -r "$task_app/voice/requirements-linux.txt" \
         -r "$task_app/mcp_servers/win_context/requirements.txt" \
         -r "$task_app/mcp_servers/delegate_local/requirements.txt"
-    npm ci --prefix "$task_app/.opencode" --ignore-scripts
+    "$task_root/scripts/npm-ci.sh" --prefix "$task_app/.opencode" --ignore-scripts
 fi
 # User installation may live outside the GUI session's PATH; use quoted Exec.
 "$task_python" - "$task_prefix" <<'PY'

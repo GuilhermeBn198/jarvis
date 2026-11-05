@@ -97,6 +97,68 @@ def test_speak_piper_plays_via_ffplay_when_no_to_file(monkeypatch):
     assert calls[1][0][-1] == r"C:\out.wav"
 
 
+def test_speak_piper_linux_routes_audio_through_selected_pulse_sink(monkeypatch):
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append((cmd, kw))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setenv("PULSE_SINK", "jarvis_test_sink")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cfg = dataclasses.replace(
+        PIPER_CFG, platform="linux", ffmpeg_exe="/x/ffmpeg",
+        piper_out_wav="/tmp/piper.wav",
+    )
+    speak_piper("texto", config=cfg)
+
+    assert calls[1][0] == [
+        "/x/ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+        "-re", "-i", calls[0][0][-1], "-f", "pulse", "-device",
+        "jarvis_test_sink", "-",
+    ]
+
+
+def test_speak_piper_linux_falls_back_when_default_pulse_output_is_unavailable(monkeypatch):
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        code = 1 if cmd[0] == "/x/ffmpeg" else 0
+        return subprocess.CompletedProcess(cmd, code, stdout="", stderr="pulse unavailable")
+
+    monkeypatch.delenv("PULSE_SINK", raising=False)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cfg = dataclasses.replace(
+        PIPER_CFG, platform="linux", ffmpeg_exe="/x/ffmpeg",
+        piper_out_wav="/tmp/piper.wav",
+    )
+    speak_piper("texto", config=cfg)
+
+    assert calls[1][calls[1].index("-device") + 1] == "default"
+    assert calls[2][0] == "/x/ffplay"
+
+
+def test_speak_piper_linux_does_not_override_an_explicit_sink_failure(monkeypatch):
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        code = 1 if cmd[0] == "/x/ffmpeg" else 0
+        return subprocess.CompletedProcess(cmd, code, stdout="", stderr="bad sink")
+
+    monkeypatch.setenv("PULSE_SINK", "requested_sink")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cfg = dataclasses.replace(
+        PIPER_CFG, platform="linux", ffmpeg_exe="/x/ffmpeg",
+        piper_out_wav="/tmp/piper.wav",
+    )
+
+    with pytest.raises(VoiceError, match="requested_sink"):
+        speak_piper("texto", config=cfg)
+    assert len(calls) == 2
+
+
 def test_speak_piper_empty_is_noop(monkeypatch):
     called = {"n": 0}
     monkeypatch.setattr(subprocess, "run",

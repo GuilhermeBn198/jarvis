@@ -4,6 +4,7 @@ from agent_client import AgentError, ServeClient, strip_opencode_noise
 from config import Config, load_config
 from paths import _windows_to_wsl, _wsl_to_windows
 from serve import ensure_server
+from model_selection import opencode_catalog_environment
 from tts import VoiceError
 
 
@@ -37,12 +38,13 @@ def _see_via_run(cfg: Config, prompt: str, png_path: str) -> str:
     """
     cmd = [
         cfg.opencode_bin, "run", "--agent", "vision", prompt,
-        "-m", cfg.vision_model, "-f", png_path,
+        "-m", cfg.agent_model or cfg.vision_model, "-f", png_path,
     ]
     try:
         proc = subprocess.run(
             cmd, capture_output=True, text=True, errors="replace",
             timeout=cfg.timeout_s, cwd=cfg.project_root,
+            env=opencode_catalog_environment(),
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha na consulta de visao: {exc}") from exc
@@ -67,7 +69,7 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
     # fallback `run` em ~20s.
     if ensure_server(cfg, wait_s=3):
         try:
-            return ServeClient(cfg).see(prompt, png_path, model_id=cfg.vision_model)
+            return ServeClient(cfg).see(prompt, png_path, model_id=cfg.agent_model or cfg.vision_model)
         except (AgentError, VoiceError):
             # Servidor saudavel no check, mas a chamada falhou (sessao
             # morreu, timeout, etc.): cai para `run` uma vez, reutilizando

@@ -3,9 +3,10 @@
 set -eu
 task_root=$(CDPATH= cd -P "$(dirname "$0")/.." && pwd)
 task_output=${1:-$task_root/dist/flatpak}
+task_arch=$(uname -m)
+[ "$task_arch" = x86_64 ] || { echo 'A entrega Linux atual suporta somente x86_64.' >&2; exit 2; }
 mkdir -p "$task_output"
 task_output=$(CDPATH= cd -P "$task_output" && pwd)
-task_arch=$(uname -m)
 task_pins=$(python3 - "$task_root/packaging/flatpak/runtime-pins.json" "$task_arch" <<'PYCODE'
 import json,sys
 pins=json.load(open(sys.argv[1])).get(sys.argv[2])

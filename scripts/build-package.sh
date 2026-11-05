@@ -16,9 +16,23 @@ while [ "$#" -gt 0 ]; do
         *) echo "opcao desconhecida: $1" >&2; exit 2 ;;
     esac
 done
+python3 - "$task_root/packaging/targets.json" "$task_target" <<'PY'
+import json,sys
+catalog=json.load(open(sys.argv[1]))
+target=sys.argv[2]
+metadata=catalog.get(target)
+if metadata and metadata.get('delivery_scope')=='excluded':
+    reason=metadata.get('scope_reason','fora do escopo ativo')
+    print(f'Alvo {target} fora do escopo de build: {reason}',file=sys.stderr)
+    raise SystemExit(2)
+PY
 if [ -n "$task_release" ]; then
     [ "$task_target" = solus ] || { echo '--release so e valido para o alvo solus.' >&2; exit 2; }
     case "$task_release" in ''|*[!0-9]*|0) echo '--release exige um inteiro positivo.' >&2; exit 2 ;; esac
+fi
+if [ "$task_arch" != x86_64 ]; then
+    echo 'A entrega Linux atual suporta somente x86_64.' >&2
+    exit 2
 fi
 if [ "$task_arch" != "$(uname -m)" ]; then
     echo 'Build nativo exige arquitetura correspondente; use container/VM do alvo.' >&2
@@ -34,7 +48,6 @@ case "$task_target" in
         command -v git >/dev/null 2>&1 || { echo 'Alvo gentoo requer Git para gerar o arquivo de fontes.' >&2; exit 2; }
         case "$task_arch" in
             x86_64) task_keyword=amd64 ;;
-            aarch64) task_keyword=arm64 ;;
             *) echo "Alvo gentoo nao suporta arquitetura $task_arch." >&2; exit 2 ;;
         esac
         task_build=$(mktemp -d)
@@ -63,7 +76,7 @@ case "$task_target" in
     guix)
         command -v guix >/dev/null || { echo 'Alvo guix requer o GNU Guix.' >&2; exit 2; }
         case "$task_arch" in
-            x86_64|aarch64) task_system=$task_arch-linux ;;
+            x86_64) task_system=x86_64-linux ;;
             *) echo "Alvo guix nao suporta arquitetura $task_arch." >&2; exit 2 ;;
         esac
         task_build=$(mktemp -d "$task_output/.guix-build-XXXXXX")
@@ -228,8 +241,8 @@ PY
         command -v makepkg >/dev/null
         . /etc/os-release
         case "$ID" in
-            arch|archarm) ;;
-            *) echo 'Alvo arch exige Arch Linux ou Arch Linux ARM.' >&2; exit 2 ;;
+            arch) ;;
+            *) echo 'Alvo arch exige Arch Linux.' >&2; exit 2 ;;
         esac
         task_build=$(mktemp -d "$task_output/.arch-build-XXXXXX")
         cp "$task_root/packaging/arch/PKGBUILD" "$task_build/PKGBUILD"

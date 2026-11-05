@@ -19,9 +19,11 @@ from capture import (
     record_ptt,
 )
 from config import load_config
+from settings import load_settings
 from convlog import log_turn
 from sanitize import speechify
-from serve import ensure_server
+from serve import ensure_server, server_has_model
+from model_selection import opencode_catalog_environment
 from state import StateHub
 from stt import transcribe
 from stream import SentenceChunker, Speaker
@@ -390,6 +392,9 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
             _emit(hub, "idle")
             continue
         t_stt = time.monotonic()
+        selected_model = load_settings().get("agent_model") or os.environ.get("AGENT_MODEL") or cfg.agent_model
+        if selected_model != cfg.agent_model:
+            cfg = replace(cfg, agent_model=selected_model)
         _hb(f"transcrito: {text[:40]!r}" if text else "nada transcrito")
         if not text:
             err.write("[voz] nada transcrito\n")
@@ -454,6 +459,13 @@ def voice_loop(client=None, iterations: int = 0, record_seconds: float | None = 
                 err.flush()
                 _emit(hub, "error")
                 continue
+        if hasattr(active_client, "_cfg"):
+            current_model = load_settings().get("agent_model")
+            active_client._cfg = replace(active_client._cfg, agent_model=current_model or os.environ.get("AGENT_MODEL") or cfg.agent_model)
+            if active_client.__class__.__name__ == "ServeClient" and not server_has_model(cfg.server_url, active_client._cfg.agent_model):
+                active_client = RunClient(active_client._cfg)
+                err.write("[aviso] servidor OpenCode sem o modelo selecionado; usando run com catalogo atualizado\n")
+                err.flush()
         error = None
         t_agent0 = time.monotonic()
         _emit(hub, "thinking")
@@ -608,6 +620,8 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     # `opencode run --agent act` com/sem --pure).
     _emit(hub, "acting")
     cmd = [cfg.opencode_bin, "run", "--agent", "act", prompt]
+    if cfg.agent_model:
+        cmd[2:2] = ["-m", cfg.agent_model]
     t0 = time.monotonic()
     try:
         proc = subprocess.run(
@@ -617,6 +631,7 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
             errors="replace",
             timeout=cfg.timeout_s,
             cwd=cfg.project_root,
+            env=opencode_catalog_environment(),
         )
     except FileNotFoundError:
         err.write(

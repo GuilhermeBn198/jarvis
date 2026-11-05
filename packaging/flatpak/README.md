@@ -1,5 +1,7 @@
 # Build Flatpak em validação
 
+> Escopo atual (2026-10-28): somente x86_64. As referências a ARM64 abaixo são históricas; o workflow e o script de build não oferecem mais esse alvo.
+
 O manifesto compila o overlay no SDK GNOME 49. O preparo anterior ao build
 reúne fontes Cargo verificadas pelo lockfile, dependências npm do lockfile,
 wheels para o Python do SDK e o agente cuja integridade está fixada. O arquivo
@@ -9,12 +11,7 @@ usa `--offline` e a instalação Python usa apenas o wheelhouse local.
 Pré-requisitos no computador de build: Git, Python, Cargo, Node/npm e Flatpak,
 com org.flatpak.Builder, org.gnome.Sdk//49, org.gnome.Platform//49 e a extensão
 org.freedesktop.Sdk.Extension.rust-stable//25.08 instalados para o usuário.
-O script exige os commits da arquitetura registrados em `runtime-pins.json`
-e recusa versões diferentes. Ele não altera automaticamente um runtime
-instalado. Há pins separados para x86_64 e ARM64; a CI construiu e instalou o
-bundle nas duas arquiteturas em runners nativos e aprovou doctor, versão do
-agente e imports de voz/MCP/AT-SPI. Isso valida o runtime básico, não a sessão
-gráfica, áudio ou portais. Não reutilize artefatos x86_64 em ARM64.
+O script exige os commits x86_64 registrados em `runtime-pins.json` e recusa versões diferentes. Ele não altera automaticamente um runtime instalado. A CI histórica também validou ARM64, mas esse alvo está fora do suporte atual. As verificações não cobrem sessão gráfica real, áudio ou portais.
 
 ```sh
 scripts/build-flatpak.sh "$PWD/dist/flatpak"
@@ -38,9 +35,7 @@ do aplicativo, use um novo diretório de saída. O build regenera o manifesto
 externo com as opções atuais, mantendo o hash do snapshot de fontes.
 
 O bundle é `dist/flatpak/jarvis-x86_64.flatpak`; seu SHA256 fica ao lado.
-No ARM64, o nome é `jarvis-aarch64.flatpak`. O workflow manual
-`Linux Flatpak experimental` constrói cada arquitetura em runner nativo e
-verifica instalação, versão do agente e imports; não valida desktop ou áudio.
+O nome do bundle atual é `jarvis-x86_64.flatpak`. A antiga validação ARM64 foi arquivada como histórico e não é mais executada.
 A instalação para teste, quando o build estiver concluído, é:
 
 ```sh

@@ -10,6 +10,11 @@
           "0395ax8d138ch65fzm1y9xf2s4661am5k3yj3cav16fx83sgjxi5")))
     (package
       (inherit base-rust)
+      ;; Rust's bootstrap builder otherwise inherits Guix's host-wide default
+      ;; job count (four here), which OOM-kills rustc on emulated AArch64.
+      (arguments
+       (substitute-keyword-arguments (package-arguments base-rust)
+         ((#:parallel-build? parallel-build? #t) #f)))
       (source
        (origin
          (inherit (package-source base-rust))

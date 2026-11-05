@@ -5,7 +5,7 @@ DESCRIPTION="Voice assistant with native Linux overlay"
 HOMEPAGE="https://github.com/GuilhermeBn198/jarvis"
 LICENSE="Apache-2.0 MIT GPL-3"
 SLOT="0"
-KEYWORDS="~amd64 ~arm64"
+KEYWORDS="~amd64"
 # Cargo/npm/pip resolve private dependencies at build time only. Preserve Bun's
 # appended executable payload; Portage must not strip the private executables.
 RESTRICT="network-sandbox strip"
@@ -33,9 +33,9 @@ src_unpack() {
 
 src_compile() {
     local task_arch
-    case ${ARCH} in amd64) task_arch=x86_64 ;; arm64) task_arch=aarch64 ;; *) die "Unsupported native architecture" ;; esac
+    case ${ARCH} in amd64) task_arch=x86_64 ;; *) die "Unsupported native architecture" ;; esac
     cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml || die
-    npm ci --prefix .opencode --ignore-scripts || die
+    scripts/npm-ci.sh --prefix .opencode --ignore-scripts || die
     python3.14 scripts/fetch-opencode.py --target "${task_arch}-glibc" --output opencode-package || die
 }
 
@@ -50,8 +50,6 @@ src_install() {
         docompress -x "/usr/share/doc/${PF}"
         dodoc "${S}/docs/linux.md"
     fi
-    find "${D}/usr/lib/jarvis/.opencode/node_modules/@msgpackr-extract" \
-        -type f -name '*.musl.node' -delete || die
     python3.14 - "${D}/usr" <<'PY' || die
 from pathlib import Path
 import json,sys

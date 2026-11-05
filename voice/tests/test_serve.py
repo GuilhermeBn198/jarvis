@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 
 import serve
 from config import Config
@@ -52,6 +53,12 @@ def test_ensure_server_already_healthy(monkeypatch):
         raise AssertionError("nao deve subir o servidor")
     monkeypatch.setattr(serve.subprocess, "Popen", boom)
     assert serve.ensure_server(CFG) is True
+
+
+def test_ensure_server_does_not_reuse_healthy_server_missing_selected_model(monkeypatch):
+    monkeypatch.setattr(serve, "is_healthy", lambda url, timeout=2: True)
+    monkeypatch.setattr(serve, "server_has_model", lambda url, model: False)
+    assert serve.ensure_server(replace(CFG, agent_model="ollama/minimax:cloud")) is False
 
 
 def test_ensure_server_spawns_and_waits(monkeypatch, tmp_path):

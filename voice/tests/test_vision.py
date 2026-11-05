@@ -164,3 +164,11 @@ def test_see_via_run_uses_project_root_cwd(monkeypatch):
     cfg = Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo")
     vision._see_via_run(cfg, "q", "/tmp/x.png")
     assert seen["kw"]["cwd"] == "/repo"
+
+
+def test_see_via_run_passes_dynamic_ollama_catalog(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(vision, "opencode_catalog_environment", lambda: {"OPENCODE_CONFIG_CONTENT": "catalog"})
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: (seen.update({"kw": kw}) or subprocess.CompletedProcess(cmd, 0, "ok", "")))
+    vision._see_via_run(CFG, "q", "/tmp/x.png")
+    assert seen["kw"]["env"]["OPENCODE_CONFIG_CONTENT"] == "catalog"

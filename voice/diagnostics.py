@@ -80,10 +80,13 @@ def _desktop_capability(config, session: str) -> dict:
         if importlib.util.find_spec('dbus_next') is None:
             capability['reason'] = 'dbus-next ausente no runtime Python do Jarvis'
             return capability
+        eis_available, eis_reason = _eis_input_status()
         capability.update(
             available=True,
             authorization_required=True,
             reason='backend Wayland disponivel; o portal exige autorizacao do usuario para captura e controle; runtime ainda nao validado',
+            eis_input_available=eis_available,
+            eis_input_reason=eis_reason,
         )
         return capability
     if session == 'x11':
@@ -96,6 +99,20 @@ def _desktop_capability(config, session: str) -> dict:
         return capability
     capability['reason'] = 'sessao grafica desconhecida'
     return capability
+
+
+def _eis_input_status() -> tuple[bool, str]:
+    if importlib.util.find_spec('libei') is None:
+        return False, 'python-libei ausente; cliques usam fallback RemoteDesktop'
+    try:
+        from libei import ei, portal
+        if not ei.is_available():
+            return False, 'biblioteca nativa libei ausente; cliques usam fallback RemoteDesktop'
+        if not portal.is_available():
+            return False, 'PyGObject/Gio ausente; cliques usam fallback RemoteDesktop'
+    except Exception as exc:
+        return False, f'libei/EIS indisponivel ({exc}); cliques usam fallback RemoteDesktop'
+    return True, 'libei/EIS disponivel; a sessao exige autorizacao do portal'
 
 
 def diagnose(config) -> dict:

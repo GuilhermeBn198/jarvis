@@ -15,6 +15,10 @@ EXCLUDED={'.venv','node_modules','target','__pycache__','.pytest_cache','.superp
 
 def build(output: Path):
     paths=subprocess.check_output(['git','ls-files','-z','--cached','--others','--exclude-standard'],cwd=ROOT).decode().split('\0')
+    # A local .opencode/.gitignore may hide these already tracked manifests
+    # when the build container starts with a fresh, empty Git index.
+    paths.extend(name for name in ('.opencode/package.json','.opencode/package-lock.json')
+                 if (ROOT/name).is_file())
     output.parent.mkdir(parents=True,exist_ok=True)
     with output.open('wb') as stream, gzip.GzipFile(filename='',mode='wb',fileobj=stream,mtime=0) as compressed:
         with tarfile.open(fileobj=compressed,mode='w') as archive:

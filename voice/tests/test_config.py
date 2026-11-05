@@ -48,6 +48,11 @@ def test_voice_agent_and_log_env_overrides():
     assert cfg.voice_log_path == "/tmp/v.jsonl"
 
 
+def test_agent_model_comes_from_persisted_settings_and_env_overrides():
+    assert load_config({}, settings={"agent_model":"ollama/minimax:cloud"}).agent_model == "ollama/minimax:cloud"
+    assert load_config({"AGENT_MODEL":"ollama/qwen3:8b"}, settings={"agent_model":"ollama/minimax:cloud"}).agent_model == "ollama/qwen3:8b"
+
+
 def test_backend_defaults():
     cfg = load_config({})
     assert cfg.agent_backend == "serve"

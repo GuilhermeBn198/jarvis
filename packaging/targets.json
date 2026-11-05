@@ -4,16 +4,14 @@
     "version": "rolling",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "pkg.tar.{zst,xz}",
     "recipe": "packaging/arch/PKGBUILD",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "debian": {
@@ -21,16 +19,14 @@
     "version": "13",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "deb",
     "recipe": "packaging/debian/control",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "fedora": {
@@ -38,16 +34,14 @@
     "version": "44",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "rpm",
     "recipe": "packaging/rpm/fedora/jarvis-assistant.spec",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "ubuntu": {
@@ -55,16 +49,14 @@
     "version": "24.04",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "deb",
     "recipe": "packaging/ubuntu/Dockerfile",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "suse": {
@@ -72,16 +64,14 @@
     "version": "rolling",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "rpm",
     "recipe": "packaging/rpm/suse/jarvis-assistant.spec",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "rhel": {
@@ -89,16 +79,14 @@
     "version": "10",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "rpm",
     "recipe": "packaging/rpm/rhel/jarvis-assistant.spec",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "alpine": {
@@ -106,16 +94,14 @@
     "version": "3.24",
     "libc": "musl",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "apk",
     "recipe": "packaging/alpine/APKBUILD",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "flatpak": {
@@ -123,16 +109,14 @@
     "version": "GNOME Platform 49",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "flatpak",
     "recipe": "packaging/flatpak/com.jarvis.overlay.yml",
     "implementation": "recipe",
     "validation": "bundle-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "void-glibc": {
@@ -140,42 +124,41 @@
     "version": "rolling",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "xbps",
     "recipe": "packaging/void/template",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "void-musl": {
     "distro": "void",
     "version": "rolling",
+    "delivery_scope": "excluded",
+    "scope_reason": "User scope amendment 2026-11-05; retain recipe and validation as historical evidence.",
     "libc": "musl",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "xbps",
     "recipe": "packaging/void-musl/template",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "gentoo": {
     "distro": "gentoo",
     "version": "rolling",
+    "delivery_scope": "excluded",
+    "scope_reason": "User scope amendment 2026-10-22; retain existing recipe and validation as historical evidence.",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "ebuild",
     "recipe": "packaging/gentoo/jarvis-assistant-0.1.0.ebuild",
@@ -188,27 +171,28 @@
   "nix": {
     "distro": "nixos",
     "version": null,
+    "delivery_scope": "excluded",
+    "scope_reason": "User scope amendment 2026-11-05; retain recipe and validation as historical evidence.",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "nix",
     "recipe": "packaging/nix/default.nix",
     "implementation": "recipe",
     "validation": "installed-smoke",
     "validated_architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ]
   },
   "guix": {
     "distro": "guix",
     "version": null,
+    "delivery_scope": "excluded",
+    "scope_reason": "User scope amendment 2026-10-22; retain existing recipe and validation as historical evidence.",
     "libc": "glibc",
     "architectures": [
-      "x86_64",
-      "aarch64"
+      "x86_64"
     ],
     "format": "guix",
     "recipe": "packaging/guix/jarvis.scm",
@@ -221,6 +205,8 @@
   "slackware": {
     "distro": "slackware",
     "version": "current",
+    "delivery_scope": "excluded",
+    "scope_reason": "User scope amendment 2026-11-05; retain recipe and validation as historical evidence.",
     "libc": "glibc",
     "architectures": [
       "x86_64"
@@ -236,6 +222,8 @@
   "solus": {
     "distro": "solus",
     "version": null,
+    "delivery_scope": "excluded",
+    "scope_reason": "User scope amendment 2026-11-05; retain recipe and validation as historical evidence.",
     "libc": "glibc",
     "architectures": [
       "x86_64"

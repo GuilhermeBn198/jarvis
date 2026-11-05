@@ -16,6 +16,8 @@ def test_staged_launcher_works_from_arbitrary_directory(tmp_path):
     assert report['platform']=='linux'
     assert report['project_root']==str(prefix/'lib/jarvis')
     assert (prefix/'lib/jarvis/.opencode/plugins/act-tools.ts').is_file()
+    assert (prefix/'lib/jarvis/.opencode/plugins/model-tools.ts').is_file()
+    assert (prefix/'lib/jarvis/voice/model_selection.py').is_file()
     assert (prefix/'lib/jarvis/voice/triggers.json').is_file()
     assert (prefix/'share/applications/com.jarvis.overlay.desktop').is_file()
     opencode_license=prefix/'share/licenses/jarvis/opencode-MIT.txt'

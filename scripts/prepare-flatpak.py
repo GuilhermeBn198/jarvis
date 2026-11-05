@@ -40,7 +40,7 @@ def prepare(output: Path,resume: bool=False,wheelhouse: Path | None=None):
     subprocess.run(['cargo','vendor','--locked','--manifest-path',str(source/'gui/src-tauri/Cargo.toml'),str(source/'cargo-vendor')],check=True)
     (source/'.cargo').mkdir(exist_ok=True)
     (source/'.cargo/config.toml').write_text('[source.crates-io]\nreplace-with="vendored-sources"\n[source.vendored-sources]\ndirectory="cargo-vendor"\n')
-    subprocess.run(['npm','ci','--prefix',str(source/'.opencode'),'--ignore-scripts'],check=True)
+    subprocess.run([str(ROOT/'scripts/npm-ci.sh'),'--prefix',str(source/'.opencode'),'--ignore-scripts'],check=True)
     wheels=source/'wheels';wheels.mkdir(exist_ok=True)
     permissions=['--filesystem='+str(source)]
     offline=[]
@@ -54,7 +54,7 @@ def prepare(output: Path,resume: bool=False,wheelhouse: Path | None=None):
                     '-r',str(source/'voice/requirements-linux.txt'),'-r',str(source/'mcp_servers/win_context/requirements.txt'),
                     '-r',str(source/'mcp_servers/delegate_local/requirements.txt'),*offline],check=True)
     arch=platform.machine()
-    if arch not in ('x86_64','aarch64'):raise ValueError('arquitetura nao suportada')
+    if arch != 'x86_64':raise ValueError('Flatpak suporta somente x86_64')
     subprocess.run(['python3',str(ROOT/'scripts/fetch-opencode.py'),'--target',arch+'-glibc','--output',str(source/'flatpak-agent')],check=True)
     hashes={str(path.relative_to(source)):sha256(path)
             for path in sorted(wheels.glob('*.whl'))}

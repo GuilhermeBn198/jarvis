@@ -19,12 +19,18 @@ guix package --profile="$task_profile" --install "$task_store"
 test "$("$task_store/lib/jarvis/bin/opencode" --version)" = 1.18.23
 task_pythonpath=$(sed -n 's/^export PYTHONPATH="\([^$]*\).*/\1/p' "$task_store/bin/jarvis")
 [ -n "$task_pythonpath" ] || { echo 'Guix launcher has no embedded Python module path.' >&2; exit 1; }
-PYTHONPATH="$task_pythonpath${PYTHONPATH:+:$PYTHONPATH}" \
+PYTHONPATH="$task_store/lib/jarvis/voice:$task_pythonpath${PYTHONPATH:+:$PYTHONPATH}" \
 "$task_store/lib/jarvis/runtime/bin/python3" - <<'PY'
 import importlib
-for name in ('faster_whisper', 'piper', 'mcp', 'httpx', 'dbus_next'):
+for name in ('faster_whisper', 'piper', 'mcp', 'httpx', 'dbus_next', 'libei'):
     importlib.import_module(name)
 print('Guix Python runtime imports passed')
+from libei import ei, portal
+from linux_eis import EISPointer
+if not ei.is_available() or not portal.is_available():
+    result = EISPointer().click({'x': 1, 'y': 1})
+    assert result['status'] == 'unsupported', result
+    print('Guix optional EIS native-library fallback passed')
 PY
 test "$(cat "$task_data/jarvis/package-test")" = preserved
 

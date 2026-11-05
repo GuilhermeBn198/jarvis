@@ -3,6 +3,7 @@
   stdenvNoCC,
   stdenv,
   python314,
+  libei,
   autoPatchelfHook,
   buildNpmPackage,
   fetchurl,
@@ -31,7 +32,7 @@
 }:
 let
   opencodeSources = builtins.fromJSON (builtins.readFile "${src}/packaging/opencode-sources.json");
-  target = if stdenv.hostPlatform.isAarch64 then "aarch64-glibc" else "x86_64-glibc";
+  target = "x86_64-glibc";
   opencodeSource = opencodeSources.${target};
   opencodeArchive = fetchurl {
     url = opencodeSource.url;
@@ -55,10 +56,7 @@ let
   };
 
   python = python314;
-  piperWheel = if stdenv.hostPlatform.isAarch64 then {
-    url = "https://files.pythonhosted.org/packages/5e/90/de832b09736db8c26c9b5dd25cb408ed065b1d9535e05c78947aec056e36/piper_tts-1.8.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_28_aarch64.whl";
-    sha256 = "3f60c1917de6d8e8033f395878ad3f88f6dfee88a8b05f98971a275f76a38484";
-  } else {
+  piperWheel = {
     url = "https://files.pythonhosted.org/packages/84/81/0112a7d510911f33018dc24023d1655bb772f84a4e95fe7f0180f66bbd17/piper_tts-1.8.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl";
     sha256 = "25b4d3f31ff70c8fa7151908e00aaa5650cbdf16bca8fcf21299f3941b89a7d3";
   };
@@ -74,6 +72,17 @@ let
     pythonImportsCheck = [ "piper" ];
   };
 
+  pythonLibei = python.pkgs.buildPythonPackage {
+    pname = "python-libei";
+    version = "0.6.1";
+    format = "wheel";
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/62/1f/a79da59d3e97714b8f9d7ccc789963c6e5eb029d82343bec18136e3f522b/python_libei-0.6.1-py3-none-any.whl";
+      hash = "sha256-S/iPhC0x5D2HUqI5CStuX1GhE6sCKbWNP1eBVt1Jx6w=";
+    };
+    pythonImportsCheck = [ "libei" ];
+  };
+
   pythonEnv = python.withPackages (ps: with ps; [
     av
     ctranslate2
@@ -85,6 +94,7 @@ let
     onnxruntime
     pygobject3
     piperTts
+    pythonLibei
   ]);
 
   overlay = rustPlatform.buildRustPackage {
@@ -129,7 +139,7 @@ let
       cp -a "${src}/.opencode/." .
       chmod -R u+w .
     '';
-    npmDepsHash = "sha256-lnyoIScrNdPeu9J7XUpbteOUQVENF7tzJqrII0fwTbY=";
+    npmDepsHash = "sha256-DqqV4xwHMWfevxHxgje2F4owhCTKVFux0AqMdrGBkmM=";
     dontNpmBuild = true;
     installPhase = ''
       mkdir -p "$out"
@@ -165,6 +175,7 @@ stdenvNoCC.mkDerivation {
     libsoup_3
     glib
     mesa
+    libei
   ] ++ runtimeTools;
   installPhase = ''
     runHook preInstall
@@ -180,14 +191,15 @@ stdenvNoCC.mkDerivation {
     ln -s "${plugin}/node_modules" "$out/lib/jarvis/.opencode/node_modules"
     rm "$out/bin/jarvis"
     makeWrapper "$out/lib/jarvis/jarvis" "$out/bin/jarvis" \
-      --prefix PATH : "${runtimePath}"
+      --prefix PATH : "${runtimePath}" \
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libei ]}"
     runHook postInstall
   '';
   meta = {
     description = "Voice assistant with native desktop overlay";
     homepage = "https://github.com/GuilhermeBn/jarvis";
     license = with lib.licenses; [ asl20 mit gpl3Plus ];
-    platforms = [ "x86_64-linux" "aarch64-linux" ];
+    platforms = [ "x86_64-linux" ];
     mainProgram = "jarvis";
   };
 }

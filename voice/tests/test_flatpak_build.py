@@ -77,7 +77,7 @@ def test_wl_clipboard_completions_stay_inside_application_prefix():
     assert '-Dfishcompletiondir=/app/share/fish/vendor_completions.d' in module.get('config-opts',[])
 
 
-@pytest.mark.parametrize('arch',['x86_64','aarch64'])
+@pytest.mark.parametrize('arch',['x86_64'])
 @pytest.mark.parametrize('builder',['app','host'])
 def test_build_refreshes_manifest_when_prepared_sources_are_reused(tmp_path,arch,builder):
     import os,subprocess,sys
@@ -92,11 +92,6 @@ pins={
 'org.gnome.Sdk//49':'faf37bdc962236ef8e61fd0b289fd311f7961cc5a7b4bc11a6e29506d7874003',
 'org.gnome.Platform//49':'2bb946ea4ebb050f6a32f90e979feb975b08280d1ff1aac881dec3d1361ad84d',
 'org.freedesktop.Sdk.Extension.rust-stable//25.08':'09784a9989ae5a7fda6a2280033ca9aa32aac6907961da8b18be4590dd261507'}
-import os
-if os.environ['TEST_ARCH']=='aarch64':pins=dict(zip(pins,[
-'fff4a1de0b4cef7dc8163dcad095aac1fe076639a097de0b945687e8cb4b3806',
-'c3daeced6f88f9c4ffc4f88c798c48fffd395d873fc0d36b7fc73b753d7f59c9',
-'ff31047b5582073ea1284807c0d654c787a731d5ffda7dfba0922635dfad8d7b']))
 if sys.argv[1]=='info':print(pins[sys.argv[-1]])
 elif sys.argv[1]=='run':
     manifest=json.load(open(sys.argv[-1]))
@@ -109,6 +104,19 @@ else:sys.exit(5)
     host_builder.chmod(0o755)
     result=subprocess.run([str(ROOT/'scripts/build-flatpak.sh'),str(output)],env=dict(os.environ,JARVIS_FLATPAK_BUILDER=builder,TEST_ARCH=arch,PATH=str(tools)+os.pathsep+os.environ['PATH']),capture_output=True,text=True)
     assert result.returncode==({'app':77,'host':78}[builder]),result.stderr
+
+
+def test_build_rejects_aarch64(tmp_path):
+    import os,subprocess
+    tools=tmp_path/'tools';tools.mkdir()
+    uname=tools/'uname'
+    uname.write_text('#!/bin/sh\nprintf "aarch64\\n"\n');uname.chmod(0o755)
+    result=subprocess.run(
+        [str(ROOT/'scripts/build-flatpak.sh'),str(tmp_path/'output')],
+        env=dict(os.environ,PATH=str(tools)+os.pathsep+os.environ['PATH']),
+        capture_output=True,text=True)
+    assert result.returncode==2
+    assert 'suporta somente x86_64' in result.stderr
 
 
 def test_prebuilt_agent_is_not_rewritten_during_debug_extraction():

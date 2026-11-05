@@ -7,7 +7,7 @@ DEFAULT_SETTINGS_PATH = os.path.expanduser("~/.config/jarvis/settings.json")
 # Chaves que o painel de configuracao do overlay pode editar.
 NUMERIC_KEYS = ("noise_db", "silence_s", "wait_s", "max_s", "min_speech_s")
 BOOL_KEYS = ("stream_tts",)
-STRING_KEYS = ("mic_device",)
+STRING_KEYS = ("mic_device", "agent_model")
 # Chaves de escolha: valor precisa estar na lista (senao e descartado).
 CHOICE_KEYS = {
     "input_mode": ("auto", "ptt", "fixed"),

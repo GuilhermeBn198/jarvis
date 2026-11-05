@@ -1,6 +1,7 @@
 """Native file tools: explicit scope and no-follow traversal at syscall time."""
 import json
 import os
+import secrets
 import stat
 from contextlib import contextmanager
 from pathlib import Path
@@ -65,7 +66,9 @@ def read_text(path: str) -> str:
 
 def write_text(path: str,content: str,append: bool,confirm: bool,allowlist: list[str]) -> dict:
     if confirm is not True:raise ValueError('recusado: escrita exige confirm=true')
-    if not isinstance(content,str) or len(content.encode('utf-8'))>256*1024:raise ValueError('conteudo invalido ou excede 256 KiB')
+    if not isinstance(content,str):raise ValueError('conteudo invalido')
+    payload=content.encode('utf-8')
+    if len(payload)>256*1024:raise ValueError('conteudo excede 256 KiB')
     if not isinstance(append,bool):raise ValueError('append deve ser booleano')
     target=checked_path(path)
     roots=parse_allowlist(json.dumps(allowlist))
@@ -75,16 +78,49 @@ def write_text(path: str,content: str,append: bool,confirm: bool,allowlist: list
     # No O_TRUNC before validating the opened inode: links/special files stay intact.
     root=max(matching,key=lambda item:len(item.parts))
     with parent_descriptor(target,create=True,root=root) as parent:
-        flags=os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC
-        if append:flags|=os.O_APPEND
-        fd=os.open(target.name,flags,0o600,dir_fd=parent)
+        flags=os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC
+        try:source=os.open(target.name,flags,dir_fd=parent)
+        except FileNotFoundError:source=None
+        info=None
         try:
-            info=os.fstat(fd)
-            if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1:
-                raise ValueError('recusado: destino especial ou com hardlinks')
-            if not append:os.ftruncate(fd,0)
-            with os.fdopen(fd,'w',encoding='utf-8',closefd=False) as stream:
-                stream.write(content);stream.flush()
-            os.fsync(fd)
-        finally:os.close(fd)
+            if source is not None:
+                info=os.fstat(source)
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1:
+                    raise ValueError('recusado: destino especial ou com hardlinks')
+            temporary=None
+            temp_fd=None
+            for _ in range(100):
+                candidate=f'.jarvis-write-{os.getpid()}-{secrets.token_hex(8)}'
+                try:
+                    temp_fd=os.open(candidate,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW|os.O_CLOEXEC,0o600,dir_fd=parent)
+                    temporary=candidate
+                    break
+                except FileExistsError:continue
+            if temporary is None:raise OSError('nao foi possivel criar arquivo temporario seguro')
+            try:
+                with os.fdopen(temp_fd,'wb',closefd=False) as stream:
+                    if append and source is not None:
+                        while True:
+                            chunk=os.read(source,64*1024)
+                            if not chunk:break
+                            stream.write(chunk)
+                    stream.write(payload)
+                    stream.flush()
+                    if info is not None:os.fchmod(temp_fd,info.st_mode&0o777)
+                    os.fsync(temp_fd)
+                os.close(temp_fd);temp_fd=None
+                if source is None:
+                    # link() installs only if no other writer created the name.
+                    os.link(temporary,target.name,src_dir_fd=parent,dst_dir_fd=parent,follow_symlinks=False)
+                    os.unlink(temporary,dir_fd=parent)
+                else:
+                    # Replacing a directory entry avoids mutating a hardlinked inode
+                    # if another process links it after our st_nlink check.
+                    os.replace(temporary,target.name,src_dir_fd=parent,dst_dir_fd=parent)
+            finally:
+                if temp_fd is not None:os.close(temp_fd)
+                try:os.unlink(temporary,dir_fd=parent)
+                except FileNotFoundError:pass
+        finally:
+            if source is not None:os.close(source)
     return {'status':'ok','detail':f'{"concatenado" if append else "escrito"}: {target}'}

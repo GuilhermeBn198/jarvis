@@ -44,7 +44,7 @@ rundeps    :
     - xdg-utils
 build      : |
     cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
-    npm ci --prefix .opencode --ignore-scripts
+    scripts/npm-ci.sh --prefix .opencode --ignore-scripts
     python3 scripts/fetch-opencode.py --target x86_64-glibc --output opencode-package
 install    : |
     python3 scripts/prepare-package.py --prefix /usr --destdir "$installdir" \

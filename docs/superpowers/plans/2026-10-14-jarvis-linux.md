@@ -12,7 +12,7 @@
 
 ## User scope amendment — 2026-10-22
 
-Por decisão explícita do usuário, Gentoo e GNU Guix ficam fora da entrega atual. Não iniciar nem retomar compilações ou validações nesses alvos. Preservar os resultados já obtidos como evidência histórica e manter AArch64 pausado em `docs/notes/PAUSED-GENTOO-GUIX.md`. A conclusão da matriz considera somente os demais alvos da especificação.
+Por decisão explícita do usuário, Gentoo e GNU Guix ficam fora da entrega atual. Não iniciar nem retomar compilações ou validações nesses alvos. Preservar os resultados já obtidos como evidência histórica e manter AArch64 pausado em `docs/notes/linux-arm64-builds-paused.md`. O catálogo pode manter as receitas históricas, mas deve marcar estes alvos como excluídos da entrega. A conclusão da matriz considera somente os demais alvos da especificação.
 
 ## Global Constraints
 

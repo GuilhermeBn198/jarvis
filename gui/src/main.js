@@ -1,4 +1,5 @@
 import { resizeWindow } from "./window-layout.mjs";
+import { getModelCatalog, saveSettingsRequest } from "./model-settings.mjs";
 
 let base = "http://localhost:8765";
 
@@ -219,7 +220,7 @@ const settingsPanel = document.getElementById("settings");
 const measureOut = document.getElementById("measure-out");
 const ORB_SIZE = [120, 120];
 const MENU_SIZE = [210, 310];
-const PANEL_SIZE = [280, 470];
+const PANEL_SIZE = [300, 570];
 
 function numOrNull(id) {
   const v = document.getElementById(id).value.trim();
@@ -290,7 +291,57 @@ async function loadSettings() {
     }
   } catch (error) { console.error("Falha ao consultar vozes disponiveis", error); }
   document.getElementById("s-tts").value = s.tts_backend ?? "piper";
+  await loadModels(s.agent_model);
 }
+
+async function loadModels(selected) {
+  const select = document.getElementById("s-agent-model");
+  const out = document.getElementById("model-out");
+  select.replaceChildren();
+  try {
+    const catalog = await getModelCatalog(base, selected);
+    for (const model of catalog.models) {
+      const option = document.createElement("option");
+      option.value = `ollama/${model.name}`;
+      option.textContent = `${model.name}${model.cloud ? " · cloud" : " · local"}`;
+      option.dataset.cloud = String(model.cloud);
+      option.dataset.available = "true";
+      select.appendChild(option);
+    }
+    const current = catalog.selected;
+    if (current && !Array.from(select.options).some((option) => option.value === current)) {
+      const missing = document.createElement("option");
+      missing.value = current;
+      missing.textContent = `${current} · indisponível`;
+      missing.dataset.available = "false";
+      select.appendChild(missing);
+    }
+    select.value = current;
+    out.textContent = "";
+    if (current) select.dispatchEvent(new Event("change"));
+  } catch (error) {
+    const keep = selected || "";
+    if (keep) {
+      const option = document.createElement("option");
+      option.value = keep;
+      option.textContent = `${keep} · catálogo indisponível`;
+      option.dataset.available = "false";
+      select.appendChild(option);
+      select.value = keep;
+    }
+    out.textContent = `Não foi possível carregar os modelos: ${error.message}`;
+  }
+}
+
+document.getElementById("s-agent-model").addEventListener("change", (event) => {
+  const option = event.target.selectedOptions[0];
+  const out = document.getElementById("model-out");
+  out.textContent = option?.dataset.cloud === "true"
+    ? "Cloud: na próxima solicitação, transcrição, prompt e contexto de tela podem ser enviados ao provedor."
+    : option?.dataset.available === "false"
+      ? "Origem desconhecida: modelo indisponível no catálogo."
+      : "Modelo local selecionado.";
+});
 
 async function openSettings() {
   menu.classList.add("hidden");
@@ -356,13 +407,15 @@ async function saveSettings(restart) {
     if (body[k] === null) delete body[k];
   }
   try {
-    await fetch(`${base}/settings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const model = document.getElementById("s-agent-model").value;
+    const availableModel = model && document.getElementById("s-agent-model").selectedOptions[0]?.dataset.available === "true" ? model : "";
+    const result = await saveSettingsRequest(base, body, availableModel);
+    document.getElementById("model-out").textContent = result.modelError
+      ? `Configurações salvas, mas o modelo não foi atualizado: ${result.modelError}`
+      : "Configurações salvas.";
   } catch (e) {
-    /* ignora */
+    document.getElementById("model-out").textContent = `Erro ao salvar: ${e.message}`;
+    return;
   }
   if (restart) await restartBrain();
 }

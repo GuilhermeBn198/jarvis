@@ -51,6 +51,29 @@ def test_symlink_swap_at_open_is_rejected(tmp_path,monkeypatch):
     assert outside.read_text()=='untouched'
 
 
+@pytest.mark.parametrize('append',[False,True])
+def test_write_does_not_modify_hardlink_created_after_inode_check(tmp_path,monkeypatch,append):
+    root=tmp_path/'allowed';root.mkdir()
+    destination=root/'note';destination.write_text('old')
+    outside=tmp_path/'outside'
+    real_fstat=os.fstat
+    linked=False
+    def raced_fstat(fd):
+        nonlocal linked
+        info=real_fstat(fd)
+        if not linked and info.st_ino==destination.stat().st_ino:
+            os.link(destination,outside)
+            linked=True
+        return info
+    monkeypatch.setattr(os,'fstat',raced_fstat)
+
+    write_text(str(destination),'new',append,True,[str(root)])
+
+    assert linked
+    assert destination.read_text()==('oldnew' if append else 'new')
+    assert outside.read_text()=='old'
+
+
 def test_missing_allowlist_root_does_not_create_ancestors(tmp_path):
     root=tmp_path/'outside-scope'/'allowed'
     with pytest.raises((ValueError,OSError)):

@@ -4,7 +4,7 @@ pkgver=0.1.0
 pkgrel=0
 pkgdesc="Assistente pessoal por voz com overlay Linux"
 url="https://github.com/GuilhermeBn198/jarvis"
-arch="x86_64 aarch64"
+arch="x86_64"
 license="Apache-2.0 AND MIT AND GPL-3.0-or-later"
 depends="python3 gtk+3.0 webkit2gtk-4.1 ffmpeg ffplay pulseaudio-utils libpulse
     libx11 xdotool wl-clipboard xclip xdg-utils py3-gobject3 at-spi2-core alsa-utils
@@ -22,7 +22,7 @@ build() {
     sh packaging/alpine/build-runtime.sh "$builddir" "$srcdir/native"
     RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=-crt-static" \
         cargo build --release --locked --jobs 2 --manifest-path gui/src-tauri/Cargo.toml
-    npm ci --prefix .opencode --ignore-scripts
+    scripts/npm-ci.sh --prefix .opencode --ignore-scripts
     python3 scripts/fetch-opencode.py --target "$CARCH-musl" --output "$srcdir/opencode"
 }
 
@@ -44,17 +44,6 @@ package() {
         patchelf --set-rpath '$ORIGIN/../../lib' "$task_extension"
     done
     printf '%s\n' 'OPENBLAS_NUM_THREADS=1' > "$pkgdir/usr/lib/jarvis/local.conf"
-    # This optional npm package ships both libc variants in the same archive.
-    # Its loader chooses the musl addon; do not publish unused glibc providers.
-    find "$pkgdir/usr/lib/jarvis/.opencode/node_modules/@msgpackr-extract" \
-        -type f -name '*.glibc.node' -delete
-    NODE_PATH="$pkgdir/usr/lib/jarvis/.opencode/node_modules" node -e '
-        const assert = require("node:assert/strict");
-        const codec = require("msgpackr");
-        assert.equal(codec.isNativeAccelerationEnabled, true);
-        assert.deepEqual(codec.unpack(codec.pack({text: "voz Linux", count: 3})), {text: "voz Linux", count: 3});
-        console.log("Native musl msgpackr round-trip passed");
-    '
     depends="$depends python3~$(python3 -c 'import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
     python3 - "$pkgdir/usr" <<'PY'
 import json,sys

@@ -107,21 +107,26 @@ def x11_action(operation: str, args: dict,run=None) -> dict:
 
 def _desktop_name(entry: configparser.SectionProxy, locales: list[str]) -> str:
     for locale in locales:
-        for candidate in (locale, locale.split('@',1)[0]):
+        for candidate in (locale, locale.split('.',1)[0]):
             key=f'Name[{candidate}]'
             if entry.get(key): return entry.get(key)
-        language=locale.split('_',1)[0].split('@',1)[0]
+        language=locale.split('.',1)[0].split('_',1)[0].split('@',1)[0]
         if language and entry.get(f'Name[{language}]'): return entry.get(f'Name[{language}]')
     return entry.get('Name','')
 
 
 def _locale_candidates(env: dict[str,str]) -> list[str]:
     raw=[]
-    raw.extend(env.get('LANGUAGE','').split(':'))
-    raw.extend((env.get('LC_MESSAGES',''),env.get('LANG','')))
+    raw.extend((env.get('LC_ALL',''),env.get('LC_MESSAGES','')))
+    if not env.get('LC_ALL'):
+        raw.extend(env.get('LANGUAGE','').split(':'))
+    raw.append(env.get('LANG',''))
     locales=[]
     for locale in raw:
-        locale=locale.split('.',1)[0]
+        if '.' in locale:
+            base, codeset = locale.split('.',1)
+            modifier = codeset[codeset.index('@'):] if '@' in codeset else ''
+            locale = base + modifier
         if locale and locale not in ('C','POSIX') and locale not in locales:
             locales.append(locale)
     return locales
@@ -145,15 +150,16 @@ def _application_data_dirs(env: dict[str,str]) -> list[Path]:
 
 def _resolve_desktop_id(target: str, env: dict[str,str], which) -> tuple[str|None,Path|None,str|None]:
     entries={}
+    seen_ids=set()
     # XDG_DATA_HOME is first; the first desktop ID shadows later copies.
     for applications in _application_data_dirs(env):
         if not applications.is_dir(): continue
         for path in sorted(applications.rglob('*.desktop')):
             relative=path.relative_to(applications).as_posix()
             desktop_id=relative[:-len('.desktop')].replace('/','-')
-            normalized_id=_normalized_app_name(desktop_id)
-            if normalized_id in entries: continue
-            entries[normalized_id]=None  # Hidden entries also shadow lower-priority copies.
+            if desktop_id in seen_ids: continue
+            seen_ids.add(desktop_id)
+            entries[desktop_id]=None  # Exact desktop IDs shadow lower-priority copies.
             parser=configparser.RawConfigParser(interpolation=None,strict=False)
             parser.optionxform=str
             try:
@@ -164,21 +170,26 @@ def _resolve_desktop_id(target: str, env: dict[str,str], which) -> tuple[str|Non
             try:
                 if entry.get('Type')!='Application' or entry.getboolean('Hidden',fallback=False) or entry.getboolean('NoDisplay',fallback=False):
                     continue
+                if not entry.get('Exec','').strip() and not entry.getboolean('DBusActivatable',fallback=False):
+                    continue
             except ValueError:
                 continue
             try_exec=entry.get('TryExec','').strip()
             if try_exec and not (Path(try_exec).is_absolute() and Path(try_exec).is_file() and os.access(try_exec,os.X_OK)) and not which(try_exec):
                 continue
             name=_desktop_name(entry,_locale_candidates(env))
-            if name: entries[normalized_id]=(desktop_id,name,path)
+            if name: entries[desktop_id]=(desktop_id,name,path)
 
     target_key=_normalized_app_name(target)
     if not target_key: return None,None,None
     matches=set()
-    for normalized_id,entry in entries.items():
+    query_ids={target_key}
+    if target_key.endswith('.desktop'): query_ids.add(target_key[:-len('.desktop')])
+    else: query_ids.add(target_key+'.desktop')
+    for desktop_id,entry in entries.items():
         if entry is None: continue
         desktop_id,name,path=entry
-        if target_key in (normalized_id,_normalized_app_name(name)):
+        if query_ids.intersection({_normalized_app_name(desktop_id),_normalized_app_name(desktop_id+'.desktop')}) or target_key==_normalized_app_name(name):
             matches.add((desktop_id,path))
     if len(matches)>1: return None,None,'nome de aplicativo ambiguo'
     if matches:
@@ -209,8 +220,9 @@ def open_target(args: dict) -> dict:
             launcher=shutil.which('gtk-launch') or shutil.which('gio')
             if not launcher: return {'status':'error','detail':'gtk-launch ou gio necessario para abrir aplicativos do menu'}
             argv=[launcher,desktop_id] if Path(launcher).name=='gtk-launch' else [launcher,'launch',str(desktop_file)]
-            subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL,start_new_session=True)
+            proc=subprocess.run(argv,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,
+                                stderr=subprocess.PIPE,text=True,errors='replace',timeout=20)
+            if proc.returncode: return {'status':'error','detail':proc.stderr.strip()[-300:] or 'launcher falhou'}
         else:
             proc=subprocess.run(['xdg-open',target],capture_output=True,text=True,errors='replace',timeout=20)
             if proc.returncode: return {'status':'error','detail':proc.stderr.strip()[-300:] or 'xdg-open falhou'}
@@ -221,7 +233,9 @@ def open_target(args: dict) -> dict:
 
 class WaylandInput:
     def __init__(self, portal):
+        from linux_eis import EISPointer
         self.portal=portal
+        self.eis=EISPointer()
         self.session=None
         self.devices=0
         self.streams=[]
@@ -230,6 +244,7 @@ class WaylandInput:
         self.session=None
         self.devices=0
         self.streams=[]
+        self.eis.close()
 
     async def ensure_session(self):
         if self.session: return
@@ -259,6 +274,9 @@ class WaylandInput:
         if background_requested(args):
             return {'status':'unsupported','detail':'background requer AT-SPI; foco preservado'}
         if operation=='act_open': return await asyncio.to_thread(open_target,args)
+        if operation=='act_click':
+            result=await asyncio.to_thread(self.eis.click,args)
+            if result.get('status')!='unsupported': return result
         try:
             await self.ensure_session()
             if operation in ('act_type','act_key'):
@@ -288,10 +306,12 @@ class WaylandInput:
                 candidates=[stream for stream in self.streams if 'stream' not in args or stream[0]==args['stream']]
                 if len(candidates)!=1: raise ValueError('stream invalido ou indisponivel')
                 stream,props=candidates[0]
-                # Pixel dimensions are not assumed to equal logical coordinates.
-                size=props.get('logical_size',props.get('size'))
+                # NotifyPointerMotionAbsolute coordinates use the logical stream
+                # space. A pixel `size` is not a safe substitute when the portal
+                # omits `logical_size`.
+                size=props.get('logical_size')
                 size=getattr(size,'value',size)
-                if not size: raise PortalError('unsupported','portal nao informou dimensoes no espaco do compositor; click recusado')
+                if not size: return {'status':'unsupported','detail':'portal nao informou logical_size do stream; click recusado'}
                 if args['x']>=size[0] or args['y']>=size[1]: raise ValueError('coordenadas fora do stream')
                 await self.portal.call(REMOTE,'NotifyPointerMotionAbsolute','oa{sv}udd',[self.session,{},stream,float(args['x']),float(args['y'])])
                 button={'left':272,'right':273,'middle':274}[args.get('button','left')]
@@ -307,6 +327,7 @@ class WaylandInput:
             return {'status':exc.code,'detail':str(exc)}
 
     async def close(self):
+        await asyncio.to_thread(self.eis.close)
         if self.session:
             try: await self.portal.call('org.freedesktop.portal.Session','Close','',[],path=self.session)
             except Exception: pass

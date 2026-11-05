@@ -1,0 +1,131 @@
+$ flatpak install --user --bundle --noninteractive /home/viniv/Documentos/MeusProjetos/jarvis/.worktrees/linux-port/.superpowers/sdd/2026-10-14-jarvis-linux/flatpak-native-2026-10-19/jarvis-x86_64.flatpak
+Installing runtime/org.freedesktop.Platform.GL.default/x86_64/25.08
+Installing runtime/org.freedesktop.Platform.GL.default/x86_64/25.08-extra
+Installing runtime/org.freedesktop.Platform.VAAPI.Intel/x86_64/25.08
+Installing runtime/org.freedesktop.Platform.codecs-extra/x86_64/25.08-extra
+Installing runtime/org.gnome.Platform.Locale/x86_64/49
+Installing runtime/org.gnome.Platform/x86_64/49
+Installing app/com.jarvis.overlay/x86_64/stable
+
+$ flatpak info --user com.jarvis.overlay --show-commit
+b0a66949e5d567b28e446317c5cee408fcc951657d895b364da88d6b273fdcad
+
+$ flatpak run --user --command=jarvis com.jarvis.overlay --doctor
+{
+  "project_root": "/app/lib/jarvis",
+  "platform": "linux",
+  "session": "wayland",
+  "dependencies": {
+    "ffmpeg": {
+      "available": true,
+      "path": "/usr/bin/ffmpeg",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "ffplay": {
+      "available": true,
+      "path": "/usr/bin/ffplay",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "piper": {
+      "available": true,
+      "path": "/app/lib/jarvis/python/bin/piper",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "opencode": {
+      "available": true,
+      "path": "/app/lib/jarvis/bin/opencode",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "piper_model": {
+      "available": false,
+      "path": "/home/viniv/.cache/jarvis-flatpak-upgrade-bcrkg4oi/home/.var/app/com.jarvis.overlay/data/jarvis/voices/pt_BR-faber-medium.onnx",
+      "reason": "modelo .onnx ou configuracao .onnx.json ausente"
+    }
+  },
+  "capabilities": {
+    "capture": {
+      "available": true,
+      "backend": "pulse",
+      "reason": "servidor/device precisa de teste de gravacao"
+    },
+    "tts": {
+      "available": false,
+      "backend": "piper",
+      "reason": "presenca de dependencias; sintese nao verificada"
+    },
+    "desktop": {
+      "available": false,
+      "backend": "wayland",
+      "validation": "not_run",
+      "reason": "portal Wayland exige autorizacao; controle e AT-SPI precisam de teste na sessao"
+    }
+  }
+}
+
+$ flatpak install --user --bundle --or-update --noninteractive /home/viniv/Documentos/MeusProjetos/jarvis/.worktrees/linux-port/dist/current-refresh/flatpak/x86_64/jarvis-x86_64.flatpak
+Installing app/com.jarvis.overlay/x86_64/stable
+
+$ flatpak info --user com.jarvis.overlay --show-commit
+6f65e122a89a69b86dbcc4cdb5d16eb8725f16e65cee374dc27928727f36dc1b
+
+$ flatpak run --user --command=jarvis com.jarvis.overlay --doctor
+{
+  "project_root": "/app/lib/jarvis",
+  "platform": "linux",
+  "session": "wayland",
+  "dependencies": {
+    "ffmpeg": {
+      "available": true,
+      "path": "/usr/bin/ffmpeg",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "ffplay": {
+      "available": true,
+      "path": "/usr/bin/ffplay",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "piper": {
+      "available": true,
+      "path": "/app/lib/jarvis/python/bin/piper",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "opencode": {
+      "available": true,
+      "path": "/app/lib/jarvis/bin/opencode",
+      "reason": "encontrado; runtime nao verificado"
+    },
+    "piper_model": {
+      "available": false,
+      "path": "/home/viniv/.cache/jarvis-flatpak-upgrade-bcrkg4oi/home/.var/app/com.jarvis.overlay/data/jarvis/voices/pt_BR-faber-medium.onnx",
+      "reason": "modelo .onnx ou configuracao .onnx.json ausente"
+    }
+  },
+  "capabilities": {
+    "capture": {
+      "available": true,
+      "backend": "pulse",
+      "reason": "ffmpeg enumera fontes de audio; gravacao real ainda nao testada"
+    },
+    "tts": {
+      "available": false,
+      "backend": "piper",
+      "reason": "presenca de dependencias; sintese nao verificada"
+    },
+    "desktop": {
+      "available": true,
+      "backend": "wayland",
+      "validation": "not_run",
+      "authorization_required": true,
+      "reason": "backend Wayland disponivel; o portal exige autorizacao do usuario para captura e controle; runtime ainda nao validado",
+      "eis_input_available": true,
+      "eis_input_reason": "libei/EIS disponivel; a sessao exige autorizacao do portal"
+    }
+  }
+}
+
+$ flatpak uninstall --user --noninteractive com.jarvis.overlay
+Uninstalling app/com.jarvis.overlay/x86_64/stable
+
+old commit: b0a66949e5d567b28e446317c5cee408fcc951657d895b364da88d6b273fdcad
+new commit: 6f65e122a89a69b86dbcc4cdb5d16eb8725f16e65cee374dc27928727f36dc1b
+PASS: isolated Flatpak bundle upgrade, doctor, and user-data preservation through uninstall

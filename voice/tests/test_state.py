@@ -126,27 +126,55 @@ def test_cors_headers_on_state_and_events():
         with urllib.request.urlopen(
             urllib.request.Request(
                 f"http://127.0.0.1:{hub._port}/state",
-                headers={"Origin": "http://tauri.localhost"},
+                headers={"Origin": "tauri://localhost"},
             ),
             timeout=2,
         ) as r:
-            assert r.headers["Access-Control-Allow-Origin"] == "*"
+            assert r.headers["Access-Control-Allow-Origin"] == "tauri://localhost"
+            assert r.headers["Vary"] == "Origin"
         resp = urllib.request.urlopen(
             urllib.request.Request(
                 f"http://127.0.0.1:{hub._port}/events",
-                headers={"Origin": "http://tauri.localhost"},
+                headers={"Origin": "tauri://localhost"},
             ),
             timeout=3,
         )
         try:
-            assert resp.headers["Access-Control-Allow-Origin"] == "*"
+            assert resp.headers["Access-Control-Allow-Origin"] == "tauri://localhost"
+            assert resp.headers["Vary"] == "Origin"
         finally:
             resp.close()
+        with pytest.raises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(
+                urllib.request.Request(
+                    f"http://127.0.0.1:{hub._port}/settings",
+                    headers={"Origin": "https://attacker.example"},
+                ),
+                timeout=2,
+            )
+        assert error.value.code == 403
+        assert "Access-Control-Allow-Origin" not in error.value.headers
     finally:
         hub.stop()
 
 
-def test_options_preflight_allows_cross_origin():
+@pytest.mark.parametrize("origin", ["http://tauri.localhost", "https://tauri.localhost"])
+def test_windows_tauri_origin_remains_trusted(origin):
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{hub._port}/state",
+            headers={"Origin": origin},
+        )
+        with urllib.request.urlopen(req, timeout=2) as response:
+            assert response.status == 200
+            assert response.headers["Access-Control-Allow-Origin"] == origin
+    finally:
+        hub.stop()
+
+
+def test_options_preflight_allows_trusted_tauri_origin():
     hub = StateHub(port=0)
     hub.start()
     try:
@@ -155,7 +183,7 @@ def test_options_preflight_allows_cross_origin():
                 f"http://127.0.0.1:{hub._port}/command",
                 method="OPTIONS",
                 headers={
-                    "Origin": "http://tauri.localhost",
+                    "Origin": "tauri://localhost",
                     "Access-Control-Request-Method": "POST",
                 },
             ),
@@ -163,11 +191,74 @@ def test_options_preflight_allows_cross_origin():
         )
         try:
             assert resp.status == 204
-            assert resp.headers["Access-Control-Allow-Origin"] == "*"
+            assert resp.headers["Access-Control-Allow-Origin"] == "tauri://localhost"
             assert "POST" in resp.headers["Access-Control-Allow-Methods"]
             assert "Content-Type" in resp.headers["Access-Control-Allow-Headers"]
         finally:
             resp.close()
+    finally:
+        hub.stop()
+
+
+def test_options_preflight_rejects_untrusted_origin():
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{hub._port}/model",
+            method="OPTIONS",
+            headers={
+                "Origin": "https://attacker.example",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        with pytest.raises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(req, timeout=2)
+        assert error.value.code == 403
+    finally:
+        hub.stop()
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        ("/model", {"model": "ollama/minimax-m3.1-flash:cloud"}),
+        ("/settings", {"theme": "dark"}),
+        ("/command", {"cmd": "quit"}),
+    ],
+)
+@pytest.mark.parametrize("origin", ["https://attacker.example", None])
+def test_post_rejects_untrusted_or_missing_origin_without_side_effects(path, payload, origin, tmp_path, monkeypatch):
+    monkeypatch.setenv("JARVIS_SETTINGS", str(tmp_path / "s.json"))
+    settings_path = tmp_path / "s.json"
+    settings_path.write_text(json.dumps({"agent_model": "ollama/local-model"}))
+    import state
+    monkeypatch.setattr(
+        state,
+        "list_ollama_models",
+        lambda: [
+            {"name": "local-model", "cloud": False},
+            {"name": "minimax-m3.1-flash:cloud", "cloud": True},
+        ],
+    )
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        headers = {"Content-Type": "application/json"}
+        if origin is not None:
+            headers["Origin"] = origin
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{hub._port}{path}",
+            data=json.dumps(payload).encode(),
+            headers=headers,
+            method="POST",
+        )
+        with pytest.raises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(req, timeout=2)
+        assert error.value.code == 403
+        assert json.loads(settings_path.read_text()) == {"agent_model": "ollama/local-model"}
+        assert hub.take_command() is None
     finally:
         hub.stop()
 
@@ -179,7 +270,7 @@ def test_post_command_enqueues_and_validates():
         req = urllib.request.Request(
             f"http://127.0.0.1:{hub._port}/command",
             data=json.dumps({"cmd": "mute"}).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "Origin": "tauri://localhost"},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=2) as r:
@@ -189,7 +280,7 @@ def test_post_command_enqueues_and_validates():
         bad = urllib.request.Request(
             f"http://127.0.0.1:{hub._port}/command",
             data=json.dumps({"cmd": "explode"}).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "Origin": "tauri://localhost"},
             method="POST",
         )
         try:
@@ -245,6 +336,42 @@ def test_get_settings_endpoint_empty(tmp_path, monkeypatch):
         hub.stop()
 
 
+def test_models_endpoint_returns_ollama_catalog_and_selected(tmp_path, monkeypatch):
+    monkeypatch.setenv("JARVIS_SETTINGS", str(tmp_path / "s.json"))
+    import state
+    monkeypatch.setattr(state, "list_ollama_models", lambda: [{"name":"minimax-m3.1-flash:cloud","cloud":True}])
+    monkeypatch.setattr(state, "load_settings", lambda: {"agent_model":"ollama/minimax-m3.1-flash:cloud"})
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{hub._port}/models", timeout=2) as r:
+            assert json.loads(r.read()) == {"models":[{"name":"minimax-m3.1-flash:cloud","cloud":True}],"selected":"ollama/minimax-m3.1-flash:cloud"}
+    finally:
+        hub.stop()
+
+
+def test_post_model_endpoint_validates_catalog_and_persists(tmp_path, monkeypatch):
+    monkeypatch.setenv("JARVIS_SETTINGS", str(tmp_path / "s.json"))
+    import state
+    monkeypatch.setattr(state, "list_ollama_models", lambda: [{"name":"minimax-m3.1-flash:cloud","cloud":True}])
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{hub._port}/model", data=json.dumps({"model":"ollama/minimax-m3.1-flash:cloud"}).encode(), headers={"Content-Type":"application/json", "Origin":"tauri://localhost"}, method="POST")
+        with urllib.request.urlopen(req, timeout=2) as r:
+            assert json.loads(r.read()) == {"selected":"ollama/minimax-m3.1-flash:cloud","cloud":True}
+        assert json.loads((tmp_path / "s.json").read_text())["agent_model"] == "ollama/minimax-m3.1-flash:cloud"
+        invalid = urllib.request.Request(f"http://127.0.0.1:{hub._port}/model", data=json.dumps({"model":"ollama/unknown"}).encode(), headers={"Content-Type":"application/json", "Origin":"tauri://localhost"}, method="POST")
+        try:
+            urllib.request.urlopen(invalid, timeout=2)
+            assert False, "expected HTTP 400"
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
+        assert json.loads((tmp_path / "s.json").read_text())["agent_model"] == "ollama/minimax-m3.1-flash:cloud"
+    finally:
+        hub.stop()
+
+
 def test_post_settings_endpoint_persists(tmp_path, monkeypatch):
     p = tmp_path / "s.json"
     monkeypatch.setenv("JARVIS_SETTINGS", str(p))
@@ -254,12 +381,27 @@ def test_post_settings_endpoint_persists(tmp_path, monkeypatch):
         req = urllib.request.Request(
             f"http://127.0.0.1:{hub._port}/settings",
             data=json.dumps({"noise_db": -28}).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "Origin": "tauri://localhost"},
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=2) as r:
             assert json.loads(r.read())["noise_db"] == -28
         assert json.loads(p.read_text(encoding="utf-8"))["noise_db"] == -28
+    finally:
+        hub.stop()
+
+
+def test_settings_endpoint_cannot_bypass_model_catalog_validation(tmp_path, monkeypatch):
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps({"agent_model":"ollama/old:cloud"}))
+    monkeypatch.setenv("JARVIS_SETTINGS", str(p))
+    hub = StateHub(port=0)
+    hub.start()
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{hub._port}/settings", data=json.dumps({"agent_model":"ollama/arbitrary"}).encode(), headers={"Content-Type":"application/json", "Origin":"tauri://localhost"}, method="POST")
+        with urllib.request.urlopen(req, timeout=2) as r:
+            assert json.loads(r.read())["agent_model"] == "ollama/old:cloud"
+        assert json.loads(p.read_text())["agent_model"] == "ollama/old:cloud"
     finally:
         hub.stop()
 

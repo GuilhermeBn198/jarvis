@@ -53,11 +53,16 @@ def test_piper_native_paths_and_cleanup(monkeypatch, tmp_path):
         calls.append(argv)
         return subprocess.CompletedProcess(argv, 0, '', '')
     monkeypatch.setattr(subprocess, 'run', run)
+    monkeypatch.delenv('PULSE_SINK', raising=False)
     cfg = linux(XDG_CACHE_HOME=str(tmp_path), PIPER_MODEL='/mnt/c/local/model.onnx')
     speak_piper('Olá', config=cfg)
     assert calls[0][2] == '/mnt/c/local/model.onnx'
     wav = calls[0][-1]
-    assert calls[1][-1] == wav
+    assert calls[1][0] == 'ffmpeg'
+    assert calls[1][calls[1].index('-i') + 1] == wav
+    assert calls[1][calls[1].index('-f') + 1] == 'pulse'
+    assert calls[1][calls[1].index('-device') + 1] == 'default'
+    assert calls[1][-1] == '-'
     assert not Path(wav).exists()
 
 

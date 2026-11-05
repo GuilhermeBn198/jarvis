@@ -1,4 +1,5 @@
 import base64
+import os
 import subprocess
 from contextlib import nullcontext
 from audio import temporary_audio
@@ -33,6 +34,42 @@ def _to_windows_path(path: str) -> str:
         rest = path[7:].replace("/", "\\")
         return f"{path[5].upper()}:\\{rest}"
     return path
+
+
+def _play_piper_output(cfg: Config, path: str) -> None:
+    if cfg.platform == "linux":
+        requested_sink = os.environ.get("PULSE_SINK", "").strip()
+        sink = requested_sink or "default"
+        pulse_play = [
+            cfg.ffmpeg_exe, "-nostdin", "-hide_banner", "-loglevel", "error",
+            "-re", "-i", path, "-f", "pulse", "-device", sink, "-",
+        ]
+        try:
+            proc = subprocess.run(
+                pulse_play, capture_output=True, text=True, errors="replace",
+                timeout=120,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            pulse_error = str(exc)
+        else:
+            if proc.returncode == 0:
+                return
+            pulse_error = proc.stderr.strip()[:200]
+        if requested_sink:
+            raise VoiceError(
+                f"ffmpeg nao conseguiu reproduzir no PULSE_SINK {requested_sink}: "
+                f"{pulse_error}"
+            )
+
+    play = [cfg.ffplay_exe, "-nodisp", "-autoexit", "-loglevel", "quiet", path]
+    try:
+        proc = subprocess.run(
+            play, capture_output=True, text=True, errors="replace", timeout=120
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise VoiceError(f"falha ao reproduzir com ffplay: {exc}") from exc
+    if proc.returncode != 0:
+        raise VoiceError(f"ffplay falhou ({proc.returncode}): {proc.stderr.strip()[:200]}")
 
 
 def speak(text: str, to_file: str | None = None, config: Config | None = None) -> None:
@@ -85,15 +122,4 @@ def speak_piper(text: str, to_file: str | None = None,
                 f"piper falhou ({proc.returncode}): {proc.stderr.strip()[:200]}"
             )
         if to_file is None:
-            play = [cfg.ffplay_exe, "-nodisp", "-autoexit", "-loglevel", "quiet",
-                    out_windows]
-            try:
-                proc = subprocess.run(
-                    play, capture_output=True, text=True, errors="replace", timeout=120
-                )
-            except (OSError, subprocess.SubprocessError) as exc:
-                raise VoiceError(f"falha ao reproduzir com ffplay: {exc}") from exc
-            if proc.returncode != 0:
-                raise VoiceError(
-                    f"ffplay falhou ({proc.returncode}): {proc.stderr.strip()[:200]}"
-                )
+            _play_piper_output(cfg, out_windows)

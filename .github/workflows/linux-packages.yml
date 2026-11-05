@@ -21,19 +21,12 @@ jobs:
       matrix:
         include:
           - {family: debian, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/debian/Dockerfile, image: 'debian:trixie', pattern: 'jarvis-assistant_*.deb'}
-          - {family: debian, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/debian/Dockerfile, image: 'debian:trixie', pattern: 'jarvis-assistant_*.deb'}
           - {family: ubuntu, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/ubuntu/Dockerfile, image: 'ubuntu:24.04', pattern: 'jarvis-assistant_*.deb'}
-          - {family: ubuntu, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/ubuntu/Dockerfile, image: 'ubuntu:24.04', pattern: 'jarvis-assistant_*.deb'}
           - {family: fedora, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.x86_64.rpm'}
-          - {family: fedora, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/fedora/Dockerfile, image: 'registry.fedoraproject.org/fedora:44', pattern: 'jarvis-assistant-*.aarch64.rpm'}
           - {family: suse, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/suse/Dockerfile, image: 'opensuse/tumbleweed:latest', pattern: 'jarvis-assistant-*.x86_64.rpm'}
-          - {family: suse, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/suse/Dockerfile, image: 'opensuse/tumbleweed:latest', pattern: 'jarvis-assistant-*.aarch64.rpm'}
           - {family: arch, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/arch/Dockerfile, image: 'archlinux:base', pattern: 'jarvis-assistant-*.pkg.tar.*'}
-          - {family: arch, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/arch/Dockerfile, image: 'lfdevs/archlinuxarm:base-devel', pattern: 'jarvis-assistant-*.pkg.tar.*'}
           - {family: rhel, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/rpm/rhel/Dockerfile, image: 'almalinux:10', pattern: 'jarvis-assistant-*.x86_64.rpm'}
-          - {family: rhel, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/rpm/rhel/Dockerfile, image: 'almalinux:10', pattern: 'jarvis-assistant-*.aarch64.rpm'}
           - {family: alpine, arch: x86_64, runner: ubuntu-24.04, dockerfile: packaging/alpine/Dockerfile, image: 'alpine:3.24', pattern: 'jarvis-assistant-*.apk', export: '/export'}
-          - {family: alpine, arch: aarch64, runner: ubuntu-24.04-arm, dockerfile: packaging/alpine/Dockerfile, image: 'alpine:3.24', pattern: 'jarvis-assistant-*.apk', export: '/export'}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Build in target distribution
@@ -170,7 +163,7 @@ jobs:
           ARCH: ${{ matrix.arch }}
         run: |
           rpm_arch=$ARCH
-          [ "$rpm_arch" = x86_64 ] || rpm_arch=aarch64
+          [ "$rpm_arch" = x86_64 ] || { echo "unsupported architecture: $rpm_arch" >&2; exit 2; }
           old_package=$(find dist/native -maxdepth 1 -type f -name "jarvis-assistant-0.1.0-1*.$rpm_arch.rpm" -print -quit)
           new_package=$(find dist/native -maxdepth 1 -type f -name "jarvis-assistant-0.1.0-2*.$rpm_arch.rpm" -print -quit)
           test -n "$old_package" && test -n "$new_package"
