@@ -7,12 +7,18 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from settings import load_settings, save_settings
+from model_selection import list_ollama_models, select_ollama_model
 
 SSE_POLL_S = 0.1
 
 STATES = ("idle", "listening", "transcribing", "thinking", "speaking", "acting", "error")
 COMMANDS = ("mute", "pause", "quit", "measure")
 HEARTBEAT_S = 10.0
+TRUSTED_UI_ORIGINS = frozenset({
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+})
 
 
 def _make_handler(hub):
@@ -25,27 +31,56 @@ def _make_handler(hub):
         def log_message(self, *args):
             pass
 
+        def _trusted_origin(self) -> str | None:
+            origin = self.headers.get("Origin")
+            return origin if origin in TRUSTED_UI_ORIGINS else None
+
+        def _reject_untrusted_origin(self, *, required: bool = False) -> bool:
+            origin = self.headers.get("Origin")
+            if origin in TRUSTED_UI_ORIGINS or (origin is None and not required):
+                return False
+            self._json(403, {"error": "origin not allowed"})
+            return True
+
+        def _add_cors_headers(self) -> None:
+            origin = self._trusted_origin()
+            if origin is not None:
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Vary", "Origin")
+
         def _json(self, code: int, obj: dict) -> None:
             body = json.dumps(obj).encode("utf-8")
             self.send_response(code)
             self.send_header("Content-Type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
+            self._add_cors_headers()
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
 
         def do_OPTIONS(self):
+            if self._trusted_origin() is None:
+                self.send_response(403)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
             self.send_response(204)
-            self.send_header("Access-Control-Allow-Origin", "*")
+            self._add_cors_headers()
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
 
         def do_GET(self):
+            if self._reject_untrusted_origin():
+                return
             if self.path == "/state":
                 self._json(200, hub.snapshot())
             elif self.path == "/settings":
                 self._json(200, load_settings())
+            elif self.path == "/models":
+                try:
+                    self._json(200, {"models": list_ollama_models(), "selected": load_settings().get("agent_model")})
+                except (RuntimeError, ValueError) as exc:
+                    self._json(503, {"error": str(exc), "selected": load_settings().get("agent_model")})
             elif self.path == "/mic-level":
                 result = hub.measure_result()
                 self._json(200, result if result is not None else {"pending": True})
@@ -85,7 +120,7 @@ def _make_handler(hub):
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
             self.send_header("Connection", "keep-alive")
-            self.send_header("Access-Control-Allow-Origin", "*")
+            self._add_cors_headers()
             self.end_headers()
             q = hub.subscribe()
             last_ping = time.monotonic()
@@ -119,12 +154,27 @@ def _make_handler(hub):
             return obj if isinstance(obj, dict) else None
 
         def do_POST(self):
+            if self._reject_untrusted_origin(required=True):
+                return
             if self.path == "/settings":
                 obj = self._read_json()
                 if obj is None:
                     self._json(400, {"error": "json invalido"})
                     return
+                obj.pop("agent_model", None)  # modelo exige validacao contra o catalogo ao vivo.
                 self._json(200, save_settings(obj))
+                return
+            if self.path == "/model":
+                obj = self._read_json()
+                if obj is None:
+                    self._json(400, {"error": "json invalido"})
+                    return
+                try:
+                    self._json(200, select_ollama_model(obj.get("model")))
+                except ValueError as exc:
+                    self._json(400, {"error": str(exc), "selected": load_settings().get("agent_model")})
+                except RuntimeError as exc:
+                    self._json(503, {"error": str(exc), "selected": load_settings().get("agent_model")})
                 return
             if self.path != "/command":
                 self._json(404, {"error": "not found"})

@@ -90,3 +90,14 @@ def test_save_settings_activation_invalida_descartada(tmp_path):
     out = save_settings({"activation": "nope"}, path=p)
     assert "activation" not in out
     assert "activation" in SETTINGS_KEYS
+
+
+def test_agent_model_setting_persists_without_rewriting_provider_tag(tmp_path):
+    p = str(tmp_path / "s.json")
+    selected = "ollama/minimax-m3.1-flash:cloud"
+
+    saved = save_settings({"agent_model": selected}, path=p)
+
+    assert saved["agent_model"] == selected
+    assert load_settings(p)["agent_model"] == selected
+    assert "agent_model" in SETTINGS_KEYS

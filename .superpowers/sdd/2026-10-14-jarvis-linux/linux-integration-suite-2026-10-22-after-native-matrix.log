@@ -1,0 +1,5 @@
+commit=ce90dd609fd1ea4ea735f92907db9305cbd04a04
+host=arch x86_64; session=wayland; desktop=KDE
+command=PYTHONPATH=voice voice/.venv/bin/python -m pytest -q voice/tests/test_linux_context.py voice/tests/test_linux_input.py voice/tests/test_linux_install.py voice/tests/test_linux_screen.py voice/tests/test_portal.py voice/tests/test_flatpak_build.py
+..........................................................               [100%]
+58 passed in 3.45s

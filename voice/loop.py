@@ -18,9 +18,11 @@ from capture import (
     record_ptt,
 )
 from config import load_config
+from settings import load_settings
 from convlog import log_turn
 from sanitize import speechify
-from serve import ensure_server
+from serve import ensure_server, server_has_model
+from model_selection import opencode_catalog_environment
 from state import StateHub
 from stream import SentenceChunker, Speaker
 from stt import transcribe
@@ -362,28 +364,31 @@ def voice_loop(
                 continue
         t0 = time.monotonic()
         try:
-            _emit(hub, "listening")
-            _hb("gravando")
-            if cfg.input_mode == "auto":
-                wav = record_auto(
-                    config=cfg,
-                    should_stop=_should_stop,
-                    on_level=_level_sink(hub),
-                )
-                if not wav:
-                    err.write("[voz] nada detectado\n")
-                    err.flush()
-                    consecutive_errors = 0
-                    _emit(hub, "idle")
-                    continue
-            elif cfg.input_mode == "ptt":
-                wav = record_ptt(config=cfg)
-            else:
-                wav = record(seconds=secs, config=cfg)
-            t_rec = time.monotonic()
-            _emit(hub, "transcribing")
-            _hb("transcrevendo")
-            text = transcribe(wav, config=cfg)
+            from contextlib import nullcontext
+            from audio import temporary_audio
+            audio_context = temporary_audio(cfg) if cfg.platform == "linux" else nullcontext(None)
+            with audio_context as recording_path:
+                _emit(hub, "listening")
+                _hb("gravando")
+                if cfg.input_mode == "auto":
+                    wav = record_auto(
+                        config=cfg, **({"out_path": recording_path} if recording_path else {}), should_stop=_should_stop,
+                        on_level=_level_sink(hub),
+                    )
+                    if not wav:
+                        err.write("[voz] nada detectado\n")
+                        err.flush()
+                        consecutive_errors = 0
+                        _emit(hub, "idle")
+                        continue
+                elif cfg.input_mode == "ptt":
+                    wav = record_ptt(config=cfg, **({"out_path": recording_path} if recording_path else {}))
+                else:
+                    wav = record(seconds=secs, config=cfg, **({"out_path": recording_path} if recording_path else {}))
+                t_rec = time.monotonic()
+                _emit(hub, "transcribing")
+                _hb("transcrevendo")
+                text = transcribe(wav, config=cfg)
         except QuitRequested:
             return
         except VoiceError as exc:
@@ -393,6 +398,9 @@ def voice_loop(
             _emit(hub, "idle")
             continue
         t_stt = time.monotonic()
+        selected_model = load_settings().get("agent_model") or os.environ.get("AGENT_MODEL") or cfg.agent_model
+        if selected_model != cfg.agent_model:
+            cfg = replace(cfg, agent_model=selected_model)
         _hb(f"transcrito: {text[:40]!r}" if text else "nada transcrito")
         if not text:
             err.write("[voz] nada transcrito\n")
@@ -455,6 +463,13 @@ def voice_loop(
                 err.flush()
                 _emit(hub, "error")
                 continue
+        if hasattr(active_client, "_cfg"):
+            current_model = load_settings().get("agent_model")
+            active_client._cfg = replace(active_client._cfg, agent_model=current_model or os.environ.get("AGENT_MODEL") or cfg.agent_model)
+            if active_client.__class__.__name__ == "ServeClient" and not server_has_model(cfg.server_url, active_client._cfg.agent_model):
+                active_client = RunClient(active_client._cfg)
+                err.write("[aviso] servidor OpenCode sem o modelo selecionado; usando run com catalogo atualizado\n")
+                err.flush()
         error = None
         t_agent0 = time.monotonic()
         _emit(hub, "thinking")
@@ -609,6 +624,8 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
     # `opencode run --agent act` com/sem --pure).
     _emit(hub, "acting")
     cmd = [cfg.opencode_bin, "run", "--agent", "act", prompt]
+    if cfg.agent_model:
+        cmd[2:2] = ["-m", cfg.agent_model]
     t0 = time.monotonic()
     try:
         proc = subprocess.run(
@@ -618,6 +635,7 @@ def do_once(prompt: str, out=None, err=None, config=None, hub=None) -> None:
             errors="replace",
             timeout=cfg.timeout_s,
             cwd=cfg.project_root,
+            env=opencode_catalog_environment(),
         )
     except FileNotFoundError:
         err.write(f"[erro] opencode nao encontrado em {cfg.opencode_bin} (defina OPENCODE_BIN)\n")
@@ -755,6 +773,18 @@ def release_singleton(fd) -> None:
 def main(argv=None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
+        if "--download-voice" in args:
+            from models import download_default_voice
+            try:download_default_voice()
+            except (OSError, ValueError) as exc:
+                sys.stderr.write(f"[erro] falha ao obter voz Piper: {exc}\n")
+                return 1
+            return 0
+        if "--doctor" in args:
+            import json
+            from diagnostics import diagnose
+            sys.stdout.write(json.dumps(diagnose(load_config()), ensure_ascii=False, indent=2) + "\n")
+            return 0
         if "--list-mics" in args:
             cfg = load_config()
             try:
@@ -830,11 +860,26 @@ def main(argv=None) -> int:
                 sys.stderr.flush()
                 return 3
             hub = _start_hub(cfg, sys.stderr)
+            desktop_attached = False
+            if cfg.platform == "linux":
+                from platforms import desktop_session
+                if desktop_session(os.environ) != "headless":
+                    try:
+                        from desktop_bridge import request as desktop_request
+                        result = desktop_request("attach", {"pid": os.getpid()})
+                        desktop_attached = result.get("status") == "ok"
+                        if not desktop_attached:
+                            sys.stderr.write(f"[aviso] desktop: {result.get('detail', 'indisponivel')}\n")
+                    except Exception as exc:
+                        sys.stderr.write(f"[aviso] desktop indisponivel: {exc}\n")
             try:
                 voice_loop(
                     resolve_client(cfg, sys.stderr), iterations=iterations, config=cfg, hub=hub
                 )
             finally:
+                if desktop_attached:
+                    try:desktop_request("detach", {"pid": os.getpid()}, autostart=False)
+                    except Exception:pass
                 if hub is not None:
                     hub.stop()
                 release_singleton(lock_fd)

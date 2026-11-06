@@ -1,5 +1,8 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
+import { isNativeLinux } from "../act/platform.ts";
+import { runLinux } from "../act/linux.ts";
+
 import { parseKeys } from "../act/keys.ts";
 import { buildPsScript, encode, toArgList } from "../act/ps.ts";
 import { type ActResult, buildWinListScript, chooseActScript, parseActResult } from "../act/win.ts";
@@ -53,8 +56,10 @@ export const ActTools: Plugin = async ({ $ }) => ({
         window: tool.schema.string().optional(),
         hwnd: tool.schema.number().optional(),
         append: tool.schema.boolean().optional(),
+        control: tool.schema.string().optional(),
       },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("act_type", args);
         debugRawTypeArgs(args);
         const bg = chooseActScript("act_type", args);
         // #26: falha do shell nunca vaza crua — vira "erro em act_type (etapa: ...)".
@@ -93,7 +98,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
         hwnd: tool.schema.number().optional(),
       },
       async execute(args) {
-        // Sintaxe invalida falha no parser, antes de qualquer script rodar.
+        if (isNativeLinux()) return runLinux("act_key", args);
         try {
           parseKeys(String(args.keys ?? ""));
         } catch (err) {
@@ -132,8 +137,7 @@ export const ActTools: Plugin = async ({ $ }) => ({
     act_open: tool({
       description:
         "Abre uma URL, arquivo ou aplicativo (Start-Process). args (opcional) sao repassados ao alvo com quoting Windows. " +
-        "Alvos de execucao — terminais/interpretadores/scripts (cmd, powershell, pwsh, wsl, wt, wscript, cscript, mshta, rundll32, regsvr32, .bat/.cmd/.ps1/.vbs/.js) — " +
-        'exigem confirm=true: sem ele a tool recusa — PERGUNTE ao usuario ("quer que eu abra X para executar Y?") antes de repetir com confirm=true.',
+        "Alvos de execucao — terminais/interpretadores/scripts — exigem confirm=true; pergunte ao usuario antes.",
       args: {
         target: tool.schema.string(),
         args: tool.schema.array(tool.schema.string()).optional(),
@@ -144,57 +148,64 @@ export const ActTools: Plugin = async ({ $ }) => ({
         if (isExecutionTarget(target) && args.confirm !== true) {
           const argv = toArgList(args.args);
           const extra = argv.length > 0 ? ` com os argumentos [${argv.join(", ")}]` : "";
-          return `recusado: "${target}" abre caminho de execucao${extra} e exige confirm=true — PERGUNTE ao usuario antes ("quer que eu abra ${target} para executar?") e repita com confirm=true somente apos o ok`;
+          return `recusado: "${target}" abre caminho de execucao${extra} e exige confirm=true — PERGUNTE ao usuario ("quer que eu abra ${target} para executar?") antes e repita com confirm=true somente apos o ok`;
         }
-        // #26: falha do Start-Process vira mensagem com alvo e causa real.
+        if (isNativeLinux()) return runLinux("act_open", args);
         try {
-          return (
-            await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`
-          ).text();
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_open", args))}`).text();
         } catch (err) {
-          return formatToolError(
-            { tool: "act_open", step: "abrir alvo", detail: `Start-Process ${target}` },
-            err,
-          );
+          return formatToolError({ tool: "act_open", step: "abrir alvo", detail: `Start-Process ${target}` }, err);
         }
       },
     }),
     act_click: tool({
-      description: "Move o mouse para (x,y) e clica (left/right).",
-      args: {
-        x: tool.schema.number(),
-        y: tool.schema.number(),
-        button: tool.schema.string().optional(),
-      },
+      description: "Move o mouse para (x,y) e clica. No Wayland, coordenadas logicas locais ao stream autorizado; selecione stream quando houver varios monitores.",
+      args: { x: tool.schema.number(), y: tool.schema.number(), button: tool.schema.string().optional(), stream: tool.schema.number().optional() },
       async execute(args) {
-        // #26: falha do clique vira mensagem com etapa e causa real.
+        if (isNativeLinux()) return runLinux("act_click", args);
         try {
-          return (
-            await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`
-          ).text();
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildPsScript("act_click", args))}`).text();
         } catch (err) {
-          return formatToolError(
-            { tool: "act_click", step: "clicar", detail: "powershell (SetCursorPos/mouse_event)" },
-            err,
-          );
+          return formatToolError({ tool: "act_click", step: "clicar", detail: "powershell (SetCursorPos/mouse_event)" }, err);
         }
       },
     }),
+    ...(isNativeLinux() ? {
+    desktop_capabilities: tool({
+      description: "Sessao Linux e streams de controle autorizados, com ID, posicao e dimensoes logicas; nao solicita autorizacao por conta propria.",
+      args: {},
+      async execute() { return runLinux("desktop_capabilities", {}); },
+    }),
+    desktop_list: tool({
+      description: "Lista janelas acessiveis no Linux com IDs opacos AT-SPI; no Windows use win_list.",
+      args: {},
+      async execute() { return runLinux("desktop_list", {}); },
+    }),
+    desktop_tree: tool({
+      description: "Arvore de acessibilidade de uma janela Linux; inclui IDs de controles, sem campos de senha.",
+      args: { window: tool.schema.string(), max_nodes: tool.schema.number().optional() },
+      async execute(args) { return runLinux("desktop_tree", args); },
+    }),
+    desktop_clipboard: tool({
+      description: "Le texto do clipboard da sessao Linux quando solicitado.",
+      args: {},
+      async execute() { return runLinux("desktop_clipboard", {}); },
+    }),
+    desktop_processes: tool({
+      description: "Lista nomes/PIDs de processos Linux; filtro literal opcional.",
+      args: { name_filter: tool.schema.string().optional() },
+      async execute(args) { return runLinux("desktop_processes", args); },
+    }),
+    } : {}),
     win_list: tool({
-      description:
-        "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
+      description: isNativeLinux() ? "Alias de desktop_list: janelas acessiveis com IDs AT-SPI, titulo e processo." : "Lista janelas abertas do Windows (hwnd, titulo, processo). Use para descobrir o alvo antes de agir em segundo plano.",
       args: {},
       async execute() {
-        // #26: falha do EnumWindows vira mensagem com etapa e causa real.
+        if (isNativeLinux()) return runLinux("win_list", {});
         try {
-          return (
-            await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`
-          ).text();
+          return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(buildWinListScript())}`).text();
         } catch (err) {
-          return formatToolError(
-            { tool: "win_list", step: "listar janelas", detail: "powershell (EnumWindows)" },
-            err,
-          );
+          return formatToolError({ tool: "win_list", step: "listar janelas", detail: "powershell (EnumWindows)" }, err);
         }
       },
     }),

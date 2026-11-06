@@ -1,0 +1,43 @@
+#!/bin/sh
+# Resolve network dependencies first, then build within Flatpak's offline sandbox.
+set -eu
+task_root=$(CDPATH= cd -P "$(dirname "$0")/.." && pwd)
+task_output=${1:-$task_root/dist/flatpak}
+task_arch=$(uname -m)
+[ "$task_arch" = x86_64 ] || { echo 'A entrega Linux atual suporta somente x86_64.' >&2; exit 2; }
+mkdir -p "$task_output"
+task_output=$(CDPATH= cd -P "$task_output" && pwd)
+task_pins=$(python3 - "$task_root/packaging/flatpak/runtime-pins.json" "$task_arch" <<'PYCODE'
+import json,sys
+pins=json.load(open(sys.argv[1])).get(sys.argv[2])
+if not pins:sys.exit('Arquitetura Flatpak nao suportada: '+sys.argv[2])
+for ref,commit in pins.items():print(ref,commit)
+PYCODE
+)
+task_require_commit() {
+    task_actual=$(flatpak info --user --show-commit "$1")
+    [ "$task_actual" = "$2" ] || { echo "Commit instalado de $1 difere do build fixado: $task_actual" >&2; exit 2; }
+}
+printf '%s\n' "$task_pins" | while read -r task_ref task_commit; do
+    task_require_commit "$task_ref" "$task_commit"
+done
+if [ ! -f "$task_output/sources/com.jarvis.overlay.json" ]; then
+    python3 "$task_root/scripts/prepare-flatpak.py" --output "$task_output/sources"
+fi
+python3 "$task_root/scripts/prepare-flatpak.py" --manifest-only "$task_output/sources/jarvis-sources.tar.gz" --output "$task_output/sources"
+case "${JARVIS_FLATPAK_BUILDER:-app}" in
+    app) set -- flatpak run org.flatpak.Builder ;;
+    host) command -v flatpak-builder >/dev/null; set -- flatpak-builder ;;
+    *) echo 'JARVIS_FLATPAK_BUILDER deve ser app ou host.' >&2; exit 2 ;;
+esac
+"$@" --user --force-clean --repo="$task_output/repo" \
+    --state-dir="$task_output/state" "$task_output/build" "$task_output/sources/com.jarvis.overlay.json"
+task_agent_version=$(flatpak build "$task_output/build" /app/lib/jarvis/bin/opencode --version)
+[ "$task_agent_version" = '1.18.23' ] || { echo "Agente foi alterado pelo empacotamento: $task_agent_version" >&2; exit 2; }
+flatpak build "$task_output/build" /usr/bin/python3 -c 'from pathlib import Path; text=Path("/app/share/licenses/jarvis/opencode-MIT.txt").read_text(); assert "Copyright (c) 2025 opencode" in text and "Permission is hereby granted" in text'
+flatpak build-bundle --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \
+    "$task_output/repo" "$task_output/jarvis-$task_arch.flatpak" com.jarvis.overlay stable
+(
+    cd "$task_output"
+    sha256sum "jarvis-$task_arch.flatpak" > "jarvis-$task_arch.flatpak.sha256"
+)

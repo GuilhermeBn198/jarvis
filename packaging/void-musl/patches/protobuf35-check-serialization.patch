@@ -1,0 +1,22 @@
+--- a/onnxruntime/core/framework/graph_partitioner.cc
++++ b/onnxruntime/core/framework/graph_partitioner.cc
+@@ -966,7 +966,8 @@
+ 
+     AllocatorPtr allocator = output_buffer_holder->buffer_allocator;
+     IAllocatorUniquePtr<void> buffer = IAllocator::MakeUniquePtr<void>(allocator, buffer_size);
+-    model_proto.SerializeToArray(buffer.get(), static_cast<int>(buffer_size));
++    ORT_RETURN_IF(!model_proto.SerializeToArray(buffer.get(), static_cast<int>(buffer_size)),
++                  "Failed to serialize EP context model to buffer");
+ 
+     *output_buffer_holder->buffer_size_ptr = buffer_size;
+     *output_buffer_holder->buffer_ptr = buffer.release();
+@@ -979,7 +980,8 @@
+     auto out_stream_buf = std::make_unique<epctx::OutStreamBuf>(*output_write_func_holder);
+     std::ostream out_stream(out_stream_buf.get());
+ 
+-    model_proto.SerializeToOstream(&out_stream);
++    ORT_RETURN_IF(!model_proto.SerializeToOstream(&out_stream),
++                  "Failed to serialize EP context model to stream");
+     out_stream.flush();
+     ORT_RETURN_IF_ERROR(out_stream_buf->GetStatus());
+   } else {

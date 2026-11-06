@@ -1,0 +1,7 @@
+{
+  "x86_64": {
+    "org.gnome.Sdk//49": "faf37bdc962236ef8e61fd0b289fd311f7961cc5a7b4bc11a6e29506d7874003",
+    "org.gnome.Platform//49": "2bb946ea4ebb050f6a32f90e979feb975b08280d1ff1aac881dec3d1361ad84d",
+    "org.freedesktop.Sdk.Extension.rust-stable//25.08": "09784a9989ae5a7fda6a2280033ca9aa32aac6907961da8b18be4590dd261507"
+  }
+}

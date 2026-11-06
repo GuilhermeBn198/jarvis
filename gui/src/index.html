@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="drag" data-tauri-drag-region></div>
-    <div id="orb" class="orb" data-state="offline"></div>
+    <button id="orb" class="orb" data-state="offline" type="button" aria-label="Abrir menu Jarvis"></button>
     <div id="label" class="label">offline</div>
     <div id="menu" class="menu hidden">
       <button id="menu-mute" data-cmd="mute">Mudo</button>
@@ -26,6 +26,11 @@
         <select id="s-mic"></select>
       </label>
       <button id="s-mic-reload">Recarregar microfones</button>
+      <label>Modelo do Jarvis
+        <select id="s-agent-model"></select>
+      </label>
+      <div id="model-out" class="measure-out" role="status"></div>
+      <div class="settings-hint">Modelos marcados como cloud podem receber transcrições, prompts e contexto de tela enviados pelo Jarvis.</div>
       <label>Sensibilidade · VOICE_NOISE_DB
         <input id="s-noise" type="number" step="1" />
       </label>
@@ -69,6 +74,6 @@
       </div>
       <div class="settings-hint">Aplicado ao reiniciar o cérebro.</div>
     </div>
-    <script src="main.js"></script>
+    <script type="module" src="main.js"></script>
   </body>
 </html>

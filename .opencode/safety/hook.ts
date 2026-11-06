@@ -52,11 +52,12 @@ export function actionFromToolCall(
   }
   if (tool === "act_click") return { type: "act", pattern: `${a.x},${a.y}` };
   if (tool === "see_screen") return { type: "see" };
+  if (["desktop_capabilities", "desktop_list", "desktop_tree", "desktop_clipboard", "desktop_processes"].includes(tool)) return { type: "winlist" };
   if (tool === "win_list") return { type: "winlist" };
-  if (tool === "win_read") {
+  if (tool === "win_read" || tool === "file_read") {
     return { type: "winread", pattern: typeof a.path === "string" ? a.path : undefined };
   }
-  if (tool === "win_write") {
+  if (tool === "win_write" || tool === "file_write") {
     return { type: "winwrite", pattern: typeof a.path === "string" ? a.path : undefined };
   }
   // Escrita no clipboard (confirm=true na tool): o CONTEUDO vira padrao para

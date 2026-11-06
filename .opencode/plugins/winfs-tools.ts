@@ -1,5 +1,8 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 
+import { isNativeLinux } from "../act/platform.ts";
+import { runLinux } from "../act/linux.ts";
+
 import { encode } from "../act/ps.ts";
 import {
   buildWriteScript,
@@ -30,6 +33,18 @@ const ALLOW_HINT = [
 
 export const WinFsTools: Plugin = async ({ $ }) => ({
   tool: {
+    ...(isNativeLinux() ? {
+      file_read: tool({
+        description: "Le arquivo UTF-8 local Linux (ate 64 KiB), sem seguir links nem acessar credenciais.",
+        args: { path: tool.schema.string() },
+        async execute(args) { return runLinux("file_read", args); },
+      }),
+      file_write: tool({
+        description: "Escreve arquivo Linux autorizado por JARVIS_ALLOW_WRITE (lista JSON de diretorios existentes). Exige confirm=true; nao segue links.",
+        args: { path: tool.schema.string(), content: tool.schema.string(), append: tool.schema.boolean().optional(), confirm: tool.schema.boolean().optional() },
+        async execute(args) { return runLinux("file_write", args); },
+      }),
+    } : {}),
     win_read: tool({
       description:
         "Le um arquivo como texto ou lista um diretorio (JSON-lines com nome/tipo/tamanho). Aceita caminho do WSL (/home/...) ou do Windows (/mnt/<drive>/... ou C:\\...). Sem abrir editor/terminal.",
@@ -37,6 +52,7 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
       async execute(args) {
         const bruto = String(args.path ?? "").trim();
         const p = normalizeWinPath(bruto);
+        if (isNativeLinux()) return runLinux("win_read", args);
         const rota = routeRead(bruto);
         if (rota === "invalid") {
           return "informe um caminho absoluto: WSL (/home/...) ou Windows (/mnt/c/... ou C:\\...)";
@@ -46,9 +62,8 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
           return await readWindowsPath(p, async (script) => {
             return (await $`powershell.exe -NoProfile -EncodedCommand ${encode(script)}`).text();
           });
-        } catch (e) {
-          // #26: falha do shell nunca vaza crua — vira "erro em win_read (etapa: ...)".
-          return formatToolError({ tool: "win_read", step: "ler arquivo", detail: p }, e);
+        } catch (error) {
+          return formatToolError({ tool: "win_read", step: "ler arquivo", detail: p }, error);
         }
       },
     }),
@@ -62,6 +77,7 @@ export const WinFsTools: Plugin = async ({ $ }) => ({
         confirm: tool.schema.boolean().optional(),
       },
       async execute(args) {
+        if (isNativeLinux()) return runLinux("win_write", args);
         const p = normalizeWinPath(String(args.path ?? ""));
         const allow = parseAllowlist(process.env.JARVIS_WIN_ALLOW_WRITE ?? "");
         if (args.confirm !== true) {

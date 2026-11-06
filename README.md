@@ -1,5 +1,7 @@
 # jarvis
 
+**Porte Linux em implementação, x86_64 apenas:** veja [instalação nativa e estado da validação](docs/linux.md). Gentoo, GNU Guix, Void musl, Nix, Slackware e Solus estão fora do escopo ativo; seus registros ficam como histórico. Os 9 ciclos dos alvos ativos passaram, incluindo instalação/upgrade/remoção Flatpak em perfil isolado. AArch64/ARM64 é somente histórico. Validações de portais, sessões GNOME/X11, controle EIS/RemoteDesktop ao vivo e áudio físico ponta a ponta continuam pendentes.
+
 Assistente pessoal por voz, **sempre ligado**, que roda no seu PC: o "cérebro" vive no **WSL (Python)** e conversa com o **Windows** para ouvir o microfone, falar, ver a tela e executar ações. Há uma presença visual discreta no Windows — um **orbe** que mostra o que o Jarvis está fazendo.
 
 > Estado atual: funcional e em evolução. Veja **Limitações** e **Aprimoramentos planejados**.

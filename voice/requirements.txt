@@ -1,1 +1,5 @@
 faster-whisper>=1.0,<2
+dbus-next==0.2.3; sys_platform == "linux"
+
+# faster-whisper 1.x uses metadata_errors, removed by PyAV 19.
+av>=11,<19

@@ -1,0 +1,205 @@
+{
+  lib,
+  stdenvNoCC,
+  stdenv,
+  python314,
+  libei,
+  autoPatchelfHook,
+  buildNpmPackage,
+  fetchurl,
+  makeWrapper,
+  rustPlatform,
+  pkg-config,
+  wrapGAppsHook3,
+  gtk3,
+  webkitgtk_4_1,
+  libsoup_3,
+  glib,
+  libglvnd,
+  mesa,
+  ffmpeg,
+  pulseaudio,
+  alsa-utils,
+  xdotool,
+  wl-clipboard,
+  xclip,
+  xdg-utils,
+  at-spi2-core,
+  espeak-ng,
+  zlib,
+  openssl,
+  src,
+}:
+let
+  opencodeSources = builtins.fromJSON (builtins.readFile "${src}/packaging/opencode-sources.json");
+  target = "x86_64-glibc";
+  opencodeSource = opencodeSources.${target};
+  opencodeArchive = fetchurl {
+    url = opencodeSource.url;
+    hash = opencodeSource.integrity;
+  };
+
+  opencode = stdenvNoCC.mkDerivation {
+    pname = "jarvis-opencode";
+    version = opencodeSource.version;
+    dontUnpack = true;
+    # Bun embeds version metadata in its executable; strip changes --version.
+    dontStrip = true;
+    nativeBuildInputs = [ autoPatchelfHook ];
+    buildInputs = [ stdenv.cc.cc.lib zlib openssl ];
+    installPhase = ''
+      mkdir -p "$out/bin"
+      tar -xOzf "${opencodeArchive}" opencode > "$out/bin/opencode"
+      chmod 0555 "$out/bin/opencode"
+    '';
+    meta.license = lib.licenses.mit;
+  };
+
+  python = python314;
+  piperWheel = {
+    url = "https://files.pythonhosted.org/packages/84/81/0112a7d510911f33018dc24023d1655bb772f84a4e95fe7f0180f66bbd17/piper_tts-1.8.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl";
+    sha256 = "25b4d3f31ff70c8fa7151908e00aaa5650cbdf16bca8fcf21299f3941b89a7d3";
+  };
+
+  piperTts = python.pkgs.buildPythonPackage {
+    pname = "piper-tts";
+    version = "1.8.0";
+    format = "wheel";
+    src = fetchurl piperWheel;
+    nativeBuildInputs = [ autoPatchelfHook ];
+    buildInputs = [ stdenv.cc.cc.lib espeak-ng ];
+    dependencies = with python.pkgs; [ onnxruntime pathvalidate ];
+    pythonImportsCheck = [ "piper" ];
+  };
+
+  pythonLibei = python.pkgs.buildPythonPackage {
+    pname = "python-libei";
+    version = "0.6.1";
+    format = "wheel";
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/62/1f/a79da59d3e97714b8f9d7ccc789963c6e5eb029d82343bec18136e3f522b/python_libei-0.6.1-py3-none-any.whl";
+      hash = "sha256-S/iPhC0x5D2HUqI5CStuX1GhE6sCKbWNP1eBVt1Jx6w=";
+    };
+    pythonImportsCheck = [ "libei" ];
+  };
+
+  pythonEnv = python.withPackages (ps: with ps; [
+    av
+    ctranslate2
+    dbus-next
+    faster-whisper
+    httpx
+    jsonschema
+    mcp
+    onnxruntime
+    pygobject3
+    piperTts
+    pythonLibei
+  ]);
+
+  overlay = rustPlatform.buildRustPackage {
+    pname = "jarvis-overlay";
+    version = "0.1.0";
+    inherit src;
+    cargoRoot = "gui/src-tauri";
+    buildAndTestSubdir = "gui/src-tauri";
+    cargoLock.lockFile = "${src}/gui/src-tauri/Cargo.lock";
+    cargoBuildFlags = [ "--locked" ];
+    doCheck = false;
+    dontUseCargoInstallHook = true;
+    nativeBuildInputs = [ pkg-config wrapGAppsHook3 ];
+    buildInputs = [ gtk3 webkitgtk_4_1 libsoup_3 glib mesa ];
+    # WebKit loads EGL and Mesa's DRI drivers with dlopen(), so autoPatchelf
+    # cannot discover them from the overlay's ELF dependencies. Preserve the
+    # host's graphics ICDs while making the Nix-provided software drivers
+    # available for headless sessions and systems without a NixOS driver link.
+    wrapPrefixVariables = "LD_LIBRARY_PATH LIBGL_DRIVERS_PATH __EGL_VENDOR_LIBRARY_DIRS";
+    LD_LIBRARY_PATH = lib.makeLibraryPath [ libglvnd mesa ];
+    LIBGL_DRIVERS_PATH = "/run/opengl-driver/lib/dri:${mesa}/lib/dri";
+    __EGL_VENDOR_LIBRARY_DIRS = lib.concatStringsSep ":" [
+      "/run/opengl-driver/share/glvnd/egl_vendor.d"
+      "/etc/glvnd/egl_vendor.d"
+      "/usr/share/glvnd/egl_vendor.d"
+      "${mesa}/share/glvnd/egl_vendor.d"
+    ];
+    installPhase = ''
+      runHook preInstall
+      mkdir -p "$out/bin"
+      cp "target/${stdenv.hostPlatform.rust.rustcTarget}/release/jarvis-overlay" "$out/bin/jarvis-overlay"
+      runHook postInstall
+    '';
+  };
+
+  plugin = buildNpmPackage {
+    pname = "jarvis-opencode-plugin";
+    version = "0.1.0";
+    src = "${src}/.opencode";
+    sourceRoot = ".";
+    postPatch = ''
+      cp -a "${src}/.opencode/." .
+      chmod -R u+w .
+    '';
+    npmDepsHash = "sha256-DqqV4xwHMWfevxHxgje2F4owhCTKVFux0AqMdrGBkmM=";
+    dontNpmBuild = true;
+    installPhase = ''
+      mkdir -p "$out"
+      cp -a node_modules "$out/node_modules"
+    '';
+  };
+
+  runtimeTools = [
+    ffmpeg
+    pulseaudio
+    alsa-utils
+    xdotool
+    wl-clipboard
+    xclip
+    xdg-utils
+    espeak-ng
+    at-spi2-core
+  ];
+  runtimePath = lib.makeBinPath runtimeTools + ":${pythonEnv}/bin";
+in
+stdenvNoCC.mkDerivation {
+  pname = "jarvis-assistant";
+  version = "0.1.0";
+  dontUnpack = true;
+  dontStrip = true;
+  nativeBuildInputs = [ python makeWrapper autoPatchelfHook ];
+  buildInputs = [
+    stdenv.cc.cc.lib
+    zlib
+    openssl
+    gtk3
+    webkitgtk_4_1
+    libsoup_3
+    glib
+    mesa
+    libei
+  ] ++ runtimeTools;
+  installPhase = ''
+    runHook preInstall
+    export HOME="$TMPDIR"
+    python "${src}/scripts/prepare-package.py" \
+      --prefix "$out" --destdir "" \
+      --overlay "${overlay}/bin/jarvis-overlay" \
+      --python "${pythonEnv}/bin/python3" \
+      --external-python-runtime "${pythonEnv}/bin/python3" \
+      --without-node-modules \
+      --opencode "${opencode}/bin/opencode" \
+      --expected-opencode-version "1.18.23"
+    ln -s "${plugin}/node_modules" "$out/lib/jarvis/.opencode/node_modules"
+    rm "$out/bin/jarvis"
+    makeWrapper "$out/lib/jarvis/jarvis" "$out/bin/jarvis" \
+      --prefix PATH : "${runtimePath}" \
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ libei ]}"
+    runHook postInstall
+  '';
+  meta = {
+    description = "Voice assistant with native desktop overlay";
+    homepage = "https://github.com/GuilhermeBn/jarvis";
+    license = with lib.licenses; [ asl20 mit gpl3Plus ];
+    platforms = [ "x86_64-linux" ];
+    mainProgram = "jarvis";
+  };
+}

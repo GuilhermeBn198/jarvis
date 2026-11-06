@@ -5,9 +5,15 @@
     "lint:fix": "biome check --write ."
   },
   "dependencies": {
-    "@opencode-ai/plugin": "1.17.18"
+    "@opencode-ai/plugin": "1.18.23"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15"
+  },
+  "overrides": {
+    "@opencode-ai/plugin": {
+      "effect": "4.0.6",
+      "zod": "4.6.6"
+    }
   }
 }

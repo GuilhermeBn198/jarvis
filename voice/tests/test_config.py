@@ -1,8 +1,10 @@
 import os
-
 import pytest
-from config import DEFAULT_TIMEOUT_S, load_config
+from config import load_config as _load_config, DEFAULT_TIMEOUT_S
 
+# This suite covers the historical Windows/WSL contract explicitly.
+def load_config(env, **kwargs):
+    return _load_config({"JARVIS_PLATFORM": "wsl", **env}, **kwargs)
 
 def test_defaults():
     cfg = load_config({})
@@ -47,6 +49,11 @@ def test_voice_agent_and_log_env_overrides():
     cfg = load_config({"VOICE_AGENT": "orchestrator", "VOICE_LOG": "/tmp/v.jsonl"})
     assert cfg.agent == "orchestrator"
     assert cfg.voice_log_path == "/tmp/v.jsonl"
+
+
+def test_agent_model_comes_from_persisted_settings_and_env_overrides():
+    assert load_config({}, settings={"agent_model":"ollama/minimax:cloud"}).agent_model == "ollama/minimax:cloud"
+    assert load_config({"AGENT_MODEL":"ollama/qwen3:8b"}, settings={"agent_model":"ollama/minimax:cloud"}).agent_model == "ollama/qwen3:8b"
 
 
 def test_backend_defaults():
@@ -257,9 +264,8 @@ def test_project_root_defaults_to_repo_root():
 
     cfg = load_config({})
     assert cfg.project_root == DEFAULT_PROJECT_ROOT
-    # portavel a worktrees: o default e a raiz do checkout que contem voice/
-    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    assert os.path.realpath(cfg.project_root) == os.path.realpath(root)
+    from pathlib import Path
+    assert Path(cfg.project_root) == Path(__file__).resolve().parents[2]
     assert load_config({"JARVIS_PROJECT_ROOT": "/repo"}).project_root == "/repo"
 
 

@@ -15,6 +15,11 @@ from sanitize import drop_leading_tui, strip_ansi
 SESSION_TIMEOUT_S = 10
 
 
+def _opencode_environment():
+    from model_selection import opencode_catalog_environment
+    return opencode_catalog_environment()
+
+
 def _model_payload(model_id: str) -> dict:
     """Converte 'provider/model' no objeto `model` da API do serve."""
     provider, sep, model = model_id.partition("/")
@@ -133,6 +138,8 @@ class RunClient:
             raise AgentError("tarefa vazia")
         timeout = timeout_s if timeout_s is not None else self._cfg.timeout_s
         cmd = [self._cfg.opencode_bin, "run"]
+        if self._cfg.agent_model:
+            cmd += ["-m", self._cfg.agent_model]
         if self._cfg.agent:
             cmd += ["--agent", self._cfg.agent]
         # NAO usar `--pure`: ele desabilita os plugins do projeto (incl. o
@@ -146,6 +153,7 @@ class RunClient:
                 text=True,
                 timeout=timeout,
                 cwd=self._cwd or self._cfg.project_root,
+                env=_opencode_environment(),
             )
         except FileNotFoundError as exc:
             raise AgentError(
@@ -216,6 +224,8 @@ class ServeClient:
 
     def _request_reply(self, session_id: str, task: str, timeout: int) -> str:
         payload = {"parts": [{"type": "text", "text": task}]}
+        if self._cfg.agent_model:
+            payload["model"] = _model_payload(self._cfg.agent_model)
         if self._cfg.agent:
             payload["agent"] = self._cfg.agent
         data = self._post(
@@ -264,8 +274,9 @@ class ServeClient:
                 },
             ],
         }
-        if model_id:
-            payload["model"] = _model_payload(model_id)
+        chosen_model = model_id or self._cfg.agent_model
+        if chosen_model:
+            payload["model"] = _model_payload(chosen_model)
         if agent:
             payload["agent"] = agent
         timeout = self._cfg.timeout_s
@@ -402,6 +413,8 @@ class ServeClient:
         stream = _QueuedLineStream(events, idle_s)
         try:
             payload = {"parts": [{"type": "text", "text": task}]}
+            if self._cfg.agent_model:
+                payload["model"] = _model_payload(self._cfg.agent_model)
             if self._cfg.agent:
                 payload["agent"] = self._cfg.agent
             try:

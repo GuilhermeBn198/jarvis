@@ -185,6 +185,14 @@ def test_see_via_run_uses_project_root_cwd(monkeypatch):
     assert seen["kw"]["cwd"] == "/repo"
 
 
+def test_see_via_run_passes_dynamic_ollama_catalog(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(vision, "opencode_catalog_environment", lambda: {"OPENCODE_CONFIG_CONTENT": "catalog"})
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: (seen.update({"kw": kw}) or subprocess.CompletedProcess(cmd, 0, "ok", "")))
+    vision._see_via_run(CFG, "q", "/tmp/x.png")
+    assert seen["kw"]["env"]["OPENCODE_CONFIG_CONTENT"] == "catalog"
+
+
 def test_see_aggregates_serve_and_run_causes_on_double_failure(monkeypatch):
     from agent_client import AgentError
 

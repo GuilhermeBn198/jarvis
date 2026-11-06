@@ -5,6 +5,7 @@ import time
 import urllib.request
 
 from config import Config, serve_port
+from platforms import xdg_path
 
 HEALTH_TIMEOUT_S = 2
 POLL_INTERVAL_S = 0.5
@@ -21,25 +22,48 @@ def is_healthy(server_url: str, timeout: int = HEALTH_TIMEOUT_S) -> bool:
     return isinstance(data, dict) and data.get("healthy") is True
 
 
+def server_has_model(server_url: str, model_id: str | None, timeout: int = 2) -> bool:
+    """Check that a running OpenCode server can resolve the selected provider model."""
+    if not model_id:
+        return True
+    provider, sep, model = model_id.partition("/")
+    if not sep or not provider or not model:
+        return False
+    try:
+        with urllib.request.urlopen(server_url.rstrip("/") + "/config", timeout=timeout) as response:
+            config = json.loads(response.read().decode("utf-8"))
+        models = config.get("provider", {}).get(provider, {}).get("models", {})
+        return model in models
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def _spawn(cfg: Config) -> bool:
     port = serve_port(cfg.server_url)
-    log_path = os.environ.get("SERVE_LOG", DEFAULT_LOG_PATH)
+    default_log = str(xdg_path("state", os.environ) / "serve.log") if cfg.platform == "linux" else DEFAULT_LOG_PATH
+    log_path = os.environ.get("SERVE_LOG", default_log)
     sink = subprocess.DEVNULL
     try:
         d = os.path.dirname(log_path)
         if d:
-            os.makedirs(d, exist_ok=True)
-        sink = open(log_path, "ab")
+            os.makedirs(d, mode=0o700, exist_ok=True)
+        if cfg.platform == "linux":
+            flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+            sink = os.fdopen(os.open(log_path, flags, 0o600), "ab")
+        else:
+            sink = open(log_path, "ab")
     except OSError:
         sink = subprocess.DEVNULL
     try:
+        supervised = cfg.platform == "linux" and os.environ.get("JARVIS_REQUIRE_GUI") == "1"
         subprocess.Popen(
             [cfg.opencode_bin, "serve", "--port", str(port)],
             stdin=subprocess.DEVNULL,
             stdout=sink,
             stderr=sink,
             cwd=cfg.project_root,
-            start_new_session=True,
+            env=_opencode_environment(),
+            start_new_session=not supervised,
         )
         return True
     except OSError:
@@ -49,10 +73,14 @@ def _spawn(cfg: Config) -> bool:
             sink.close()
 
 
-def ensure_server(config: Config, wait_s: float = 20) -> bool:
+def ensure_server(config: Config, wait_s: float | None = None) -> bool:
+    # Cold CPU-only Linux starts can exceed 20s (including Flatpak on a busy
+    # host). Keep the wait bounded and preserve shorter caller deadlines.
+    if wait_s is None:
+        wait_s = 60 if config.platform == "linux" else 20
     try:
         if is_healthy(config.server_url):
-            return True
+            return server_has_model(config.server_url, config.agent_model)
         if not _spawn(config):
             return False
         deadline = time.monotonic() + wait_s
@@ -63,3 +91,8 @@ def ensure_server(config: Config, wait_s: float = 20) -> bool:
         return False
     except Exception:
         return False
+
+
+def _opencode_environment():
+    from model_selection import opencode_catalog_environment
+    return opencode_catalog_environment()

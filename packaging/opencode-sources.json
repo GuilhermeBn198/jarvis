@@ -1,0 +1,16 @@
+{
+  "x86_64-glibc": {
+    "package": "opencode-linux-x64-baseline",
+    "version": "1.18.23",
+    "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-linux-x64-baseline.tar.gz",
+    "integrity": "sha256:5f375b83a33ac67af12e0767baa3b987c8b9034c8f400f4a2e245c1cf371e897",
+    "license": "MIT"
+  },
+  "x86_64-musl": {
+    "package": "opencode-linux-x64-baseline-musl",
+    "version": "1.18.23",
+    "url": "https://github.com/anomalyco/opencode/releases/download/v1.18.23/opencode-linux-x64-baseline-musl.tar.gz",
+    "integrity": "sha256:af88dbf7fe80961f1fa1cd466ce3a92c20a6bbd161e8ce623168345585febcd6",
+    "license": "MIT"
+  }
+}

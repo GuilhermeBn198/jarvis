@@ -1,0 +1,24 @@
+# Workaround for protobuf's separately packaged upb targets.
+--- a/cmake/external/onnxruntime_external_deps.cmake
++++ b/cmake/external/onnxruntime_external_deps.cmake
+@@ -227,6 +227,20 @@ if (onnxruntime_DISABLE_RTTI)
+ endif()
+ 
+ #protobuf end
+ 
++find_library(UPB_LIBRARIES NAMES upb)
++if(NOT TARGET protobuf::libupb)
++  add_library(protobuf::libupb SHARED IMPORTED)
++endif()
++if(NOT TARGET protobuf::protoc-gen-upb)
++  add_executable(protobuf::protoc-gen-upb IMPORTED)
++endif()
++if(NOT TARGET protobuf::protoc-gen-upbdefs)
++  add_executable(protobuf::protoc-gen-upbdefs IMPORTED)
++endif()
++if(NOT TARGET protobuf::protoc-gen-upb_minitable)
++  add_executable(protobuf::protoc-gen-upb_minitable IMPORTED)
++endif()
++
+ onnxruntime_fetchcontent_makeavailable(Protobuf)
+ if(Protobuf_FOUND)

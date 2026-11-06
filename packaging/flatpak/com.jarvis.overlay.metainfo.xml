@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.jarvis.overlay</id>
+  <name>Jarvis</name>
+  <summary>Assistente por voz com controle autorizado do desktop</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <description><p>Conversa por voz, captura de tela e ferramentas de acessibilidade. O controle do desktop exige autorização. Modelos de voz e autenticação são configurados pelo usuário.</p></description>
+  <launchable type="desktop-id">com.jarvis.overlay.desktop</launchable>
+  <url type="homepage">https://github.com/GuilhermeBn198/jarvis</url>
+  <releases><release version="0.1.0" date="2026-10-15"/></releases>
+  <content_rating type="oars-1.1"/>
+</component>

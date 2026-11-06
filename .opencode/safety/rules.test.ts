@@ -402,3 +402,8 @@ test("deny: act_open com Remove-Item dentro de args", () => {
   });
   assert.equal(decide({ ...a }).status, "deny");
 });
+
+test('native file aliases preserve credential and write gates',()=>{
+  assert.equal(decide(actionFromToolCall('file_read',{path:'/home/user/.ssh/id_rsa'})).status,'deny');
+  assert.equal(decide(actionFromToolCall('file_write',{path:'/home/user/note.txt'})).status,'ask');
+});

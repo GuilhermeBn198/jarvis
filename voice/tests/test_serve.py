@@ -1,3 +1,6 @@
+import json
+from dataclasses import replace
+
 import serve
 from config import Config
 
@@ -50,6 +53,12 @@ def test_ensure_server_already_healthy(monkeypatch):
 
     monkeypatch.setattr(serve.subprocess, "Popen", boom)
     assert serve.ensure_server(CFG) is True
+
+
+def test_ensure_server_does_not_reuse_healthy_server_missing_selected_model(monkeypatch):
+    monkeypatch.setattr(serve, "is_healthy", lambda url, timeout=2: True)
+    monkeypatch.setattr(serve, "server_has_model", lambda url, model: False)
+    assert serve.ensure_server(replace(CFG, agent_model="ollama/minimax:cloud")) is False
 
 
 def test_ensure_server_spawns_and_waits(monkeypatch, tmp_path):
@@ -128,3 +137,98 @@ def test_spawn_sets_project_root_cwd(monkeypatch):
     monkeypatch.setattr(s.subprocess, "Popen", lambda cmd, **kw: seen.update(kw=kw) or object())
     s._spawn(Config(opencode_bin="/x/o", timeout_s=10, project_root="/repo"))
     assert seen["kw"]["cwd"] == "/repo"
+
+
+def test_linux_overlay_server_stays_in_owned_process_group(monkeypatch,tmp_path):
+    from dataclasses import replace
+    monkeypatch.setenv('JARVIS_REQUIRE_GUI','1')
+    monkeypatch.setenv('SERVE_LOG',str(tmp_path/'serve.log'))
+    spawned={}
+    monkeypatch.setattr(serve.subprocess,'Popen',lambda argv,**kw:spawned.update(kw) or object())
+    assert serve._spawn(replace(CFG,platform='linux'))
+    assert spawned['start_new_session'] is False
+
+
+def test_real_linux_supervised_server_exits_with_own_group(tmp_path):
+    import os,signal,subprocess,sys,time
+    from pathlib import Path
+    if sys.platform!='linux':
+        import pytest
+        pytest.skip('Linux process-group lifecycle')
+    marker=tmp_path/'server.pid'
+    server=tmp_path/'opencode'
+    server.write_text('#!'+sys.executable+'\nimport os,time\nfrom pathlib import Path\nPath('+repr(str(marker))+').write_text(str(os.getpid()))\ntime.sleep(60)\n')
+    server.chmod(0o755)
+    voice=Path(serve.__file__).parent
+    code='import sys,time;sys.path.insert(0,'+repr(str(voice))+');from config import Config;import serve;assert serve._spawn(Config(platform="linux",timeout_s=5,opencode_bin='+repr(str(server))+',project_root='+repr(str(tmp_path))+'));time.sleep(60)'
+    owner=subprocess.Popen([sys.executable,'-c',code],start_new_session=True,
+        env=dict(os.environ,JARVIS_REQUIRE_GUI='1',SERVE_LOG=str(tmp_path/'server.log')))
+    child=None
+    def alive(pid):
+        try:return Path('/proc',str(pid),'stat').read_text().rsplit(')',1)[1].split()[0]!='Z'
+        except (FileNotFoundError,ProcessLookupError):return False
+    try:
+        deadline=time.monotonic()+4
+        while not marker.exists() and time.monotonic()<deadline:time.sleep(.02)
+        assert marker.exists()
+        child=int(marker.read_text())
+        assert os.getpgid(child)==owner.pid
+        os.killpg(owner.pid,signal.SIGTERM)
+        owner.wait(timeout=4)
+        deadline=time.monotonic()+2
+        while alive(child) and time.monotonic()<deadline:time.sleep(.02)
+        assert not alive(child)
+    finally:
+        if owner.poll() is None:
+            os.killpg(owner.pid,signal.SIGKILL);owner.wait(timeout=4)
+        if child and alive(child):os.kill(child,signal.SIGKILL)
+
+
+def test_linux_server_log_uses_private_xdg_state(monkeypatch,tmp_path):
+    from dataclasses import replace
+    import stat
+    monkeypatch.delenv('SERVE_LOG',raising=False)
+    monkeypatch.setenv('XDG_STATE_HOME',str(tmp_path/'estado ação'))
+    monkeypatch.setattr(serve,'DEFAULT_LOG_PATH',str(tmp_path/'legacy/serve.log'))
+    monkeypatch.setattr(serve.subprocess,'Popen',lambda *args,**kwargs:object())
+    assert serve._spawn(replace(CFG,platform='linux'))
+    path=tmp_path/'estado ação/jarvis/serve.log'
+    assert path.is_file()
+    assert stat.S_IMODE(path.stat().st_mode)==0o600
+    assert not (tmp_path/'legacy').exists()
+
+
+def test_linux_default_wait_accepts_cold_server_after_twenty_seconds(monkeypatch):
+    from dataclasses import replace
+    now = [0.0]
+    monkeypatch.setattr(serve, '_spawn', lambda cfg: True)
+    monkeypatch.setattr(serve.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(serve.time, 'sleep', lambda seconds: now.__setitem__(0, now[0] + seconds))
+    monkeypatch.setattr(serve, 'is_healthy', lambda url: now[0] >= 21)
+    assert serve.ensure_server(replace(CFG, platform='linux')) is True
+    assert now[0] == 21
+
+
+def test_linux_cold_start_still_has_a_bounded_deadline(monkeypatch):
+    from dataclasses import replace
+    now = [0.0]
+    monkeypatch.setattr(serve, '_spawn', lambda cfg: True)
+    monkeypatch.setattr(serve.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(serve.time, 'sleep', lambda seconds: now.__setitem__(0, now[0] + seconds))
+    monkeypatch.setattr(serve, 'is_healthy', lambda url: False)
+    assert serve.ensure_server(replace(CFG, platform='linux')) is False
+    assert now[0] == 60
+
+
+def test_explicit_startup_deadline_and_wsl_default_are_preserved(monkeypatch):
+    from dataclasses import replace
+    now = [0.0]
+    monkeypatch.setattr(serve, '_spawn', lambda cfg: True)
+    monkeypatch.setattr(serve.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(serve.time, 'sleep', lambda seconds: now.__setitem__(0, now[0] + seconds))
+    monkeypatch.setattr(serve, 'is_healthy', lambda url: now[0] >= 21)
+    assert serve.ensure_server(replace(CFG, platform='wsl')) is False
+    assert now[0] == 20
+    now[0] = 0
+    assert serve.ensure_server(replace(CFG, platform='linux'), wait_s=3) is False
+    assert now[0] == 3

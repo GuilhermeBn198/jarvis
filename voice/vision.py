@@ -5,11 +5,15 @@ from config import Config, load_config
 from paths import _windows_to_wsl, _wsl_to_windows
 from sanitize import strip_ansi
 from serve import ensure_server
+from model_selection import opencode_catalog_environment
 from tts import VoiceError
 
 
 def capture(out_path: str | None = None, config: Config | None = None) -> str:
     cfg = config or load_config()
+    if cfg.platform == "linux":
+        from linux_screen import screenshot
+        return screenshot(out_path or cfg.vision_png, cfg)
     win_path = _wsl_to_windows(out_path) if out_path else cfg.vision_png
     cmd = [
         cfg.ffmpeg_exe,
@@ -39,24 +43,14 @@ def _see_via_run(cfg: Config, prompt: str, png_path: str) -> str:
     NAO usar --pure e usar o agente TOOL-LESS `vision`.
     """
     cmd = [
-        cfg.opencode_bin,
-        "run",
-        "--agent",
-        "vision",
-        prompt,
-        "-m",
-        cfg.vision_model,
-        "-f",
-        png_path,
+        cfg.opencode_bin, "run", "--agent", "vision", prompt,
+        "-m", cfg.agent_model or cfg.vision_model, "-f", png_path,
     ]
     try:
         proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            errors="replace",
-            timeout=cfg.timeout_s,
-            cwd=cfg.project_root,
+            cmd, capture_output=True, text=True, errors="replace",
+            timeout=cfg.timeout_s, cwd=cfg.project_root,
+            env=opencode_catalog_environment(),
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise VoiceError(f"falha na consulta de visao: {exc}") from exc
@@ -81,8 +75,8 @@ def see(prompt: str, png_path: str, config: Config | None = None) -> str:
     serve_error: Exception | None = None
     if ensure_server(cfg, wait_s=3):
         try:
-            return ServeClient(cfg).see(prompt, png_path, model_id=cfg.vision_model)
-        except (AgentError, VoiceError) as exc:
+            return ServeClient(cfg).see(prompt, png_path, model_id=cfg.agent_model or cfg.vision_model)
+        except (AgentError, VoiceError):
             # Servidor saudavel no check, mas a chamada falhou (sessao
             # morreu, timeout, modelo inexistente, etc.): cai para `run` uma
             # vez, reutilizando o PNG ja capturado (sem re-capturar a tela).

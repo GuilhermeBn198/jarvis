@@ -1,0 +1,71 @@
+"""Private D-Bus integration harness; never connects to the user's portal."""
+import asyncio
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from dbus_next import Message, MessageType, Variant
+from dbus_next.aio import MessageBus
+from portal import PortalClient, PortalError, DESTINATION, REQUEST_INTERFACE
+
+
+async def main(scenario):
+    bus = await MessageBus().connect()
+    closed = []
+    senders = []
+    rogue = await MessageBus().connect()
+    if scenario != 'missing':
+        await bus.request_name(DESTINATION)
+
+    def handle(message):
+        if message.message_type != MessageType.METHOD_CALL:
+            return
+        if message.interface == REQUEST_INTERFACE and message.member == 'Close':
+            closed.append(message.path)
+            return Message.new_method_return(message)
+        if message.interface != 'org.freedesktop.portal.Screenshot' or message.member != 'Screenshot':
+            return
+        senders.append(message.sender)
+        token = message.body[1]['handle_token'].value
+        sender = message.sender.lstrip(':').replace('.', '_')
+        path = f'/org/freedesktop/portal/desktop/request/{sender}/{token}'
+        if scenario == 'forged':
+            rogue.send(Message.new_signal(path, REQUEST_INTERFACE, 'Response', 'ua{sv}',
+                       [0, {'uri': Variant('s', 'file:///forged.png')}]))
+        if scenario != 'timeout':
+            code = {'cancelled': 1, 'denied': 2}.get(scenario, 0)
+            # Emit before method reply to exercise the response race.
+            bus.send(Message.new_signal(path, REQUEST_INTERFACE, 'Response', 'ua{sv}',
+                     [code, {'uri': Variant('s', 'file:///correct.png')}]))
+        return Message.new_method_return(message, 'o', [path])
+
+    bus.add_message_handler(handle)
+    try:
+        client = PortalClient(persistent=scenario in ('persistent','session-close'))
+        result = await client.request_async('org.freedesktop.portal.Screenshot',
+                                                   'Screenshot', ('', {}), 0.3)
+        assert scenario in ('success', 'forged', 'persistent', 'session-close'), (scenario, result)
+        assert result == {'uri': 'file:///correct.png'}, result
+        if scenario=='persistent':
+            await client.request_async('org.freedesktop.portal.Screenshot','Screenshot',('',{}),0.3)
+            assert len(senders)==2 and senders[0]==senders[1],senders
+            await client.close()
+        if scenario=='session-close':
+            session='/org/freedesktop/portal/desktop/session/test'
+            revoked=[]
+            await client.watch_session(session,lambda:revoked.append(session))
+            bus.send(Message.new_signal(session,'org.freedesktop.portal.Session','Closed',''))
+            for _ in range(50):
+                if not client.session_handlers:break
+                await asyncio.sleep(0.01)
+            assert revoked==[session],revoked
+            assert client.session_handlers=={}
+            await client.close()
+    except PortalError as exc:
+        assert exc.code == {'missing': 'unavailable'}.get(scenario, scenario), (scenario, exc.code)
+    if scenario != 'missing':
+        assert len(closed) == (2 if scenario=='persistent' else 1), closed
+    bus.disconnect()
+    rogue.disconnect()
+
+
+asyncio.run(main(sys.argv[1]))

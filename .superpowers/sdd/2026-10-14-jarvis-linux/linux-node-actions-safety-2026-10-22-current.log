@@ -1,0 +1,582 @@
+commit=4eb2f74ed6e6eab66207b0c7908e6bcce89077ad
+command=node --test .opencode/act/linux.test.ts .opencode/plugins/act-tools.test.ts .opencode/plugins/safety-gate.test.ts .opencode/safety/hook.test.ts .opencode/safety/rules.test.ts
+TAP version 13
+# Subtest: platform override and WSL detection agree with Python
+ok 1 - platform override and WSL detection agree with Python
+  ---
+  duration_ms: 1.473615
+  type: 'test'
+  ...
+# Subtest: bridge transports text as JSON stdin, not executable shell code
+ok 2 - bridge transports text as JSON stdin, not executable shell code
+  ---
+  duration_ms: 31.201657
+  type: 'test'
+  ...
+# Subtest: SafetyGate denies dangerous action before spawning bridge
+ok 3 - SafetyGate denies dangerous action before spawning bridge
+  ---
+  duration_ms: 0.926
+  type: 'test'
+  ...
+# Subtest: win_list script builder disponivel
+ok 4 - win_list script builder disponivel
+  ---
+  duration_ms: 1.284558
+  type: 'test'
+  ...
+# Subtest: act_type script uses SendKeys with escaping
+ok 5 - act_type script uses SendKeys with escaping
+  ---
+  duration_ms: 0.439817
+  type: 'test'
+  ...
+# Subtest: act_open script uses Start-Process
+ok 6 - act_open script uses Start-Process
+  ---
+  duration_ms: 0.204974
+  type: 'test'
+  ...
+# Subtest: act_click script uses SetCursorPos + mouse_event
+ok 7 - act_click script uses SetCursorPos + mouse_event
+  ---
+  duration_ms: 0.206155
+  type: 'test'
+  ...
+# Subtest: encode is utf16le base64
+ok 8 - encode is utf16le base64
+  ---
+  duration_ms: 0.284362
+  type: 'test'
+  ...
+# Subtest: plugin exports only the factory
+ok 9 - plugin exports only the factory
+  ---
+  duration_ms: 0.173884
+  type: 'test'
+  ...
+# Subtest: mode ausente -> foreground (sem script de background)
+ok 10 - mode ausente -> foreground (sem script de background)
+  ---
+  duration_ms: 0.220454
+  type: 'test'
+  ...
+# Subtest: window informado -> script background (UIA)
+ok 11 - window informado -> script background (UIA)
+  ---
+  duration_ms: 0.311684
+  type: 'test'
+  ...
+# Subtest: mode background explicito -> background mesmo sem janela
+ok 12 - mode background explicito -> background mesmo sem janela
+  ---
+  duration_ms: 0.460403
+  type: 'test'
+  ...
+# Subtest: wiring: bash destrutivo -> deny
+ok 13 - wiring: bash destrutivo -> deny
+  ---
+  duration_ms: 1.642775
+  type: 'test'
+  ...
+# Subtest: wiring: read -> allow
+ok 14 - wiring: read -> allow
+  ---
+  duration_ms: 1.666439
+  type: 'test'
+  ...
+# Subtest: wiring: desconhecido -> ask
+ok 15 - wiring: desconhecido -> ask
+  ---
+  duration_ms: 1.433531
+  type: 'test'
+  ...
+# Subtest: factory exports permission.ask hook
+ok 16 - factory exports permission.ask hook
+  ---
+  duration_ms: 0.295379
+  type: 'test'
+  ...
+# Subtest: factory exports tool.execute.before hook
+ok 17 - factory exports tool.execute.before hook
+  ---
+  duration_ms: 0.219526
+  type: 'test'
+  ...
+# Subtest: mapping: bash usa o comando como pattern
+ok 18 - mapping: bash usa o comando como pattern
+  ---
+  duration_ms: 1.540739
+  type: 'test'
+  ...
+# Subtest: mapping: read usa o filePath como pattern
+ok 19 - mapping: read usa o filePath como pattern
+  ---
+  duration_ms: 0.144936
+  type: 'test'
+  ...
+# Subtest: mapping: read aceita `path` como alias
+ok 20 - mapping: read aceita `path` como alias
+  ---
+  duration_ms: 0.116889
+  type: 'test'
+  ...
+# Subtest: mapping: tool sem padrão relevante fica só com o tipo
+ok 21 - mapping: tool sem padrão relevante fica só com o tipo
+  ---
+  duration_ms: 0.119855
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: bash destrutivo -> throw (deny)
+ok 22 - beforeToolCall: bash destrutivo -> throw (deny)
+  ---
+  duration_ms: 0.754155
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: acesso a credencial -> throw (deny)
+ok 23 - beforeToolCall: acesso a credencial -> throw (deny)
+  ---
+  duration_ms: 0.741232
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: read de credencial -> throw (deny)
+ok 24 - beforeToolCall: read de credencial -> throw (deny)
+  ---
+  duration_ms: 0.423322
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: comando de leitura -> não throw (allow)
+ok 25 - beforeToolCall: comando de leitura -> não throw (allow)
+  ---
+  duration_ms: 0.936285
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: sudo -> não throw (ask não é bloqueado aqui)
+ok 26 - beforeToolCall: sudo -> não throw (ask não é bloqueado aqui)
+  ---
+  duration_ms: 0.669181
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: act_type com ask -> throw (act sem prompt interativo)
+ok 27 - beforeToolCall: act_type com ask -> throw (act sem prompt interativo)
+  ---
+  duration_ms: 0.484808
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: act_type benigno -> não throw (allow)
+ok 28 - beforeToolCall: act_type benigno -> não throw (allow)
+  ---
+  duration_ms: 0.323895
+  type: 'test'
+  ...
+# Subtest: beforeToolCall: act_open com deny -> throw
+ok 29 - beforeToolCall: act_open com deny -> throw
+  ---
+  duration_ms: 1.013074
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf na raiz
+ok 30 - deny: rm -rf na raiz
+  ---
+  duration_ms: 3.354104
+  type: 'test'
+  ...
+# Subtest: deny: mkfs
+ok 31 - deny: mkfs
+  ---
+  duration_ms: 0.920302
+  type: 'test'
+  ...
+# Subtest: deny: dd para device
+ok 32 - deny: dd para device
+  ---
+  duration_ms: 0.598879
+  type: 'test'
+  ...
+# Subtest: deny: fork bomb
+ok 33 - deny: fork bomb
+  ---
+  duration_ms: 0.347041
+  type: 'test'
+  ...
+# Subtest: ask: sudo
+ok 34 - ask: sudo
+  ---
+  duration_ms: 0.568231
+  type: 'test'
+  ...
+# Subtest: ask: git push --force
+ok 35 - ask: git push --force
+  ---
+  duration_ms: 0.610411
+  type: 'test'
+  ...
+# Subtest: ask: curl | sh
+ok 36 - ask: curl | sh
+  ---
+  duration_ms: 0.434395
+  type: 'test'
+  ...
+# Subtest: ask: rm recursivo dentro do projeto
+ok 37 - ask: rm recursivo dentro do projeto
+  ---
+  duration_ms: 0.43111
+  type: 'test'
+  ...
+# Subtest: allow: read
+ok 38 - allow: read
+  ---
+  duration_ms: 0.498375
+  type: 'test'
+  ...
+# Subtest: allow: git status
+ok 39 - allow: git status
+  ---
+  duration_ms: 0.627242
+  type: 'test'
+  ...
+# Subtest: allow: ls
+ok 40 - allow: ls
+  ---
+  duration_ms: 0.452062
+  type: 'test'
+  ...
+# Subtest: ask: desconhecido (conservador)
+ok 41 - ask: desconhecido (conservador)
+  ---
+  duration_ms: 0.193292
+  type: 'test'
+  ...
+# Subtest: deny vence ask: sudo rm -rf /
+ok 42 - deny vence ask: sudo rm -rf /
+  ---
+  duration_ms: 0.117239
+  type: 'test'
+  ...
+# Subtest: pattern array: um comando perigoso no meio
+ok 43 - pattern array: um comando perigoso no meio
+  ---
+  duration_ms: 0.108165
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf ~
+ok 44 - deny: rm -rf ~
+  ---
+  duration_ms: 0.096953
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf ~/
+ok 45 - deny: rm -rf ~/
+  ---
+  duration_ms: 0.097446
+  type: 'test'
+  ...
+# Subtest: deny: rm --recursive --force /
+ok 46 - deny: rm --recursive --force /
+  ---
+  duration_ms: 0.093914
+  type: 'test'
+  ...
+# Subtest: deny: rm -Rf /
+ok 47 - deny: rm -Rf /
+  ---
+  duration_ms: 0.102568
+  type: 'test'
+  ...
+# Subtest: deny: metachar antes de rm -rf / (multi-comando)
+ok 48 - deny: metachar antes de rm -rf / (multi-comando)
+  ---
+  duration_ms: 0.09297
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf / no inicio de texto multi-linha
+ok 49 - deny: rm -rf / no inicio de texto multi-linha
+  ---
+  duration_ms: 0.091915
+  type: 'test'
+  ...
+# Subtest: deny: redirecionamento para authorized_keys (credencial)
+ok 50 - deny: redirecionamento para authorized_keys (credencial)
+  ---
+  duration_ms: 0.093285
+  type: 'test'
+  ...
+# Subtest: ask: redirecionamento simples nao e allow
+ok 51 - ask: redirecionamento simples nao e allow
+  ---
+  duration_ms: 0.107406
+  type: 'test'
+  ...
+# Subtest: ask: git branch -D (mutante) nao e allow
+ok 52 - ask: git branch -D (mutante) nao e allow
+  ---
+  duration_ms: 0.110272
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf / quando nao e o ultimo comando
+ok 53 - deny: rm -rf / quando nao e o ultimo comando
+  ---
+  duration_ms: 0.775251
+  type: 'test'
+  ...
+# Subtest: ask: multi-linha git status + git branch -D nao e allow
+ok 54 - ask: multi-linha git status + git branch -D nao e allow
+  ---
+  duration_ms: 0.189746
+  type: 'test'
+  ...
+# Subtest: ask: multi-linha ls + git push nao e allow
+ok 55 - ask: multi-linha ls + git push nao e allow
+  ---
+  duration_ms: 0.134033
+  type: 'test'
+  ...
+# Subtest: ask: git diff --output nao e allow
+ok 56 - ask: git diff --output nao e allow
+  ---
+  duration_ms: 0.107512
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf /*
+ok 57 - deny: rm -rf /*
+  ---
+  duration_ms: 0.088927
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf ~/*
+ok 58 - deny: rm -rf ~/*
+  ---
+  duration_ms: 0.086028
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf ${HOME}
+ok 59 - deny: rm -rf ${HOME}
+  ---
+  duration_ms: 0.089141
+  type: 'test'
+  ...
+# Subtest: deny: rm -rf /home/user
+ok 60 - deny: rm -rf /home/user
+  ---
+  duration_ms: 0.086785
+  type: 'test'
+  ...
+# Subtest: ask: glob ls *.txt nao e allow
+ok 61 - ask: glob ls *.txt nao e allow
+  ---
+  duration_ms: 0.09025
+  type: 'test'
+  ...
+# Subtest: deny: cat ~/.ssh/id_rsa
+ok 62 - deny: cat ~/.ssh/id_rsa
+  ---
+  duration_ms: 0.093424
+  type: 'test'
+  ...
+# Subtest: deny: cat .env
+ok 63 - deny: cat .env
+  ---
+  duration_ms: 0.092862
+  type: 'test'
+  ...
+# Subtest: deny: cat .env.local
+ok 64 - deny: cat .env.local
+  ---
+  duration_ms: 0.100798
+  type: 'test'
+  ...
+# Subtest: deny: cat ~/.aws/credentials
+ok 65 - deny: cat ~/.aws/credentials
+  ---
+  duration_ms: 0.096254
+  type: 'test'
+  ...
+# Subtest: deny: cat /etc/shadow
+ok 66 - deny: cat /etc/shadow
+  ---
+  duration_ms: 0.088536
+  type: 'test'
+  ...
+# Subtest: deny: read de ~/.ssh/id_rsa (path-aware)
+ok 67 - deny: read de ~/.ssh/id_rsa (path-aware)
+  ---
+  duration_ms: 0.093105
+  type: 'test'
+  ...
+# Subtest: allow: cat README.md nao casa credencial
+ok 68 - allow: cat README.md nao casa credencial
+  ---
+  duration_ms: 0.102639
+  type: 'test'
+  ...
+# Subtest: allow: cat environment.md nao casa credencial
+ok 69 - allow: cat environment.md nao casa credencial
+  ---
+  duration_ms: 0.106506
+  type: 'test'
+  ...
+# Subtest: act_open destrutivo -> deny
+ok 70 - act_open destrutivo -> deny
+  ---
+  duration_ms: 0.218286
+  type: 'test'
+  ...
+# Subtest: act_type benigno -> allow
+ok 71 - act_type benigno -> allow
+  ---
+  duration_ms: 0.22014
+  type: 'test'
+  ...
+# Subtest: act_click -> allow
+ok 72 - act_click -> allow
+  ---
+  duration_ms: 0.133781
+  type: 'test'
+  ...
+# Subtest: deny: act_type format drive (Windows)
+ok 73 - deny: act_type format drive (Windows)
+  ---
+  duration_ms: 0.120439
+  type: 'test'
+  ...
+# Subtest: deny: act_open diskpart
+ok 74 - deny: act_open diskpart
+  ---
+  duration_ms: 0.106148
+  type: 'test'
+  ...
+# Subtest: deny: act_type vssadmin delete (Windows)
+ok 75 - deny: act_type vssadmin delete (Windows)
+  ---
+  duration_ms: 0.226185
+  type: 'test'
+  ...
+# Subtest: deny: act_type del /s (Windows)
+ok 76 - deny: act_type del /s (Windows)
+  ---
+  duration_ms: 0.120111
+  type: 'test'
+  ...
+# Subtest: deny: act_open rd /s (Windows)
+ok 77 - deny: act_open rd /s (Windows)
+  ---
+  duration_ms: 0.109001
+  type: 'test'
+  ...
+# Subtest: deny: act_type Remove-Item -Recurse (PowerShell)
+ok 78 - deny: act_type Remove-Item -Recurse (PowerShell)
+  ---
+  duration_ms: 0.116646
+  type: 'test'
+  ...
+# Subtest: deny: act_type Remove-Item -Force (PowerShell)
+ok 79 - deny: act_type Remove-Item -Force (PowerShell)
+  ---
+  duration_ms: 0.114502
+  type: 'test'
+  ...
+# Subtest: deny: credencial com barra invertida do Windows
+ok 80 - deny: credencial com barra invertida do Windows
+  ---
+  duration_ms: 0.103379
+  type: 'test'
+  ...
+# Subtest: allow: act_type benigno nao casa regra Windows
+ok 81 - allow: act_type benigno nao casa regra Windows
+  ---
+  duration_ms: 0.117182
+  type: 'test'
+  ...
+# Subtest: win_list -> allow (leitura)
+ok 82 - win_list -> allow (leitura)
+  ---
+  duration_ms: 0.114133
+  type: 'test'
+  ...
+# Subtest: act_type background benigno -> allow
+ok 83 - act_type background benigno -> allow
+  ---
+  duration_ms: 0.135556
+  type: 'test'
+  ...
+# Subtest: act_type background destrutivo -> deny (conteudo ainda avaliado)
+ok 84 - act_type background destrutivo -> deny (conteudo ainda avaliado)
+  ---
+  duration_ms: 0.115275
+  type: 'test'
+  ...
+# Subtest: act_type inclui janela-alvo (window/hwnd) no padrao como string[]
+ok 85 - act_type inclui janela-alvo (window/hwnd) no padrao como string[]
+  ---
+  duration_ms: 0.747475
+  type: 'test'
+  ...
+# Subtest: act_key inclui janela-alvo (window/hwnd) no padrao como string[]
+ok 86 - act_key inclui janela-alvo (window/hwnd) no padrao como string[]
+  ---
+  duration_ms: 0.124568
+  type: 'test'
+  ...
+# Subtest: act_type sem janela fica so com o texto
+ok 87 - act_type sem janela fica so com o texto
+  ---
+  duration_ms: 0.121374
+  type: 'test'
+  ...
+# Subtest: act_type ignora window/hwnd vazios
+ok 88 - act_type ignora window/hwnd vazios
+  ---
+  duration_ms: 0.112128
+  type: 'test'
+  ...
+# Subtest: win_read mapeia para tipo winread com o caminho no padrao
+ok 89 - win_read mapeia para tipo winread com o caminho no padrao
+  ---
+  duration_ms: 0.10727
+  type: 'test'
+  ...
+# Subtest: win_read -> allow (leitura)
+ok 90 - win_read -> allow (leitura)
+  ---
+  duration_ms: 0.125611
+  type: 'test'
+  ...
+# Subtest: win_read de credencial -> deny
+ok 91 - win_read de credencial -> deny
+  ---
+  duration_ms: 0.107406
+  type: 'test'
+  ...
+# Subtest: win_write mapeia para tipo winwrite com o caminho no padrao
+ok 92 - win_write mapeia para tipo winwrite com o caminho no padrao
+  ---
+  duration_ms: 0.128244
+  type: 'test'
+  ...
+# Subtest: win_write -> ask (nunca allow automatico de escrita)
+ok 93 - win_write -> ask (nunca allow automatico de escrita)
+  ---
+  duration_ms: 0.129847
+  type: 'test'
+  ...
+# Subtest: win_write para credencial -> deny
+ok 94 - win_write para credencial -> deny
+  ---
+  duration_ms: 0.116532
+  type: 'test'
+  ...
+# Subtest: native file aliases preserve credential and write gates
+ok 95 - native file aliases preserve credential and write gates
+  ---
+  duration_ms: 0.119883
+  type: 'test'
+  ...
+1..95
+# tests 95
+# suites 0
+# pass 95
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 172.821709

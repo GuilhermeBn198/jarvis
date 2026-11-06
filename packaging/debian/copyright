@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: jarvis
+Source: https://github.com/GuilhermeBn198/jarvis
+
+Files: *
+Copyright: Jarvis contributors
+License: Apache-2.0
+ See /usr/share/common-licenses/Apache-2.0.
+
+Files: usr/lib/jarvis/python/* usr/lib/jarvis/.opencode/node_modules/* usr/lib/jarvis/bin/opencode
+Copyright: respective upstream contributors
+License: upstream-licenses
+ Upstream licenses and metadata accompany the bundled distributions.
+ OpenCode: MIT. Piper: GPL-3.0-or-later. Other distributions retain
+ their own license notices; inspect their dist-info/licenses metadata.

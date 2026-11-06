@@ -1,3 +1,6 @@
+import { resizeWindow } from "./window-layout.mjs";
+import { getModelCatalog, saveSettingsRequest } from "./model-settings.mjs";
+
 let base = "http://localhost:8765";
 
 const LABELS = {
@@ -93,6 +96,12 @@ if (AUTOSTART_BRAIN) {
   setTimeout(ensureBrain, 1200);
 }
 
+orb.addEventListener("click", (event) => {
+  // Keyboard/accessibility activation has no mouse-down/up gesture.
+  if (orbDragged && event.detail !== 0) { orbDragged = false; return; }
+  toggleMenu();
+});
+
 orb.addEventListener("mouseenter", () => {
   if (menu.classList.contains("hidden") && settingsPanel.classList.contains("hidden")) {
     label.classList.add("show");
@@ -102,8 +111,10 @@ orb.addEventListener("mouseleave", () => label.classList.remove("show"));
 
 // Clique-e-segura no orbe = arrastar a janela; clique curto = abre/fecha o menu.
 let orbDown = null;
+let orbDragged = false;
 orb.addEventListener("mousedown", (ev) => {
   if (ev.button !== 0) return;
+  orbDragged = false;
   orbDown = { x: ev.clientX, y: ev.clientY, moved: false };
   ev.preventDefault();
 });
@@ -111,6 +122,7 @@ window.addEventListener("mousemove", async (ev) => {
   if (!orbDown || orbDown.moved) return;
   if (Math.abs(ev.clientX - orbDown.x) > 4 || Math.abs(ev.clientY - orbDown.y) > 4) {
     orbDown.moved = true;
+    orbDragged = true;
     try {
       await window.__TAURI__.window.getCurrentWindow().startDragging();
     } catch (e) {
@@ -119,9 +131,7 @@ window.addEventListener("mousemove", async (ev) => {
   }
 });
 window.addEventListener("mouseup", () => {
-  const wasClick = orbDown && !orbDown.moved;
   orbDown = null;
-  if (wasClick) toggleMenu();
 });
 
 async function command(cmd) {
@@ -210,7 +220,7 @@ const settingsPanel = document.getElementById("settings");
 const measureOut = document.getElementById("measure-out");
 const ORB_SIZE = [120, 120];
 const MENU_SIZE = [210, 310];
-const PANEL_SIZE = [280, 470];
+const PANEL_SIZE = [300, 570];
 
 function numOrNull(id) {
   const v = document.getElementById(id).value.trim();
@@ -224,15 +234,7 @@ async function anchorBottomRight(w, h) {
   try {
     const win = window.__TAURI__.window.getCurrentWindow();
     const dpi = window.__TAURI__.dpi;
-    const scale = await win.scaleFactor();
-    const pos = await win.outerPosition();
-    const size = await win.innerSize();
-    const tw = Math.round(w * scale);
-    const th = Math.round(h * scale);
-    await win.setSize(new dpi.PhysicalSize(tw, th));
-    await win.setPosition(
-      new dpi.PhysicalPosition(pos.x + size.width - tw, pos.y + size.height - th),
-    );
+    await resizeWindow(win, dpi, w, h);
   } catch (e) {
     /* fora do Tauri ou sem permissao: segue sem redimensionar */
   }
@@ -281,8 +283,65 @@ async function loadSettings() {
   document.getElementById("s-stream").checked = s.stream_tts !== false;
   document.getElementById("s-input").value = s.input_mode ?? "auto";
   document.getElementById("s-activation").value = s.activation ?? "free";
+  try {
+    const info = await window.__TAURI__.core.invoke("platform_info");
+    const ttsSelect = document.getElementById("s-tts");
+    for (const option of Array.from(ttsSelect.options)) {
+      if (!info.tts_backends.includes(option.value)) option.remove();
+    }
+  } catch (error) { console.error("Falha ao consultar vozes disponiveis", error); }
   document.getElementById("s-tts").value = s.tts_backend ?? "piper";
+  await loadModels(s.agent_model);
 }
+
+async function loadModels(selected) {
+  const select = document.getElementById("s-agent-model");
+  const out = document.getElementById("model-out");
+  select.replaceChildren();
+  try {
+    const catalog = await getModelCatalog(base, selected);
+    for (const model of catalog.models) {
+      const option = document.createElement("option");
+      option.value = `ollama/${model.name}`;
+      option.textContent = `${model.name}${model.cloud ? " · cloud" : " · local"}`;
+      option.dataset.cloud = String(model.cloud);
+      option.dataset.available = "true";
+      select.appendChild(option);
+    }
+    const current = catalog.selected;
+    if (current && !Array.from(select.options).some((option) => option.value === current)) {
+      const missing = document.createElement("option");
+      missing.value = current;
+      missing.textContent = `${current} · indisponível`;
+      missing.dataset.available = "false";
+      select.appendChild(missing);
+    }
+    select.value = current;
+    out.textContent = "";
+    if (current) select.dispatchEvent(new Event("change"));
+  } catch (error) {
+    const keep = selected || "";
+    if (keep) {
+      const option = document.createElement("option");
+      option.value = keep;
+      option.textContent = `${keep} · catálogo indisponível`;
+      option.dataset.available = "false";
+      select.appendChild(option);
+      select.value = keep;
+    }
+    out.textContent = `Não foi possível carregar os modelos: ${error.message}`;
+  }
+}
+
+document.getElementById("s-agent-model").addEventListener("change", (event) => {
+  const option = event.target.selectedOptions[0];
+  const out = document.getElementById("model-out");
+  out.textContent = option?.dataset.cloud === "true"
+    ? "Cloud: na próxima solicitação, transcrição, prompt e contexto de tela podem ser enviados ao provedor."
+    : option?.dataset.available === "false"
+      ? "Origem desconhecida: modelo indisponível no catálogo."
+      : "Modelo local selecionado.";
+});
 
 async function openSettings() {
   menu.classList.add("hidden");
@@ -348,13 +407,15 @@ async function saveSettings(restart) {
     if (body[k] === null) delete body[k];
   }
   try {
-    await fetch(`${base}/settings`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const model = document.getElementById("s-agent-model").value;
+    const availableModel = model && document.getElementById("s-agent-model").selectedOptions[0]?.dataset.available === "true" ? model : "";
+    const result = await saveSettingsRequest(base, body, availableModel);
+    document.getElementById("model-out").textContent = result.modelError
+      ? `Configurações salvas, mas o modelo não foi atualizado: ${result.modelError}`
+      : "Configurações salvas.";
   } catch (e) {
-    /* ignora */
+    document.getElementById("model-out").textContent = `Erro ao salvar: ${e.message}`;
+    return;
   }
   if (restart) await restartBrain();
 }
